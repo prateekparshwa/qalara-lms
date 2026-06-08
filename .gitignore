@@ -34,3 +34,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+
+# local temp / scratch (regenerable; never commit)
+.tmp/
+
+# service-account keys / credentials (never commit)
+*service-account*.json
+credentials.json
+token.json

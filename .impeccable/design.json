@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-07T00:00:00.000Z",
+  "title": "Design System: Qalara LMS",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "neutral", "displayName": "Editorial Ink", "canonical": "#18181B", "tonalRamp": ["#09090B", "#18181B", "#27272A", "#3F3F46", "#52525B", "#71717A", "#A1A1AA", "#D4D4D8"] },
+      "accent": { "role": "primary", "displayName": "Editorial Magenta", "canonical": "#EC4899", "tonalRamp": ["#831843", "#9D174D", "#BE185D", "#DB2777", "#EC4899", "#F472B6", "#F9A8D4", "#FCE7F3"] },
+      "bg": { "role": "neutral", "displayName": "Off-White Body", "canonical": "#FAFAFA", "tonalRamp": ["#52525B", "#71717A", "#A1A1AA", "#D4D4D8", "#E4E4E7", "#F4F4F5", "#FAFAFA", "#FFFFFF"] },
+      "muted": { "role": "neutral", "displayName": "Muted Slate", "canonical": "#71717A", "tonalRamp": ["#27272A", "#3F3F46", "#52525B", "#71717A", "#A1A1AA", "#D4D4D8", "#E4E4E7", "#F4F4F5"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display (Fira Code)", "purpose": "Wordmark and drawer org name. Monospace identity." },
+      "label": { "displayName": "Label (Fira Code caps)", "purpose": "Section/column/field labels. ≤4 words, uppercase, tracked." },
+      "data": { "displayName": "KPI Number (Fira Code)", "purpose": "Large stat-bar numbers only." },
+      "body": { "displayName": "Body (Fira Sans)", "purpose": "Field values and prose. Reading voice." }
+    },
+    "shadows": [
+      { "name": "drawer-lift", "value": "-4px 0 24px rgba(0,0,0,0.08)", "purpose": "The only shadow in the system; lifts the slide-over profile drawer above the page." }
+    ],
+    "motion": [
+      { "name": "hover", "value": "150ms ease", "purpose": "All hover/state transitions on rows, buttons, inputs." },
+      { "name": "drawer-slide", "value": "250ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Profile drawer slide-in from the right." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "375px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1440px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Export Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Quiet outlined primary action; inverts to filled ink on hover.",
+      "html": "<button class=\"ds-btn-primary\">Export</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #FFFFFF; color: #18181B; border: 1px solid #18181B; border-radius: 4px; padding: 6px 12px; font-family: 'Fira Sans', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 150ms ease, color 150ms ease; } .ds-btn-primary:hover { background: #18181B; color: #FFFFFF; } .ds-btn-primary:focus-visible { outline: 2px solid #EC4899; outline-offset: 2px; }"
+    },
+    {
+      "name": "Sync Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Secondary outlined action with hairline border that darkens on hover.",
+      "html": "<button class=\"ds-btn-secondary\">Sync</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 6px; background: #FFFFFF; color: #3F3F46; border: 1px solid #D4D4D8; border-radius: 4px; padding: 6px 12px; font-family: 'Fira Sans', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: border-color 150ms ease; } .ds-btn-secondary:hover { border-color: #18181B; }"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "filter-chip",
+      "description": "Active filter only; magenta dismiss control.",
+      "html": "<span class=\"ds-chip\">UAE (Sharjah)<button class=\"ds-chip-x\" aria-label=\"Remove filter\">×</button></span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 4px; background: #18181B; color: #FFFFFF; font-family: 'Fira Sans', sans-serif; font-size: 12px; padding: 2px 8px; border-radius: 9999px; } .ds-chip-x { color: #EC4899; background: none; border: none; padding: 0; line-height: 1; cursor: pointer; font-size: 14px; }"
+    },
+    {
+      "name": "Confidence Badge",
+      "kind": "custom",
+      "refersTo": "badge-confidence",
+      "description": "Semantic confidence/classification marker; color always paired with text.",
+      "html": "<span class=\"ds-badge ds-badge-high\">HIGH</span>",
+      "css": ".ds-badge { font-family: 'Fira Code', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 2px; display: inline-block; } .ds-badge-high { background: #DCFCE7; color: #15803D; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Off-white field that brightens to white with ink border on focus.",
+      "html": "<div class=\"ds-search\"><svg class=\"ds-search-icon\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#71717A\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input class=\"ds-search-input\" placeholder=\"Search by organization, email, or website…\"/></div>",
+      "css": ".ds-search { position: relative; max-width: 480px; } .ds-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); } .ds-search-input { width: 100%; padding: 10px 12px 10px 36px; font-family: 'Fira Sans', sans-serif; font-size: 14px; background: #FAFAFA; border: 1px solid #E4E4E7; border-radius: 4px; color: #09090B; transition: background 150ms ease, border-color 150ms ease; } .ds-search-input::placeholder { color: #71717A; } .ds-search-input:focus { outline: none; background: #FFFFFF; border-color: #18181B; }"
+    },
+    {
+      "name": "KPI Pull-Quote Card",
+      "kind": "card",
+      "refersTo": "kpi-card",
+      "description": "Borderless stat block; 3px ink top-rule, large mono number, muted label.",
+      "html": "<div class=\"ds-kpi\"><div class=\"ds-kpi-number\">3,627</div><div class=\"ds-kpi-label\">Total Leads</div></div>",
+      "css": ".ds-kpi { border-top: 3px solid #18181B; padding: 20px 24px 16px; background: #FFFFFF; } .ds-kpi-number { font-family: 'Fira Code', monospace; font-size: 32px; font-weight: 700; line-height: 1; color: #18181B; } .ds-kpi-label { font-family: 'Fira Sans', sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #71717A; margin-top: 6px; }"
+    },
+    {
+      "name": "Leads Row",
+      "kind": "custom",
+      "refersTo": "button-primary",
+      "description": "Signature row: 3px transparent left edge turns magenta on hover, the editorial selection mark.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-row-org\">2XL Home</span><span class=\"ds-row-meta\">suood@2xlme.com · UAE</span></div>",
+      "css": ".ds-row { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border-left: 3px solid transparent; border-bottom: 1px solid #F4F4F5; background: #FFFFFF; cursor: pointer; transition: border-color 150ms ease, background-color 150ms ease; } .ds-row:hover { border-left-color: #EC4899; background: #F4F4F5; } .ds-row-org { font-family: 'Fira Sans', sans-serif; font-size: 14px; font-weight: 500; color: #18181B; } .ds-row-meta { font-family: 'Fira Sans', sans-serif; font-size: 12px; color: #71717A; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Newsroom Ledger",
+    "overview": "Qalara LMS reads like a well-set financial broadsheet rather than a control panel. The data is the headline; the interface is the typesetting around it. A monospaced display face (Fira Code) sets section labels, KPIs, and identifiers with the precision of a printed ledger, while a humanist sans (Fira Sans) carries the prose. Thin black rules organize the page the way a newspaper uses column separators: structure without boxes. Color is almost absent, held in reserve so that the single magenta accent and the three confidence colors carry real meaning the instant they appear.",
+    "keyCharacteristics": [
+      "Monospace for identity and data; humanist sans for reading.",
+      "Near-monochrome surface; magenta and confidence colors are the only saturated voices.",
+      "Hairline black rules instead of cards and shadows.",
+      "Calm density: many fields, little noise.",
+      "Honest states everywhere (loading skeletons, empty teaching states, error lines)."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Magenta appears on ≤10% of any screen. Its rarity is the entire point; the moment it decorates, it stops signaling.", "section": "colors" },
+      { "name": "The Rules-Not-Boxes Rule", "body": "Grouping is done with 1px rules (ink for section dividers, hairline for rows), never with bordered cards. Nested cards are forbidden.", "section": "colors" },
+      { "name": "The Mono-for-Identity Rule", "body": "Anything that identifies or quantifies is set in Fira Code; anything read as language is set in Fira Sans. The font tells the user what kind of thing they're looking at.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. The only shadow in the system belongs to the drawer.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep magenta (#EC4899) on ≤10% of any screen — active filters, the row mark, the dismiss control, the intelligence spark, nothing else.",
+      "Do organize with 1px rules: ink (#18181B) for section dividers, hairline (#E4E4E7) for table rows.",
+      "Do set every label, KPI, badge, and identifier in Fira Code; set every reading sentence in Fira Sans.",
+      "Do pair every confidence/classification color with its text value, so color is never the only signal (WCAG AA).",
+      "Do ship honest states: skeleton rows while loading, a teaching empty state, inline error lines in the terminal.",
+      "Do keep body and placeholder text at ≥4.5:1 contrast; bump toward ink before reaching for a lighter gray."
+    ],
+    "donts": [
+      "Don't build a generic SaaS dashboard: no gradient hero-metric tiles, no blue-and-white template, no rounded-everything.",
+      "Don't build a cluttered enterprise CRM: no wall of competing buttons, tabs, and panels.",
+      "Don't let it become a spreadsheet-in-a-browser: the drawer, typography, and rhythm must always show craft.",
+      "Don't use cards where a rule will do, and never nest cards.",
+      "Don't add shadows to anything except the drawer.",
+      "Don't use border-left/border-right greater than the 3px magenta row mark as a colored stripe.",
+      "Don't introduce consumer-app playfulness: no emojis as icons, no bouncy/elastic motion, no illustrations.",
+      "Don't set body copy in ALL CAPS or use uppercase for anything longer than a four-word label."
+    ]
+  }
+}
