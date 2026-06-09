@@ -7,11 +7,10 @@
 const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
 
 // Fallback chain — if the primary provider errors, OpenRouter tries the next.
-// Free models keep Discovery working even if credits run out.
-const FREE_FALLBACKS = [
+// DeepSeek (paid, reliable) is the main backup; a free model is the last resort.
+const FALLBACKS = [
+  "deepseek/deepseek-v4-flash",
   "qwen/qwen3.6-plus:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "google/gemma-4-31b-it:free",
 ];
 
 async function once(
@@ -61,7 +60,7 @@ export async function openrouterComplete(
   }
   const primary = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
   // OpenRouter allows at most 3 models in the fallback array.
-  const models = Array.from(new Set([primary, ...FREE_FALLBACKS])).slice(0, 3);
+  const models = Array.from(new Set([primary, ...FALLBACKS])).slice(0, 3);
 
   // One retry across the whole fallback chain for transient provider errors.
   let lastErr: unknown;
