@@ -45,7 +45,7 @@ export const SEGMENTS: Segment[] = [
   {
     key: "no_engagement",
     label: "Leads with No Engagement",
-    definition: "Buyers Qalara reached out to who haven't responded yet.",
+    definition: "Buyers who signed up but have not yet engaged or responded to Qalara.",
     envVars: ["GOOGLE_SHEETS_SPREADSHEET_ID_NO_ENGAGEMENT"],
   },
   {
@@ -53,13 +53,13 @@ export const SEGMENTS: Segment[] = [
     label: "Prospects",
     definition: "Potential buyers not yet contacted by anyone.",
     envVars: ["GOOGLE_SHEETS_SPREADSHEET_ID_PROSPECTS"],
+    deferred: true,
   },
   {
     key: "customers",
     label: "Qalara Customers",
-    definition: "Buyers who have placed at least one order.",
+    definition: "Buyers who have placed at least one order with Qalara.",
     envVars: ["GOOGLE_SHEETS_SPREADSHEET_ID_CUSTOMERS"],
-    deferred: true,
   },
 ];
 

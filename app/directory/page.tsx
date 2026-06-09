@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import Masthead from "@/components/Masthead";
+import Aurora from "@/components/Aurora";
 import { SEGMENTS, segmentSpreadsheetId } from "@/lib/segments";
 import { getLeadStats } from "@/lib/leads";
 
@@ -45,8 +46,9 @@ export default async function DirectoryPage() {
     <div className="min-h-screen flex flex-col bg-editorial-bg">
       <Masthead subtitle="Qalara Buyer Directory" />
 
-      <main className="flex-1">
-        <div className="max-w-3xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
+      <main className="flex-1 relative">
+        <Aurora />
+        <div className="relative z-10 max-w-3xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
           <h1 className="font-sans font-semibold text-2xl text-editorial-black">
             Choose a segment
           </h1>
@@ -103,7 +105,7 @@ export default async function DirectoryPage() {
                       className="px-1 opacity-60 cursor-not-allowed"
                       title={
                         r.status === "deferred"
-                          ? "Order data lives in a separate Buyer Base; planned later."
+                          ? "Planned for a later phase."
                           : "Link this segment's Google Sheet to enable it."
                       }
                       aria-disabled="true"

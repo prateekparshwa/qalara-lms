@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500..700;1,9..144,500&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 :root {
   --font-fira-code: 'Fira Code', monospace;
@@ -24,6 +24,145 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* === Display font system (lobby headline + card titles) ===
+   The wrapper sets --font-display; .font-display consumes it, so swapping
+   the wrapper class re-skins every heading at once (drives the ?font= switch). */
+.font-display {
+  font-family: var(--font-display, var(--font-fira-sans)), sans-serif;
+  letter-spacing: -0.02em;
+}
+.disp-grotesk {
+  --font-display: "Space Grotesk";
+}
+.disp-fraunces {
+  --font-display: "Fraunces";
+}
+.disp-fraunces .font-display {
+  letter-spacing: -0.01em;
+}
+.disp-bricolage {
+  --font-display: "Bricolage Grotesque";
+}
+
+/* === Animated aurora backdrop === */
+.aurora {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 620px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  opacity: 0.45;
+  will-change: transform;
+}
+.aurora .b1 {
+  width: 360px;
+  height: 360px;
+  background: var(--accent-indigo);
+  top: -110px;
+  left: -70px;
+  animation: auroraFloat1 19s ease-in-out infinite;
+}
+.aurora .b2 {
+  width: 300px;
+  height: 300px;
+  background: var(--accent-teal);
+  top: -60px;
+  right: 8%;
+  animation: auroraFloat2 23s ease-in-out infinite;
+}
+.aurora .b3 {
+  width: 280px;
+  height: 280px;
+  background: var(--accent-violet);
+  top: 30px;
+  right: -60px;
+  animation: auroraFloat3 21s ease-in-out infinite;
+}
+.aurora .b4 {
+  width: 240px;
+  height: 240px;
+  background: var(--accent-amber);
+  top: 120px;
+  left: 32%;
+  opacity: 0.32;
+  animation: auroraFloat1 26s ease-in-out infinite reverse;
+}
+.aurora .b5 {
+  width: 220px;
+  height: 220px;
+  background: var(--accent-rose);
+  top: -40px;
+  left: 46%;
+  opacity: 0.3;
+  animation: auroraFloat2 30s ease-in-out infinite;
+}
+@keyframes auroraFloat1 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, 30px) scale(1.12);
+  }
+}
+@keyframes auroraFloat2 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-36px, 26px) scale(1.1);
+  }
+}
+@keyframes auroraFloat3 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-28px, -22px) scale(1.14);
+  }
+}
+
+/* === Animated gradient text (headline accent) === */
+.text-gradient {
+  background: linear-gradient(
+    90deg,
+    #4f46e5,
+    #7c3aed,
+    #0d9488,
+    #f59e0b,
+    #e11d48,
+    #4f46e5
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: gradShift 9s linear infinite;
+}
+@keyframes gradShift {
+  to {
+    background-position: 220% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora span,
+  .text-gradient {
+    animation: none;
+  }
 }
 
 body {
@@ -202,10 +341,10 @@ body {
 .tag-gray   { background: #F4F4F5; color: #52525B; }
 .kpi-label {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--editorial-muted);
+  color: var(--editorial-secondary);
   margin-top: 6px;
 }
 
@@ -286,12 +425,17 @@ body {
   position: relative;
   display: block;
   background: var(--surface);
-  border: 1px solid var(--editorial-border);
+  border: 1px solid #d4d4d8;
   border-top: 3px solid var(--accent, var(--editorial-black));
   border-radius: 4px;
-  padding: 28px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(9, 9, 11, 0.05);
   transition: background-color 180ms ease,
-    transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease;
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+.entry-panel:hover {
+  border-color: #a1a1aa;
 }
 .entry-panel:hover {
   background: #fff;
@@ -301,6 +445,171 @@ body {
 .entry-panel:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent, var(--editorial-accent));
+}
+
+/* === Command Deck (lobby v2) === */
+.deck-grid {
+  display: grid;
+  gap: 20px;
+}
+@media (min-width: 1024px) {
+  .deck-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Left — light "index / database" card */
+.deck-index {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--editorial-border);
+  border-top: 3px solid var(--accent-indigo);
+  border-radius: 6px;
+  padding: 24px;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 180ms ease;
+}
+.deck-index:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(79, 70, 229, 0.13);
+}
+.deck-index:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-indigo);
+}
+.deck-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--editorial-border);
+  border-radius: 6px;
+  padding: 11px 14px;
+  background: #fafafe;
+  color: var(--editorial-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.deck-index:hover .deck-searchbar {
+  border-color: var(--accent-indigo);
+  background: #fff;
+}
+
+/* Right — light teal-washed "radar / terminal" card */
+.deck-radar {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #f0fdfa 0%, #f7fffe 60%);
+  color: var(--editorial-secondary);
+  border: 1px solid #ccfbf1;
+  border-top: 3px solid var(--accent-teal);
+  border-radius: 6px;
+  padding: 24px;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 180ms ease;
+}
+.deck-radar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(13, 148, 136, 0.16);
+}
+.deck-radar:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-teal);
+}
+.deck-radar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+      circle at 84% 16%,
+      rgba(13, 148, 136, 0.1),
+      transparent 46%
+    ),
+    linear-gradient(rgba(13, 148, 136, 0.05) 1px, transparent 1px) 0 0 / 100%
+      22px;
+  opacity: 0.9;
+}
+.deck-radar > * {
+  position: relative;
+}
+.deck-scan {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #ccfbf1;
+}
+.deck-scan::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent-teal),
+    transparent
+  );
+  animation: deckSweep 1.9s ease-in-out infinite;
+}
+@keyframes deckSweep {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(360%);
+  }
+}
+.deck-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  background: var(--accent-teal);
+  margin-left: 3px;
+  vertical-align: middle;
+  animation: deckBlink 1.1s steps(2) infinite;
+}
+@keyframes deckBlink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Live KPI strip */
+.deck-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .deck-kpis {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-index,
+  .deck-radar {
+    transition: none;
+  }
+  .deck-index:hover,
+  .deck-radar:hover {
+    transform: none;
+  }
+  .deck-scan::after,
+  .deck-cursor {
+    animation: none;
+  }
 }
 
 /* Segment chooser — status chip */

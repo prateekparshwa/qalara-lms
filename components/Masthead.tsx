@@ -39,8 +39,8 @@ export default function Masthead({
             <span className="text-editorial-accent font-code font-bold text-xl">
               ·
             </span>
-            <span className="font-code font-bold text-xl tracking-[0.18em] text-editorial-black uppercase">
-              Buyer Intelligence
+            <span className="font-code font-bold text-xl tracking-[0.13em] text-editorial-black uppercase">
+              Lead Management System
             </span>
           </Link>
           {subtitle && (

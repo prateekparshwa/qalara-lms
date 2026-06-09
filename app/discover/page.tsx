@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Loader2, CheckCircle2, ArrowRight, Globe, FileDown } from "lucide-react";
 import Masthead from "@/components/Masthead";
+import Aurora from "@/components/Aurora";
 import LeadDossier from "@/components/LeadDossier";
 import Badge from "@/components/Badge";
 import { downloadLeadPdf } from "@/lib/leadPdf";
@@ -11,27 +12,20 @@ import type { Lead } from "@/lib/leads";
 
 type Profile = Record<string, string | null>;
 
-function Input({
+function Field({
   label,
   placeholder,
   value,
-  dot,
-  ph,
   onChange,
 }: {
   label: string;
   placeholder: string;
   value: string;
-  dot: string;
-  ph: string;
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex-1 min-w-0">
-      <label
-        className="block text-[10px] font-code font-bold uppercase tracking-widest mb-1"
-        style={{ color: dot }}
-      >
+    <div className="min-w-0">
+      <label className="block text-[10px] font-code font-bold uppercase tracking-widest mb-1.5 text-editorial-secondary">
         {label}
       </label>
       <input
@@ -39,8 +33,7 @@ function Input({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        style={{ ["--ph" as string]: ph }}
-        className="search-input w-full px-3 py-2 text-sm font-sans text-editorial-black border border-zinc-200 rounded bg-white focus:outline-none focus:border-editorial-black focus-visible:ring-2 focus-visible:ring-editorial-accent transition-colors"
+        className="w-full px-3.5 py-2.5 text-sm font-sans text-editorial-black border border-editorial-border rounded-lg bg-white placeholder:text-editorial-muted focus:outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/25 transition-colors"
       />
     </div>
   );
@@ -92,70 +85,91 @@ export default function DiscoverPage() {
   const website2 = profile?.website;
 
   return (
-    <div className="min-h-screen flex flex-col bg-editorial-bg">
+    <div className="min-h-screen flex flex-col bg-editorial-bg disp-grotesk">
       <Masthead subtitle="General Discovery" />
 
-      <main className="flex-1">
-        <div className="max-w-3xl mx-auto px-6 lg:px-10 py-8 lg:py-12">
-          <div className="flex items-center gap-2.5">
-            <Globe size={20} style={{ color: "#0D9488" }} />
-            <h1 className="font-sans font-semibold text-2xl text-editorial-black">
+      <main className="flex-1 relative">
+        <Aurora />
+        <div className="relative z-10 max-w-3xl mx-auto px-6 lg:px-10 py-8 lg:py-12">
+          {/* Header */}
+          <div className="flex items-center gap-3">
+            <span
+              className="inline-flex items-center justify-center w-11 h-11 rounded-xl shrink-0"
+              style={{ background: "#CCFBF1" }}
+            >
+              <Globe size={22} style={{ color: "#0D9488" }} />
+            </span>
+            <h1 className="font-display font-bold text-3xl lg:text-[2rem] leading-none text-editorial-black">
               Research any buyer
             </h1>
           </div>
-          <p className="mt-2 text-sm text-editorial-secondary max-w-xl">
+          <p className="mt-3 text-sm text-editorial-secondary max-w-xl leading-relaxed">
             Enter what you know — an organization, a website, or an email. The web
             is scraped and an AI builds a full buyer profile, saved automatically
             so it shows up under{" "}
             <Link
               href="/directory/discover"
-              className="text-editorial-accent hover:underline"
+              className="font-semibold text-[#0D9488] hover:underline"
             >
               Discovered Buyers
             </Link>
             .
           </p>
 
-          {/* Inputs */}
-          <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-end">
-            <Input
-              label="Organization"
-              placeholder="Enter Brand/Organization Name"
-              value={org}
-              dot="#4F46E5"
-              ph="#A5B4FC"
-              onChange={setOrg}
+          {/* Input card */}
+          <div className="mt-7 rounded-xl border border-editorial-border bg-white shadow-sm overflow-hidden">
+            <div
+              className="h-1 w-full"
+              style={{
+                background:
+                  "linear-gradient(90deg, #0D9488 0%, #2DD4BF 50%, #0D9488 100%)",
+              }}
+              aria-hidden="true"
             />
-            <Input
-              label="Website URL"
-              placeholder="Enter Website URL"
-              value={website}
-              dot="#B45309"
-              ph="#D9A441"
-              onChange={setWebsite}
-            />
-            <Input
-              label="Email ID"
-              placeholder="Enter Email ID"
-              value={email}
-              dot="#0D9488"
-              ph="#5EB5AB"
-              onChange={setEmail}
-            />
-            <button
-              onClick={run}
-              disabled={!canRun}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-sans font-medium border border-zinc-800 rounded text-white bg-editorial-black hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" />
-                  Researching…
-                </>
-              ) : (
-                "Research buyer"
-              )}
-            </button>
+            <div className="p-5 lg:p-6">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field
+                  label="Organization"
+                  placeholder="Brand or company name"
+                  value={org}
+                  onChange={setOrg}
+                />
+                <Field
+                  label="Website URL"
+                  placeholder="example.com"
+                  value={website}
+                  onChange={setWebsite}
+                />
+                <Field
+                  label="Email ID"
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={setEmail}
+                />
+              </div>
+              <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-editorial-muted">
+                  Fill any one field — more detail sharpens the profile.
+                </p>
+                <button
+                  onClick={run}
+                  disabled={!canRun}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-sans font-semibold rounded-lg text-white shadow-sm bg-[#0D9488] hover:bg-[#0F766E] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      Researching…
+                    </>
+                  ) : (
+                    <>
+                      Research buyer
+                      <ArrowRight size={15} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Loading terminal */}

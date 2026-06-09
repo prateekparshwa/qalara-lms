@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Qalara · Leads",
-  description: "Qalara HiPo Leads Admin Portal",
+  title: "Lead Management System",
+  description: "Qalara Lead Management System — buyer directory and discovery",
 };
 
 export default function RootLayout({
