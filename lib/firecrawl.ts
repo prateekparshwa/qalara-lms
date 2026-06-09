@@ -8,8 +8,15 @@ export interface ScrapeResult {
   metadata: Record<string, unknown>;
 }
 
+/** Optional out-param: callers that care can learn *why* a call failed soft.
+ * `quota` is set true when Firecrawl refuses with 402 (out of credits). */
+export interface FirecrawlStatus {
+  quota?: boolean;
+}
+
 export async function firecrawlScrape(
-  url: string
+  url: string,
+  status?: FirecrawlStatus
 ): Promise<ScrapeResult | null> {
   const key = process.env.FIRECRAWL_API_KEY;
   if (!key || !url) return null;
@@ -28,7 +35,10 @@ export async function firecrawlScrape(
       }),
     });
     const j = await res.json();
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.status === 402 && status) status.quota = true;
+      return null;
+    }
     return {
       markdown: j.data?.markdown ?? "",
       metadata: j.data?.metadata ?? {},
@@ -46,7 +56,8 @@ export interface SearchHit {
 
 export async function firecrawlSearch(
   query: string,
-  limit = 5
+  limit = 5,
+  status?: FirecrawlStatus
 ): Promise<SearchHit[]> {
   const key = process.env.FIRECRAWL_API_KEY;
   if (!key || !query) return [];
@@ -60,7 +71,10 @@ export async function firecrawlSearch(
       body: JSON.stringify({ query, limit }),
     });
     const j = await res.json();
-    if (!res.ok) return [];
+    if (!res.ok) {
+      if (res.status === 402 && status) status.quota = true;
+      return [];
+    }
     return (j.data ?? []).map(
       (r: Record<string, unknown>): SearchHit => ({
         title: String(r.title ?? ""),

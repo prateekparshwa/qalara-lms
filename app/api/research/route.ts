@@ -50,11 +50,12 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1. Gather web context: scrape the site (if given) + a web search.
-    const scrape = website ? await firecrawlScrape(website) : null;
+    const fcStatus: { quota?: boolean } = {};
+    const scrape = website ? await firecrawlScrape(website, fcStatus) : null;
     const searchQuery = [org, website, email, "company profile buyer"]
       .filter(Boolean)
       .join(" ");
-    const hits = await firecrawlSearch(searchQuery, 5);
+    const hits = await firecrawlSearch(searchQuery, 5, fcStatus);
 
     const contextParts: string[] = [];
     if (scrape?.markdown) {
@@ -71,6 +72,15 @@ export async function POST(req: NextRequest) {
     const context = contextParts.join("\n\n");
 
     if (!context.trim()) {
+      if (fcStatus.quota) {
+        return NextResponse.json(
+          {
+            error:
+              "Web research is temporarily unavailable — the research service is out of quota. Please try again later or contact the admin.",
+          },
+          { status: 503 }
+        );
+      }
       return NextResponse.json(
         {
           error:
