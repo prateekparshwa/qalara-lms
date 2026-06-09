@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     // Fetch all matching rows (no pagination for export)
     const result = await getLeads({
+      segment: sp.get("segment") ?? undefined,
       q: sp.get("q") ?? "",
       org: sp.get("org") ?? undefined,
       email: sp.get("email") ?? undefined,

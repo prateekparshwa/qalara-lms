@@ -39,7 +39,10 @@ function FilterSelect({
 }) {
   return (
     <div className="relative">
-      <label className="flex items-center gap-1.5 text-[10px] font-code font-semibold uppercase tracking-widest text-editorial-muted mb-1.5">
+      <label
+        className="flex items-center gap-1.5 text-[10px] font-code font-bold uppercase tracking-widest mb-1.5"
+        style={{ color: dot }}
+      >
         <span
           className="inline-block w-2 h-2 rounded-full flex-shrink-0"
           style={{ backgroundColor: dot }}
@@ -85,7 +88,7 @@ export default function FilterPanel({
   const confidenceOptions = ["HIGH", "MEDIUM", "LOW"];
 
   return (
-    <aside className="w-56 flex-shrink-0 border-r border-zinc-200 bg-white px-4 py-5 overflow-y-auto">
+    <aside className="w-56 flex-shrink-0 border-r border-zinc-200 bg-[#F7F8FE] px-4 py-5 overflow-y-auto">
       {/* Section header */}
       <div className="flex items-center justify-between mb-4">
         <span className="text-[10px] font-code font-bold uppercase tracking-widest text-editorial-black">

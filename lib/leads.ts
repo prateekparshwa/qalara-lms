@@ -6,6 +6,7 @@ const supabase = supabaseAdmin;
 
 export interface Lead {
   id: number;
+  segment: string | null;
   source: string | null;
   organization: string | null;
   full_name: string | null;
@@ -60,6 +61,7 @@ export interface Lead {
 }
 
 export interface LeadsQueryParams {
+  segment?: string;
   q?: string;
   org?: string;
   email?: string;
@@ -84,6 +86,7 @@ export interface LeadsResult {
 
 export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
   const {
+    segment,
     q = "",
     org,
     email,
@@ -103,6 +106,9 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
   const to = from + limit - 1;
 
   let query = supabase.from("leads").select("*", { count: "exact" });
+
+  // Scope to a single segment (engagement / no_engagement / prospects / discover)
+  if (segment) query = query.eq("segment", segment);
 
   // Free-text search across org, email, website (legacy single-field)
   if (q && q.trim()) {
@@ -126,7 +132,13 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
   if (am) query = query.ilike("current_am", `%${am}%`);
   if (confidence) query = query.ilike("website_confidence", `%${confidence}%`);
 
-  query = query.order(sort, { ascending: order === "asc" }).range(from, to);
+  // Priority is text (HIGH/MED/LOW), so sort by the numeric rank instead.
+  const sortCol = sort === "buyer_classification" ? "priority_rank" : sort;
+  query = query.order(sortCol, { ascending: order === "asc", nullsFirst: false });
+  if (sortCol === "priority_rank") {
+    query = query.order("organization", { ascending: true }); // stable tiebreak
+  }
+  query = query.range(from, to);
 
   const { data, error, count } = await query;
 
@@ -150,26 +162,29 @@ export async function getLeadById(id: number): Promise<Lead | null> {
   return data as Lead;
 }
 
-export async function getLeadStats() {
-  const { count: total } = await supabase
-    .from("leads")
-    .select("*", { count: "exact", head: true });
+export async function getLeadStats(segment?: string) {
+  // Helper: a fresh head-count query, scoped to the segment when provided.
+  const countQuery = () => {
+    let q = supabase.from("leads").select("*", { count: "exact", head: true });
+    if (segment) q = q.eq("segment", segment);
+    return q;
+  };
 
-  const { count: verified } = await supabase
-    .from("leads")
-    .select("*", { count: "exact", head: true })
+  const { count: total } = await countQuery();
+
+  const { count: verified } = await countQuery()
     .not("website", "is", null)
     .neq("website", "");
 
-  const { count: highConf } = await supabase
-    .from("leads")
-    .select("*", { count: "exact", head: true })
-    .ilike("website_confidence", "%HIGH%");
+  const { count: highConf } = await countQuery().ilike(
+    "website_confidence",
+    "%HIGH%"
+  );
 
-  const { count: highClass } = await supabase
-    .from("leads")
-    .select("*", { count: "exact", head: true })
-    .ilike("buyer_classification", "%HIGH%");
+  const { count: highClass } = await countQuery().ilike(
+    "buyer_classification",
+    "%HIGH%"
+  );
 
   return {
     total: total ?? 0,
@@ -179,42 +194,54 @@ export async function getLeadStats() {
   };
 }
 
-export async function getFilterOptions() {
+/** Most recent imported_at across the table (or one segment) — for the lobby "last synced" signal. */
+export async function getLastSynced(segment?: string): Promise<string | null> {
+  let q = supabase
+    .from("leads")
+    .select("imported_at")
+    .not("imported_at", "is", null)
+    .order("imported_at", { ascending: false })
+    .limit(1);
+  if (segment) q = q.eq("segment", segment);
+  const { data } = await q.maybeSingle();
+  return (data?.imported_at as string) ?? null;
+}
+
+export async function getFilterOptions(segment?: string) {
+  const col = (name: string) => {
+    let q = supabase
+      .from("leads")
+      .select(name)
+      .not(name, "is", null)
+      .neq(name, "")
+      .order(name);
+    if (segment) q = q.eq("segment", segment);
+    return q;
+  };
+
   const [countries, buyerTypes, classifications, ams] = await Promise.all([
-    supabase
-      .from("leads")
-      .select("country")
-      .not("country", "is", null)
-      .neq("country", "")
-      .order("country"),
-    supabase
-      .from("leads")
-      .select("buyer_type")
-      .not("buyer_type", "is", null)
-      .neq("buyer_type", "")
-      .order("buyer_type"),
-    supabase
-      .from("leads")
-      .select("buyer_classification")
-      .not("buyer_classification", "is", null)
-      .neq("buyer_classification", "")
-      .order("buyer_classification"),
-    supabase
-      .from("leads")
-      .select("current_am")
-      .not("current_am", "is", null)
-      .neq("current_am", "")
-      .order("current_am"),
+    col("country"),
+    col("buyer_type"),
+    col("buyer_classification"),
+    col("current_am"),
   ]);
 
-  const unique = <T extends Record<string, unknown>>(arr: T[], key: keyof T) =>
-    Array.from(new Set(arr.map((r) => String(r[key])).filter(Boolean)));
+  const unique = (
+    arr: Record<string, unknown>[] | null,
+    key: string
+  ): string[] =>
+    Array.from(
+      new Set((arr ?? []).map((r) => String(r[key])).filter(Boolean))
+    );
+
+  const rows = (r: { data: unknown }) =>
+    (r.data as Record<string, unknown>[] | null) ?? [];
 
   return {
-    countries: unique(countries.data ?? [], "country"),
-    buyerTypes: unique(buyerTypes.data ?? [], "buyer_type"),
-    classifications: unique(classifications.data ?? [], "buyer_classification"),
-    ams: unique(ams.data ?? [], "current_am"),
+    countries: unique(rows(countries), "country"),
+    buyerTypes: unique(rows(buyerTypes), "buyer_type"),
+    classifications: unique(rows(classifications), "buyer_classification"),
+    ams: unique(rows(ams), "current_am"),
   };
 }
 
@@ -226,29 +253,43 @@ export async function upsertLeads(rows: Partial<Lead>[]) {
   if (error) throw new Error(error.message);
 }
 
+/** Numeric priority for sorting (HIGH > MED > LOW > unset). */
+export function priorityRank(classification: unknown): number {
+  const s = String(classification ?? "").toUpperCase();
+  if (s.includes("HIGH")) return 3;
+  if (s.includes("MED")) return 2;
+  if (s.includes("LOW")) return 1;
+  return 0;
+}
+
 const REPLACE_CHUNK = 500;
 
 /**
- * Replace ALL leads with `rows`, safely.
+ * Replace all rows of ONE segment with `rows`, safely.
  *
- * Strategy ("id watermark"): remember the current max id, insert the new batch
- * (which gets higher ids), then delete everything at or below the watermark.
- * The table is never empty mid-operation, and if an insert fails we roll back
- * only the rows added this run — the previous data stays intact.
+ * Strategy ("id watermark", scoped per segment): remember the current max id
+ * within this segment, insert the new batch tagged with the segment (new rows
+ * get higher ids), then delete this segment's rows at or below the watermark.
+ * Other segments are never touched. The segment is never empty mid-operation,
+ * and a failed insert rolls back only this run's rows.
  *
- * Caller is responsible for the empty-file guard; this throws on 0 rows as a
+ * Caller is responsible for the empty-source guard; this throws on 0 rows as a
  * last-resort safety net.
  */
-export async function replaceAllLeads(
+export async function replaceSegmentLeads(
+  segment: string,
   rows: Record<string, unknown>[]
 ): Promise<{ inserted: number; removed: number }> {
   if (rows.length === 0) {
-    throw new Error("Refusing to replace existing leads with 0 rows.");
+    throw new Error(
+      `Refusing to replace segment "${segment}" with 0 rows.`
+    );
   }
 
   const { data: maxRow, error: maxErr } = await supabaseAdmin
     .from("leads")
     .select("id")
+    .eq("segment", segment)
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -256,15 +297,24 @@ export async function replaceAllLeads(
   const watermark: number = (maxRow?.id as number) ?? 0;
 
   const stamp = new Date().toISOString();
-  const toInsert = rows.map((r) => ({ ...r, imported_at: stamp }));
+  const toInsert = rows.map((r) => ({
+    ...r,
+    segment,
+    imported_at: stamp,
+    priority_rank: priorityRank(r.buyer_classification),
+  }));
 
   let inserted = 0;
   for (let i = 0; i < toInsert.length; i += REPLACE_CHUNK) {
     const chunk = toInsert.slice(i, i + REPLACE_CHUNK);
     const { error } = await supabaseAdmin.from("leads").insert(chunk);
     if (error) {
-      // Roll back just this run's rows; old data (<= watermark) is untouched.
-      await supabaseAdmin.from("leads").delete().gt("id", watermark);
+      // Roll back just this run's rows; older rows in this segment are untouched.
+      await supabaseAdmin
+        .from("leads")
+        .delete()
+        .eq("segment", segment)
+        .gt("id", watermark);
       throw new Error(
         `Insert failed after ${inserted} rows (rolled back): ${error.message}`
       );
@@ -275,6 +325,7 @@ export async function replaceAllLeads(
   const { count: removed, error: delErr } = await supabaseAdmin
     .from("leads")
     .delete({ count: "exact" })
+    .eq("segment", segment)
     .lte("id", watermark);
   if (delErr) {
     throw new Error(

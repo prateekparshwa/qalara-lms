@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Search, RefreshCw, Download, X } from "lucide-react";
+import Link from "next/link";
+import { Search, RefreshCw, Download, X, ArrowLeft } from "lucide-react";
 
 export interface SearchState {
   org: string;
@@ -16,6 +17,10 @@ interface MagazineHeaderProps {
   onExport: (format: "csv" | "xlsx") => void;
   totalLeads: number;
   isSyncing: boolean;
+  /** Segment name shown as the dateline title. */
+  segmentLabel?: string;
+  /** Back link target (the directory chooser). */
+  backHref?: string;
 }
 
 function SearchField({
@@ -23,17 +28,23 @@ function SearchField({
   placeholder,
   value,
   dot,
+  ph,
   onChange,
 }: {
   label: string;
   placeholder: string;
   value: string;
   dot: string;
+  /** AA-safe placeholder color for this field. */
+  ph: string;
   onChange: (v: string) => void;
 }) {
   return (
     <div className="flex-1 min-w-0">
-      <label className="flex items-center gap-1.5 text-[10px] font-code font-semibold uppercase tracking-widest text-editorial-muted mb-1">
+      <label
+        className="flex items-center gap-1.5 text-[10px] font-code font-bold uppercase tracking-widest mb-1"
+        style={{ color: dot }}
+      >
         <span
           className="inline-block w-2 h-2 rounded-full flex-shrink-0"
           style={{ backgroundColor: dot }}
@@ -44,14 +55,16 @@ function SearchField({
       <div className="relative">
         <Search
           size={13}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-editorial-muted pointer-events-none"
+          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: dot }}
         />
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full pl-8 pr-8 py-2 text-sm font-sans border border-zinc-200 rounded focus:outline-none focus:border-editorial-black focus-visible:ring-2 focus-visible:ring-editorial-accent placeholder:text-editorial-muted bg-zinc-50 focus:bg-white transition-colors"
+          style={{ ["--ph" as string]: ph }}
+          className="search-input w-full pl-8 pr-8 py-2 text-sm font-sans text-editorial-black border border-zinc-200 rounded focus:outline-none focus:border-editorial-black focus-visible:ring-2 focus-visible:ring-editorial-accent bg-white transition-colors"
         />
         {value && (
           <button
@@ -74,6 +87,8 @@ export default function MagazineHeader({
   onExport,
   totalLeads,
   isSyncing,
+  segmentLabel,
+  backHref,
 }: MagazineHeaderProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -91,20 +106,25 @@ export default function MagazineHeader({
       {/* Top bar */}
       <div className="px-6 pt-5 pb-3">
         <div className="flex items-start justify-between gap-6">
-          {/* Wordmark */}
-          <div className="flex-shrink-0">
-            <div className="flex items-baseline gap-2">
-              <span className="font-code font-bold text-2xl tracking-tight text-editorial-black">
-                QALARA
-              </span>
-              <span className="text-editorial-accent font-code font-bold text-2xl">·</span>
-              <span className="font-code font-bold text-2xl tracking-widest text-editorial-black uppercase">
-                LEADS
+          {/* Dateline: back link + segment title + count */}
+          <div className="flex-shrink-0 min-w-0">
+            {backHref && (
+              <Link
+                href={backHref}
+                className="inline-flex items-center gap-1 text-[11px] font-code text-editorial-muted hover:text-editorial-black transition-colors mb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent rounded-sm"
+              >
+                <ArrowLeft size={11} />
+                Qalara Buyer Directory
+              </Link>
+            )}
+            <div className="flex items-baseline gap-2.5">
+              <h1 className="font-sans font-semibold text-2xl tracking-tight text-editorial-black truncate">
+                {segmentLabel ?? "Leads"}
+              </h1>
+              <span className="font-code text-xs text-editorial-muted whitespace-nowrap">
+                {totalLeads.toLocaleString()} records
               </span>
             </div>
-            <p className="text-xs text-editorial-muted font-sans mt-0.5 tracking-wide uppercase">
-              {totalLeads.toLocaleString()} records in database
-            </p>
           </div>
 
           {/* Actions */}
@@ -112,7 +132,7 @@ export default function MagazineHeader({
             <button
               onClick={onSync}
               disabled={isSyncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium border border-zinc-300 rounded text-editorial-secondary hover:border-editorial-black transition-colors duration-150 disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium border border-indigo-200 rounded text-editorial-accent hover:bg-indigo-50 hover:border-editorial-accent transition-colors duration-150 disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw size={12} className={isSyncing ? "animate-spin" : ""} />
               {isSyncing ? "Syncing…" : "Sync"}
@@ -166,23 +186,26 @@ export default function MagazineHeader({
       <div className="px-6 py-3 flex flex-col gap-3 md:flex-row md:items-end">
         <SearchField
           label="Brand / Organization"
-          placeholder="e.g. 2XL Home"
+          placeholder="Enter Buyer Brand/Organization Name"
           value={search.org}
           dot="#4F46E5"
+          ph="#A5B4FC"
           onChange={(v) => onSearchChange({ ...search, org: v })}
         />
         <SearchField
           label="Email ID"
-          placeholder="e.g. name@company.com"
+          placeholder="Enter Buyer Email ID"
           value={search.email}
           dot="#0D9488"
+          ph="#5EB5AB"
           onChange={(v) => onSearchChange({ ...search, email: v })}
         />
         <SearchField
           label="Website URL"
-          placeholder="e.g. company.com"
+          placeholder="Enter Buyer Website URL"
           value={search.website}
           dot="#B45309"
+          ph="#D9A441"
           onChange={(v) => onSearchChange({ ...search, website: v })}
         />
       </div>

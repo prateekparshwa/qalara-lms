@@ -1,43 +1,63 @@
 "use client";
 
-import {
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-} from "@tanstack/react-table";
 import { useState } from "react";
-import { ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink } from "lucide-react";
+import {
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  ExternalLink,
+} from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import Badge from "./Badge";
 import Legend from "./Legend";
 import { buyerTypeTag } from "@/lib/glossary";
 
-const col = createColumnHelper<Lead>();
+type ColId =
+  | "organization"
+  | "email"
+  | "website"
+  | "country"
+  | "buyer_type"
+  | "buyer_classification"
+  | "website_confidence"
+  | "current_am";
 
-const columns = [
-  col.accessor("organization", {
-    header: "Organization",
-    cell: (info) => (
-      <span className="font-sans font-medium text-editorial-black text-sm truncate block max-w-[220px]">
-        {info.getValue() ?? "—"}
-      </span>
-    ),
-  }),
-  col.accessor("email", {
-    header: "Email",
-    cell: (info) => (
-      <span className="text-xs text-editorial-secondary font-sans truncate block max-w-[180px]">
-        {info.getValue() ?? "—"}
-      </span>
-    ),
-  }),
-  col.accessor("website", {
-    header: "Website",
-    cell: (info) => {
-      const v = info.getValue();
+const COLUMNS: { id: ColId; label: string; dot: string; sortable: boolean }[] = [
+  { id: "organization", label: "Organization", dot: "#4F46E5", sortable: true },
+  { id: "email", label: "Email", dot: "#0D9488", sortable: true },
+  { id: "website", label: "Website", dot: "#B45309", sortable: true },
+  { id: "country", label: "Country", dot: "#7C3AED", sortable: true },
+  { id: "buyer_type", label: "Type", dot: "#E11D48", sortable: true },
+  { id: "buyer_classification", label: "Priority", dot: "#4F46E5", sortable: true },
+  { id: "website_confidence", label: "Web", dot: "#0D9488", sortable: true },
+  { id: "current_am", label: "AM", dot: "#7C3AED", sortable: true },
+];
+
+function shortType(v: string): string {
+  return v.includes("/")
+    ? v
+        .split("/")
+        .map((s) => s.trim().split(" ")[0])
+        .join(" / ")
+    : v.split(" ").slice(0, 3).join(" ");
+}
+
+function Cell({ lead, col }: { lead: Lead; col: ColId }) {
+  switch (col) {
+    case "organization":
+      return (
+        <span className="font-sans font-semibold text-sm text-editorial-black group-hover:text-editorial-accent transition-colors truncate block max-w-[240px]">
+          {lead.organization ?? "—"}
+        </span>
+      );
+    case "email":
+      return (
+        <span className="text-xs font-sans text-editorial-secondary truncate block max-w-[200px]">
+          {lead.email ?? "—"}
+        </span>
+      );
+    case "website": {
+      const v = lead.website;
       if (!v) return <span className="text-editorial-muted text-xs">—</span>;
       return (
         <a
@@ -45,58 +65,40 @@ const columns = [
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-sans max-w-[160px] truncate"
+          className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 font-sans max-w-[170px] truncate"
         >
-          {v.replace(/^https?:\/\/(www\.)?/, "")}
+          {v.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
           <ExternalLink size={10} className="flex-shrink-0" />
         </a>
       );
-    },
-  }),
-  col.accessor("country", {
-    header: "Country",
-    cell: (info) => (
-      <span className="text-xs font-sans text-editorial-secondary truncate block max-w-[120px]">
-        {info.getValue() ?? "—"}
-      </span>
-    ),
-  }),
-  col.accessor("buyer_type", {
-    header: "Type",
-    cell: (info) => {
-      const v = info.getValue();
-      if (!v) return <span className="text-editorial-muted text-xs">—</span>;
-      // Abbreviate long buyer types
-      const short = v.includes("/")
-        ? v
-            .split("/")
-            .map((s) => s.trim().split(" ")[0])
-            .join(" / ")
-        : v.split(" ").slice(0, 3).join(" ");
+    }
+    case "country":
       return (
-        <span className={`tag ${buyerTypeTag(v)}`} title={v}>
-          {short}
+        <span className="text-xs font-sans text-editorial-secondary truncate block max-w-[130px]">
+          {lead.country ?? "—"}
         </span>
       );
-    },
-  }),
-  col.accessor("buyer_classification", {
-    header: "Priority",
-    cell: (info) => <Badge value={info.getValue()} kind="priority" />,
-  }),
-  col.accessor("website_confidence", {
-    header: "Web",
-    cell: (info) => <Badge value={info.getValue()} kind="web" />,
-  }),
-  col.accessor("current_am", {
-    header: "AM",
-    cell: (info) => (
-      <span className="text-xs font-sans text-editorial-muted truncate block max-w-[100px]">
-        {info.getValue() ?? "—"}
-      </span>
-    ),
-  }),
-];
+    case "buyer_type": {
+      const v = lead.buyer_type;
+      if (!v) return <span className="text-editorial-muted text-xs">—</span>;
+      return (
+        <span className={`tag ${buyerTypeTag(v)}`} title={v}>
+          {shortType(v)}
+        </span>
+      );
+    }
+    case "buyer_classification":
+      return <Badge value={lead.buyer_classification} kind="priority" />;
+    case "website_confidence":
+      return <Badge value={lead.website_confidence} kind="web" />;
+    case "current_am":
+      return (
+        <span className="text-xs font-sans text-editorial-secondary truncate block max-w-[110px]">
+          {lead.current_am ?? "—"}
+        </span>
+      );
+  }
+}
 
 interface LeadsTableProps {
   data: Lead[];
@@ -125,26 +127,16 @@ export default function LeadsTable({
   onPageChange,
   onSortChange,
 }: LeadsTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sortId, setSortId] = useState<ColId>("buyer_classification");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    manualSorting: true,
-    state: { sorting },
-    onSortingChange: (updater) => {
-      const next =
-        typeof updater === "function" ? updater(sorting) : updater;
-      setSorting(next);
-      if (next.length > 0) {
-        onSortChange(next[0].id, next[0].desc ? "desc" : "asc");
-      } else {
-        onSortChange("organization", "asc");
-      }
-    },
-  });
+  const toggleSort = (id: ColId) => {
+    const nextDir: "asc" | "desc" =
+      sortId === id && sortDir === "asc" ? "desc" : "asc";
+    setSortId(id);
+    setSortDir(nextDir);
+    onSortChange(id, nextDir);
+  };
 
   const totalPages = Math.ceil(total / limit);
   const from = (page - 1) * limit + 1;
@@ -152,48 +144,54 @@ export default function LeadsTable({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse min-w-[900px]">
-          <thead className="sticky top-0 bg-white z-10">
-            <tr className="border-b border-zinc-200">
-              {table.getFlatHeaders().map((header) => (
-                <th
-                  key={header.id}
-                  onClick={header.column.getToggleSortingHandler()}
-                  className={`text-left px-4 py-3 text-[10px] font-code font-bold uppercase tracking-widest text-editorial-muted border-b border-zinc-200 whitespace-nowrap ${
-                    header.column.getCanSort()
-                      ? "cursor-pointer select-none hover:text-editorial-black"
-                      : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-1">
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                    {header.column.getCanSort() && (
-                      <span className="text-zinc-300">
-                        {header.column.getIsSorted() === "asc" ? (
-                          <ChevronUp size={10} className="text-editorial-black" />
-                        ) : header.column.getIsSorted() === "desc" ? (
-                          <ChevronDown size={10} className="text-editorial-black" />
-                        ) : (
-                          <ChevronsUpDown size={10} />
-                        )}
-                      </span>
-                    )}
-                  </div>
-                </th>
-              ))}
+        <table className="w-full border-collapse min-w-[920px]">
+          <thead className="sticky top-0 z-10">
+            <tr style={{ backgroundColor: "#F5F7FF" }}>
+              {COLUMNS.map((c) => {
+                const active = sortId === c.id;
+                return (
+                  <th
+                    key={c.id}
+                    onClick={() => c.sortable && toggleSort(c.id)}
+                    className={`text-left px-4 py-3 text-[11px] font-code font-semibold tracking-wide border-b-2 border-editorial-black whitespace-nowrap ${
+                      c.sortable
+                        ? "cursor-pointer select-none hover:bg-indigo-100/60"
+                        : ""
+                    } ${active ? "text-editorial-black" : "text-editorial-secondary"}`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: c.dot }}
+                        aria-hidden="true"
+                      />
+                      {c.label}
+                      {c.sortable && (
+                        <span className="ml-0.5">
+                          {active ? (
+                            sortDir === "asc" ? (
+                              <ChevronUp size={11} className="text-editorial-accent" />
+                            ) : (
+                              <ChevronDown size={11} className="text-editorial-accent" />
+                            )
+                          ) : (
+                            <ChevronsUpDown size={11} className="text-zinc-300" />
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i} className="border-b border-zinc-100">
-                  {columns.map((_, j) => (
-                    <td key={j} className="px-4 py-3">
+              Array.from({ length: 10 }).map((_, i) => (
+                <tr key={i} className="border-b border-editorial-border">
+                  {COLUMNS.map((c) => (
+                    <td key={c.id} className="px-4 py-3">
                       <div className="h-3 bg-zinc-100 rounded animate-pulse" />
                     </td>
                   ))}
@@ -201,7 +199,7 @@ export default function LeadsTable({
               ))
             ) : error ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-16">
+                <td colSpan={COLUMNS.length} className="px-4 py-16">
                   <div className="flex flex-col items-center gap-3 text-center">
                     <p className="text-sm font-sans text-editorial-text">
                       Couldn&apos;t load leads.
@@ -212,7 +210,7 @@ export default function LeadsTable({
                     {onRetry && (
                       <button
                         onClick={onRetry}
-                        className="mt-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium border border-editorial-black rounded hover:bg-editorial-black hover:text-white transition-colors duration-150 cursor-pointer"
+                        className="mt-1 px-3 py-1.5 text-xs font-sans font-medium border border-editorial-black rounded hover:bg-editorial-black hover:text-white transition-colors cursor-pointer"
                       >
                         Try again
                       </button>
@@ -222,7 +220,7 @@ export default function LeadsTable({
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-16">
+                <td colSpan={COLUMNS.length} className="px-4 py-16">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <p className="text-sm font-sans text-editorial-text">
                       No leads match your search or filters.
@@ -234,40 +232,37 @@ export default function LeadsTable({
                     {onClearAll && (
                       <button
                         onClick={onClearAll}
-                        className="mt-1 px-3 py-1.5 text-xs font-sans font-medium border border-editorial-black rounded hover:bg-editorial-black hover:text-white transition-colors duration-150 cursor-pointer"
+                        className="mt-1 px-3 py-1.5 text-xs font-sans font-medium border border-editorial-black rounded hover:bg-editorial-black hover:text-white transition-colors cursor-pointer"
                       >
-                        Clear search & filters
+                        Clear search &amp; filters
                       </button>
                     )}
                   </div>
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row, i) => {
-                const org = row.original.organization ?? "this lead";
+              data.map((lead, i) => {
+                const org = lead.organization ?? "this lead";
                 return (
                   <tr
-                    key={row.id}
-                    onClick={() => onRowClick(row.original)}
+                    key={lead.id}
+                    onClick={() => onRowClick(lead)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        onRowClick(row.original);
+                        onRowClick(lead);
                       }
                     }}
                     role="button"
                     tabIndex={0}
                     aria-label={`Open profile for ${org}`}
-                    className={`leads-row border-b border-zinc-100 ${
-                      i % 2 === 0 ? "bg-white" : "bg-zinc-50/50"
+                    className={`group cursor-pointer border-b border-editorial-border transition-colors hover:bg-[#F5F7FF] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-editorial-accent ${
+                      i % 2 === 1 ? "bg-zinc-50/40" : "bg-white"
                     }`}
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3 align-middle">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                    {COLUMNS.map((c) => (
+                      <td key={c.id} className="px-4 py-3 align-middle">
+                        <Cell lead={lead} col={c.id} />
                       </td>
                     ))}
                   </tr>
@@ -282,7 +277,9 @@ export default function LeadsTable({
       <div className="border-t border-zinc-200 px-6 py-3 flex items-center justify-between bg-white flex-shrink-0">
         <div className="flex items-center gap-4">
           <span className="text-xs font-sans text-editorial-muted">
-            {total === 0 ? "No results" : `${from}–${to} of ${total.toLocaleString()} leads`}
+            {total === 0
+              ? "No results"
+              : `${from}–${to} of ${total.toLocaleString()} leads`}
           </span>
           <Legend />
         </div>

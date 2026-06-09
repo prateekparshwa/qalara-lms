@@ -57,10 +57,13 @@ function clean(v: unknown): string | null {
     : s;
 }
 
-export async function readLeadsSheet(): Promise<SheetReadResult> {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+export async function readLeadsSheet(
+  spreadsheetIdArg?: string
+): Promise<SheetReadResult> {
+  const spreadsheetId =
+    spreadsheetIdArg?.trim() || process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
   if (!spreadsheetId || !spreadsheetId.trim()) {
-    throw new Error("GOOGLE_SHEETS_SPREADSHEET_ID is not set.");
+    throw new Error("No spreadsheet id configured for this segment.");
   }
 
   const { client_email, private_key } = getCredentials();

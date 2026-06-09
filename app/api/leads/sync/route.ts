@@ -1,21 +1,40 @@
-import { NextResponse } from "next/server";
-import { replaceAllLeads } from "@/lib/leads";
+import { NextRequest, NextResponse } from "next/server";
+import { replaceSegmentLeads } from "@/lib/leads";
 import { readLeadsSheet } from "@/lib/google-sheets";
+import { getSegment, segmentSpreadsheetId } from "@/lib/segments";
 
 // googleapis needs the Node.js runtime (not edge); allow time for a full reload.
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-export async function POST() {
-  // Not configured yet — keep the friendly placeholder behaviour.
-  if (
-    !process.env.GOOGLE_SHEETS_SPREADSHEET_ID ||
-    !process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-  ) {
+export async function POST(req: NextRequest) {
+  const segmentKey = req.nextUrl.searchParams.get("segment") ?? "engagement";
+  const segment = getSegment(segmentKey);
+
+  if (!segment) {
+    return NextResponse.json(
+      { error: `Unknown segment "${segmentKey}".` },
+      { status: 400 }
+    );
+  }
+
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
     return NextResponse.json(
       {
         message:
-          "Google Sheets sync isn't configured yet. Set GOOGLE_SHEETS_SPREADSHEET_ID and GOOGLE_SERVICE_ACCOUNT_JSON to enable it.",
+          "Google Sheets sync isn't configured yet. Set GOOGLE_SERVICE_ACCOUNT_JSON to enable it.",
+        synced: 0,
+        removed: 0,
+      },
+      { status: 200 }
+    );
+  }
+
+  const spreadsheetId = segmentSpreadsheetId(segment);
+  if (!spreadsheetId) {
+    return NextResponse.json(
+      {
+        message: `No Google Sheet linked for "${segment.label}" yet. Set ${segment.envVars[0]} to enable sync for this segment.`,
         synced: 0,
         removed: 0,
       },
@@ -24,29 +43,28 @@ export async function POST() {
   }
 
   try {
-    // 1. Read the sheet.
+    // 1. Read the segment's sheet.
     const { sheetTitle, rows, unknownHeaders, missingHeaders } =
-      await readLeadsSheet();
+      await readLeadsSheet(spreadsheetId);
 
-    // 2. Safety guard: never wipe the DB from an empty/unreadable sheet.
+    // 2. Safety guard: never wipe a segment from an empty/unreadable sheet.
     if (rows.length === 0) {
       return NextResponse.json(
         {
-          error:
-            `The sheet "${sheetTitle}" returned 0 data rows. Aborting to protect existing data — nothing was changed.`,
+          error: `The sheet "${sheetTitle}" returned 0 data rows. Aborting to protect existing data — nothing was changed.`,
         },
         { status: 422 }
       );
     }
 
-    // 3. Safely replace all leads (watermark insert-then-delete).
-    const { inserted, removed } = await replaceAllLeads(rows);
+    // 3. Safely replace just this segment's rows (watermark insert-then-delete).
+    const { inserted, removed } = await replaceSegmentLeads(segment.key, rows);
 
     // 4. Build a helpful message, including any column mismatches.
     const warnings: string[] = [];
     if (missingHeaders.length > 0) {
       warnings.push(
-        `${missingHeaders.length} expected column(s) not found in the sheet (${missingHeaders
+        `${missingHeaders.length} expected column(s) not found (${missingHeaders
           .slice(0, 3)
           .join(", ")}${missingHeaders.length > 3 ? "…" : ""})`
       );
@@ -60,14 +78,10 @@ export async function POST() {
     }
 
     const message =
-      `Synced ${inserted} leads from Google Sheets, replaced ${removed ?? 0} previous rows.` +
+      `Synced ${inserted} ${segment.label} from Google Sheets, replaced ${removed} previous rows.` +
       (warnings.length ? ` Note: ${warnings.join("; ")}.` : "");
 
-    return NextResponse.json({
-      message,
-      synced: inserted,
-      removed: removed ?? 0,
-    });
+    return NextResponse.json({ message, synced: inserted, removed });
   } catch (err) {
     return NextResponse.json(
       {

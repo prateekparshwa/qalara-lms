@@ -6,6 +6,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await getLeads({
+      segment: sp.get("segment") ?? undefined,
       q: sp.get("q") ?? "",
       org: sp.get("org") ?? undefined,
       email: sp.get("email") ?? undefined,

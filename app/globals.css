@@ -10,7 +10,7 @@
   --editorial-black: #18181B;
   --editorial-secondary: #3F3F46;
   --editorial-accent: #4F46E5;
-  --editorial-bg: #FAFAFA;
+  --editorial-bg: #F5F6FC;
   --editorial-text: #09090B;
   --editorial-muted: #71717A;
   --editorial-border: #E4E4E7;
@@ -275,7 +275,60 @@ body {
   border-radius: 4px;
 }
 
+/* Per-field placeholder color (set via --ph inline) */
+.search-input::placeholder {
+  color: var(--ph, #71717A);
+  opacity: 1;
+}
+
+/* Landing lobby — entry panels */
+.entry-panel {
+  position: relative;
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--editorial-border);
+  border-top: 3px solid var(--accent, var(--editorial-black));
+  border-radius: 4px;
+  padding: 28px;
+  transition: background-color 180ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease;
+}
+.entry-panel:hover {
+  background: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(9, 9, 11, 0.06);
+}
+.entry-panel:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent, var(--editorial-accent));
+}
+
+/* Segment chooser — status chip */
+.seg-status {
+  font-family: var(--font-fira-code), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--editorial-muted);
+  background: #f4f4f5;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+/* One-shot reveal on load (lobby) */
+.reveal {
+  animation: revealUp 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .drawer-panel, .drawer-overlay, .toast { animation: none; }
   .leads-row { transition: none; }
+  .entry-panel { transition: none; }
+  .entry-panel:hover { transform: none; }
+  .reveal { animation: none; }
 }
