@@ -1,10 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, Search, Zap, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import {
+  Globe,
+  Search,
+  Zap,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  UserSearch,
+  Mail,
+  Phone,
+  ExternalLink,
+} from "lucide-react";
 import type { Lead } from "@/lib/leads";
+import type { DecisionMaker } from "@/lib/apollo";
 
-type EnrichType = "scrape" | "search" | "apify";
+type EnrichType = "contact" | "scrape" | "search" | "apify";
 
 interface EnrichResult {
   cached: boolean;
@@ -13,12 +25,18 @@ interface EnrichResult {
   error?: string;
 }
 
+interface ContactResponse {
+  contact?: DecisionMaker;
+  filled?: string[];
+  note?: string;
+  error?: string;
+}
+
 function ResultDisplay({ result }: { result: EnrichResult }) {
   const text =
     typeof result.result === "string"
       ? result.result
       : JSON.stringify(result.result, null, 2);
-
   return (
     <div className="enrich-terminal mt-3">
       {result.cached && (
@@ -27,9 +45,7 @@ function ResultDisplay({ result }: { result: EnrichResult }) {
         </div>
       )}
       {result.query && (
-        <div className="text-zinc-400 text-[10px] mb-2">
-          Query: {result.query}
-        </div>
+        <div className="text-zinc-400 text-[10px] mb-2">Query: {result.query}</div>
       )}
       {result.error ? (
         <div className="text-red-400">[ERROR] {result.error}</div>
@@ -40,14 +56,94 @@ function ResultDisplay({ result }: { result: EnrichResult }) {
   );
 }
 
+function ContactResult({ data }: { data: ContactResponse }) {
+  if (data.error) {
+    return (
+      <div className="enrich-terminal mt-3">
+        <div className="text-red-400">[ERROR] {data.error}</div>
+      </div>
+    );
+  }
+  const c = data.contact;
+  if (!c) return null;
+  return (
+    <div className="mt-3 rounded border border-editorial-border bg-white p-3">
+      <div className="font-sans font-semibold text-sm text-editorial-black">
+        {c.full_name ?? "Contact found"}
+      </div>
+      {c.designation && (
+        <div className="text-xs font-sans text-editorial-secondary mt-0.5">
+          {c.designation}
+        </div>
+      )}
+      <div className="mt-2 space-y-1">
+        {c.email && (
+          <a
+            href={`mailto:${c.email}`}
+            className="flex items-center gap-1.5 text-xs text-editorial-accent hover:underline font-sans break-all"
+          >
+            <Mail size={12} /> {c.email}
+          </a>
+        )}
+        {c.phone && (
+          <div className="flex items-center gap-1.5 text-xs text-editorial-secondary font-sans">
+            <Phone size={12} /> {c.phone}
+          </div>
+        )}
+        {c.linkedin_url && (
+          <a
+            href={c.linkedin_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline font-sans"
+          >
+            <ExternalLink size={12} /> LinkedIn
+          </a>
+        )}
+      </div>
+      <div className="mt-2 text-[10px] font-code text-editorial-muted">
+        via {c.source}
+        {data.filled && data.filled.length > 0
+          ? ` · saved: ${data.filled.join(", ")}`
+          : !c.email && !c.phone
+          ? ""
+          : " · already on file"}
+      </div>
+      {data.note && (
+        <div className="mt-1 text-[10px] font-sans text-amber-700">{data.note}</div>
+      )}
+    </div>
+  );
+}
+
 export default function EnrichPanel({ lead }: { lead: Lead }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<EnrichType | null>(null);
-  const [results, setResults] = useState<Partial<Record<EnrichType, EnrichResult>>>({});
+  const [results, setResults] = useState<{
+    contact?: ContactResponse;
+    scrape?: EnrichResult;
+    search?: EnrichResult;
+    apify?: EnrichResult;
+  }>({});
 
   const run = async (type: EnrichType) => {
     setLoading(type);
     try {
+      if (type === "contact") {
+        const res = await fetch("/api/find-contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leadId: lead.id,
+            org: lead.organization,
+            website: lead.website,
+          }),
+        });
+        const data = await res.json();
+        setResults((p) => ({ ...p, contact: data }));
+        return;
+      }
+
       let res: Response;
       if (type === "scrape") {
         res = await fetch("/api/enrich/scrape", {
@@ -81,16 +177,33 @@ export default function EnrichPanel({ lead }: { lead: Lead }) {
       const data = await res.json();
       setResults((prev) => ({ ...prev, [type]: data }));
     } catch (err) {
-      setResults((prev) => ({
-        ...prev,
-        [type]: { cached: false, result: null, error: String(err) },
-      }));
+      if (type === "contact") {
+        setResults((p) => ({ ...p, contact: { error: String(err) } }));
+      } else {
+        setResults((prev) => ({
+          ...prev,
+          [type]: { cached: false, result: null, error: String(err) },
+        }));
+      }
     } finally {
       setLoading(null);
     }
   };
 
-  const actions: { type: EnrichType; icon: React.ReactNode; label: string; desc: string; disabled?: boolean }[] = [
+  const actions: {
+    type: EnrichType;
+    icon: React.ReactNode;
+    label: string;
+    desc: string;
+    disabled?: boolean;
+  }[] = [
+    {
+      type: "contact",
+      icon: <UserSearch size={12} />,
+      label: "Find Decision-Maker",
+      desc: "Hunter — procurement / sourcing contact + email",
+      disabled: !lead.website,
+    },
     {
       type: "scrape",
       icon: <Globe size={12} />,
@@ -102,13 +215,13 @@ export default function EnrichPanel({ lead }: { lead: Lead }) {
       type: "search",
       icon: <Search size={12} />,
       label: "Web Search",
-      desc: "tinyfish.ai — find org online",
+      desc: "Find the org online",
     },
     {
       type: "apify",
       icon: <Zap size={12} />,
       label: "Apify Lookup",
-      desc: "Run actor — LinkedIn / company data",
+      desc: "Run actor — company data",
     },
   ];
 
@@ -169,7 +282,11 @@ export default function EnrichPanel({ lead }: { lead: Lead }) {
                     )}
                   </button>
                 </div>
-                {results[type] && <ResultDisplay result={results[type]!} />}
+                {type === "contact"
+                  ? results.contact && <ContactResult data={results.contact} />
+                  : results[type] && (
+                      <ResultDisplay result={results[type] as EnrichResult} />
+                    )}
               </div>
             ))}
           </div>
