@@ -163,9 +163,7 @@ export default function DiscoverPage() {
             <div className="enrich-terminal mt-6">
               <div>› scraping website &amp; searching the web…</div>
               <div>› synthesizing a buyer profile with AI…</div>
-              <div className="opacity-60">
-                this can take 20–40s on the free model.
-              </div>
+              <div className="opacity-60">this usually takes ~15–30s.</div>
             </div>
           )}
 

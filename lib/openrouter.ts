@@ -4,14 +4,14 @@
  * Model defaults to the free Llama 3.3 70B; override with OPENROUTER_MODEL.
  */
 
-const DEFAULT_MODEL = "qwen/qwen3.6-plus:free";
+const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
 
-// Free-model fallback chain — if one provider errors, OpenRouter tries the next.
+// Fallback chain — if the primary provider errors, OpenRouter tries the next.
+// Free models keep Discovery working even if credits run out.
 const FREE_FALLBACKS = [
   "qwen/qwen3.6-plus:free",
   "meta-llama/llama-3.3-70b-instruct:free",
   "google/gemma-4-31b-it:free",
-  "qwen/qwen3-coder:free",
 ];
 
 async function once(
