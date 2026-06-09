@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Loader2, CheckCircle2, ArrowRight, Globe, FileDown } from "lucide-react";
 import Masthead from "@/components/Masthead";
 import Aurora from "@/components/Aurora";
+import RotatingWord from "@/components/RotatingWord";
 import LeadDossier from "@/components/LeadDossier";
 import Badge from "@/components/Badge";
 import { downloadLeadPdf } from "@/lib/leadPdf";
@@ -100,7 +101,11 @@ export default function DiscoverPage() {
               <Globe size={22} style={{ color: "#0D9488" }} />
             </span>
             <h1 className="font-display font-bold text-3xl lg:text-[2rem] leading-none text-editorial-black">
-              Research any buyer
+              Research any{" "}
+              <RotatingWord
+                words={["Prospect", "Lead", "Customer"]}
+                intervalMs={2000}
+              />
             </h1>
           </div>
           <p className="mt-3 text-sm text-editorial-secondary max-w-xl leading-relaxed">

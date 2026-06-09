@@ -134,6 +134,26 @@
   }
 }
 
+/* === Rotating word (Discover heading) === */
+.rotating-word {
+  display: inline-block;
+  color: var(--accent-teal);
+  transition: opacity 280ms ease, transform 280ms ease;
+}
+.rotating-word.rw-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+.rotating-word.rw-out {
+  opacity: 0;
+  transform: translateY(0.28em);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rotating-word {
+    transition: none;
+  }
+}
+
 /* === Animated gradient text (headline accent) === */
 .text-gradient {
   background: linear-gradient(
