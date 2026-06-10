@@ -73,31 +73,33 @@ export async function POST(req: NextRequest) {
             .join("\n")
       );
     }
-    const context = contextParts.join("\n\n");
+    let context = contextParts.join("\n\n");
 
+    // Firecrawl out of credits → fall back to OpenRouter's web-search plugin:
+    // the model searches the web itself (engine: Firecrawl, billed to the
+    // OpenRouter integration credits instead of our direct key).
+    let webPluginUsed = false;
     if (!context.trim()) {
       if (fcStatus.quota) {
+        webPluginUsed = true;
+        context =
+          "(No scraped content available — SEARCH THE WEB yourself for this organization's website, LinkedIn, and trade listings, and base the profile on what you find.)";
+      } else {
         return NextResponse.json(
           {
             error:
-              "Web research is temporarily unavailable — the research service is out of quota. Please try again later or contact the admin.",
+              "Couldn't find any web information for that input. Try a website URL or a more specific organization name.",
           },
-          { status: 503 }
+          { status: 422 }
         );
       }
-      return NextResponse.json(
-        {
-          error:
-            "Couldn't find any web information for that input. Try a website URL or a more specific organization name.",
-        },
-        { status: 422 }
-      );
     }
 
     // 2. Synthesize the profile with the LLM.
     const raw = await openrouterComplete(
       buildResearchSystemPrompt(),
-      buildResearchUserPrompt({ org, website, email }, context)
+      buildResearchUserPrompt({ org, website, email }, context),
+      webPluginUsed ? { webSearch: true } : undefined
     );
     const parsed = parseJsonLoose(raw);
 
