@@ -18,25 +18,33 @@ function Field({
   label,
   value,
   mono = false,
+  showAll = false,
 }: {
   label: string;
   value: string | null | undefined;
   mono?: boolean;
+  showAll?: boolean;
 }) {
   const v = clean(value);
-  if (!v) return null;
+  if (!v && !showAll) return null;
   return (
     <div className="py-2 border-b border-zinc-100 last:border-0">
       <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-0.5">
         {label}
       </div>
-      <div
-        className={`text-sm text-editorial-text leading-relaxed break-words ${
-          mono ? "font-code text-xs" : "font-sans"
-        }`}
-      >
-        {v}
-      </div>
+      {v ? (
+        <div
+          className={`text-sm text-editorial-text leading-relaxed break-words ${
+            mono ? "font-code text-xs" : "font-sans"
+          }`}
+        >
+          {v}
+        </div>
+      ) : (
+        <div className="text-sm font-sans italic text-editorial-muted">
+          Not Available
+        </div>
+      )}
     </div>
   );
 }
@@ -44,12 +52,16 @@ function Field({
 function LinkField({
   label,
   href,
+  showAll = false,
 }: {
   label: string;
   href: string | null | undefined;
+  showAll?: boolean;
 }) {
   const h = clean(href);
-  if (!h) return null;
+  if (!h) {
+    return showAll ? <Field label={label} value={null} showAll /> : null;
+  }
   return (
     <div className="py-2 border-b border-zinc-100 last:border-0">
       <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-0.5">
@@ -92,7 +104,13 @@ function any(...vals: (string | null | undefined)[]): boolean {
   return vals.some((v) => clean(v) !== null);
 }
 
-export default function LeadDossier({ lead }: { lead: Partial<Lead> }) {
+export default function LeadDossier({
+  lead,
+  showAll = false,
+}: {
+  lead: Partial<Lead>;
+  showAll?: boolean;
+}) {
   const standfirst = clean(lead.brand_description);
   const hasMetrics = any(
     lead.sourcing_emails_low,
@@ -115,77 +133,82 @@ export default function LeadDossier({ lead }: { lead: Partial<Lead> }) {
         </p>
       )}
 
-      {any(
-        lead.full_name,
-        lead.designation,
-        lead.email,
-        lead.phone,
-        lead.source
-      ) && (
+      {(showAll ||
+        any(
+          lead.full_name,
+          lead.designation,
+          lead.email,
+          lead.phone,
+          lead.source
+        )) && (
         <>
           <SectionHeader title="Contact" color="#4F46E5" />
-          <Field label="Full Name" value={lead.full_name} />
-          <Field label="Designation" value={lead.designation} />
-          <Field label="Email ID" value={lead.email} mono />
-          <Field label="Phone No" value={lead.phone} mono />
-          <Field label="Source" value={lead.source} />
+          <Field showAll={showAll} label="Full Name" value={lead.full_name} />
+          <Field showAll={showAll} label="Designation" value={lead.designation} />
+          <Field showAll={showAll} label="Email ID" value={lead.email} mono />
+          <Field showAll={showAll} label="Phone No" value={lead.phone} mono />
+          <Field showAll={showAll} label="Source" value={lead.source} />
         </>
       )}
 
-      {any(
-        lead.address,
-        lead.buyer_type,
-        lead.categories,
-        lead.employee_size,
-        lead.org_scale,
-        lead.price_points,
-        lead.store_count
-      ) && (
+      {(showAll ||
+        any(
+          lead.address,
+          lead.buyer_type,
+          lead.categories,
+          lead.employee_size,
+          lead.org_scale,
+          lead.price_points,
+          lead.store_count
+        )) && (
         <>
           <SectionHeader title="Company" color="#0D9488" />
-          <Field label="Address" value={lead.address} />
-          <Field label="Buyer Type" value={lead.buyer_type} />
-          <Field label="Categories" value={lead.categories} />
-          <Field label="Employee Size" value={lead.employee_size} />
-          <Field label="Org Scale" value={lead.org_scale} />
-          <Field label="Price Points" value={lead.price_points} />
-          <Field label="Store Count" value={lead.store_count} />
+          <Field showAll={showAll} label="Address" value={lead.address} />
+          <Field showAll={showAll} label="Buyer Type" value={lead.buyer_type} />
+          <Field showAll={showAll} label="Categories" value={lead.categories} />
+          <Field showAll={showAll} label="Employee Size" value={lead.employee_size} />
+          <Field showAll={showAll} label="Org Scale" value={lead.org_scale} />
+          <Field showAll={showAll} label="Price Points" value={lead.price_points} />
+          <Field showAll={showAll} label="Store Count" value={lead.store_count} />
         </>
       )}
 
-      {any(
-        lead.materials_dealt,
-        lead.customers_and_markets,
-        lead.revenue_turnover,
-        lead.competitors,
-        lead.target_audience,
-        lead.import_countries,
-        lead.imports_from_india
-      ) && (
+      {(showAll ||
+        any(
+          lead.materials_dealt,
+          lead.customers_and_markets,
+          lead.revenue_turnover,
+          lead.competitors,
+          lead.target_audience,
+          lead.import_countries,
+          lead.imports_from_india
+        )) && (
         <>
           <SectionHeader title="Market Intelligence" color="#B45309" />
-          <Field label="Materials Dealt" value={lead.materials_dealt} />
-          <Field label="Customers & Markets" value={lead.customers_and_markets} />
-          <Field label="Revenue / Turnover" value={lead.revenue_turnover} />
-          <Field label="Competitors" value={lead.competitors} />
-          <Field label="Target Audience" value={lead.target_audience} />
-          <Field label="Import Countries" value={lead.import_countries} />
-          <Field label="Imports From India" value={lead.imports_from_india} />
+          <Field showAll={showAll} label="Materials Dealt" value={lead.materials_dealt} />
+          <Field showAll={showAll} label="Customers & Markets" value={lead.customers_and_markets} />
+          <Field showAll={showAll} label="Revenue / Turnover" value={lead.revenue_turnover} />
+          <Field showAll={showAll} label="Competitors" value={lead.competitors} />
+          <Field showAll={showAll} label="Target Audience" value={lead.target_audience} />
+          <Field showAll={showAll} label="Import Countries" value={lead.import_countries} />
+          <Field showAll={showAll} label="Imports From India" value={lead.imports_from_india} />
         </>
       )}
 
-      {any(
-        lead.linkedin_url,
-        lead.linkedin_followers,
-        lead.instagram_handle,
-        lead.instagram_followers,
-        lead.social_media_activity
-      ) && (
+      {(showAll ||
+        any(
+          lead.linkedin_url,
+          lead.linkedin_followers,
+          lead.instagram_handle,
+          lead.instagram_followers,
+          lead.social_media_activity
+        )) && (
         <>
           <SectionHeader title="Social" color="#7C3AED" />
-          <LinkField label="LinkedIn" href={lead.linkedin_url} />
-          <Field label="LinkedIn Followers" value={lead.linkedin_followers} mono />
+          <LinkField showAll={showAll} label="LinkedIn" href={lead.linkedin_url} />
+          <Field showAll={showAll} label="LinkedIn Followers" value={lead.linkedin_followers} mono />
           <Field
+            showAll={showAll}
             label="IG/FB Account"
             value={
               clean(lead.instagram_handle)
@@ -197,8 +220,8 @@ export default function LeadDossier({ lead }: { lead: Partial<Lead> }) {
                 : null
             }
           />
-          <Field label="Instagram Followers" value={lead.instagram_followers} mono />
-          <Field label="Social Activity" value={lead.social_media_activity} />
+          <Field showAll={showAll} label="Instagram Followers" value={lead.instagram_followers} mono />
+          <Field showAll={showAll} label="Social Activity" value={lead.social_media_activity} />
         </>
       )}
 
@@ -212,12 +235,12 @@ export default function LeadDossier({ lead }: { lead: Partial<Lead> }) {
       ) && (
         <>
           <SectionHeader title="Engagement" color="#E11D48" />
-          <Field label="First Contact" value={lead.first_contact_date} mono />
-          <Field label="Last Contact (Buyer)" value={lead.last_contact_date} mono />
-          <Field label="Account Manager" value={lead.current_am} />
-          <Field label="Last Qalara Contact" value={lead.last_qalara_contact} mono />
-          <Field label="Last Email Subject" value={lead.last_email_subject} />
-          <Field label="Email Summary" value={lead.email_contact_summary} />
+          <Field showAll={showAll} label="First Contact" value={lead.first_contact_date} mono />
+          <Field showAll={showAll} label="Last Contact (Buyer)" value={lead.last_contact_date} mono />
+          <Field showAll={showAll} label="Account Manager" value={lead.current_am} />
+          <Field showAll={showAll} label="Last Qalara Contact" value={lead.last_qalara_contact} mono />
+          <Field showAll={showAll} label="Last Email Subject" value={lead.last_email_subject} />
+          <Field showAll={showAll} label="Email Summary" value={lead.email_contact_summary} />
         </>
       )}
 

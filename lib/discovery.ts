@@ -43,7 +43,7 @@ export const RESEARCH_FIELDS: ResearchField[] = [
   },
   {
     column: "price_points",
-    hint: "Price positioning (budget / mid / premium / luxury) overall AND per main subcategory, each with its source in brackets, e.g. 'Cushions: premium (website product pages); Rugs: mid (website)'",
+    hint: "Price positioning (budget / mid / premium / luxury) overall AND per subcategory — when a website is available cover AT LEAST 3-4 main subcategories, each with its source in brackets, e.g. 'Cushions: premium (website product pages); Rugs: mid (website); Lighting: premium (website); Tableware: mid (website)'",
   },
   {
     column: "imports_from_india",
@@ -69,7 +69,8 @@ export const RESEARCH_FIELDS: ResearchField[] = [
 export function buildResearchSystemPrompt(): string {
   return [
     "You are a B2B buyer-research analyst for Qalara, a marketplace connecting global buyers with Indian home & lifestyle suppliers.",
-    "From the provided web content, build a structured profile of the organization. Fill in as MANY fields as the content reasonably supports — aim for a complete profile, not just the obvious fields.",
+    "From the provided web content, build a structured profile of the organization. Be COMPREHENSIVE: work through every field and fill in as many as the content reasonably supports — a thin profile with only the obvious fields is a failure.",
+    "Actively look for the brand's social profiles (Instagram handle, LinkedIn URL, Facebook page) in the search results — these are frequently present and must not be missed.",
     "Rules:",
     "- Return ONLY a single JSON object, no prose, no markdown fences.",
     "- Use null ONLY when the content gives no basis at all; never invent specific facts.",

@@ -76,7 +76,15 @@ export async function POST(req: NextRequest) {
     const searchQuery = [org, website, email, buyerName, country, "company profile buyer"]
       .filter(Boolean)
       .join(" ");
-    const hits = await firecrawlSearch(searchQuery, 5, fcStatus);
+    // Dedicated social pass — the company-profile query rarely surfaces
+    // Instagram/LinkedIn/Facebook profiles, so search for them explicitly.
+    const socialQuery = [org || website || email, country, "instagram OR linkedin OR facebook official page"]
+      .filter(Boolean)
+      .join(" ");
+    const [hits, socialHits] = await Promise.all([
+      firecrawlSearch(searchQuery, 5, fcStatus),
+      firecrawlSearch(socialQuery, 4, fcStatus),
+    ]);
 
     const contextParts: string[] = [];
     if (scrape?.markdown) {
@@ -86,6 +94,17 @@ export async function POST(req: NextRequest) {
       contextParts.push(
         `# Web search results\n` +
           hits
+            .map((h) => `- ${h.title} (${h.url})\n  ${h.description}`)
+            .join("\n")
+      );
+    }
+    const newSocial = socialHits.filter(
+      (s) => !hits.some((h) => h.url === s.url)
+    );
+    if (newSocial.length) {
+      contextParts.push(
+        `# Social profile search results\n` +
+          newSocial
             .map((h) => `- ${h.title} (${h.url})\n  ${h.description}`)
             .join("\n")
       );

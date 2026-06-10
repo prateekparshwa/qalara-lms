@@ -307,7 +307,7 @@ export default function DiscoverPage() {
                     </button>
                   </div>
 
-                  <LeadDossier lead={leadObj} />
+                  <LeadDossier lead={leadObj} showAll />
                 </div>
               </div>
             </div>
