@@ -13,11 +13,19 @@ const FALLBACKS = [
   "qwen/qwen3.6-plus:free",
 ];
 
+export interface CompleteOptions {
+  /** Enable OpenRouter's web-search plugin (engine configured on the
+   * OpenRouter account — currently Firecrawl). The model searches the web
+   * itself; results are consumed in-context. */
+  webSearch?: boolean;
+}
+
 async function once(
   key: string,
   models: string[],
   system: string,
-  user: string
+  user: string,
+  opts?: CompleteOptions
 ): Promise<string> {
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -29,6 +37,9 @@ async function once(
     },
     body: JSON.stringify({
       models, // OpenRouter falls through this list on provider errors
+      ...(opts?.webSearch
+        ? { plugins: [{ id: "web", max_results: 5 }] }
+        : {}),
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -52,7 +63,8 @@ async function once(
 
 export async function openrouterComplete(
   system: string,
-  user: string
+  user: string,
+  opts?: CompleteOptions
 ): Promise<string> {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key || !key.trim()) {
@@ -66,7 +78,7 @@ export async function openrouterComplete(
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      return await once(key, models, system, user);
+      return await once(key, models, system, user, opts);
     } catch (err) {
       lastErr = err;
     }
