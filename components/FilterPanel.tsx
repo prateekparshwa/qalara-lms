@@ -39,12 +39,9 @@ function FilterSelect({
 }) {
   return (
     <div className="relative">
-      <label
-        className="flex items-center gap-1.5 text-[10px] font-code font-bold uppercase tracking-widest mb-1.5"
-        style={{ color: dot }}
-      >
+      <label className="flex items-center gap-1.5 text-xs font-sans font-medium text-editorial-secondary mb-1.5">
         <span
-          className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+          className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
           style={{ backgroundColor: dot }}
           aria-hidden="true"
         />
