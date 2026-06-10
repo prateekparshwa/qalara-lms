@@ -10,6 +10,8 @@
  */
 
 const DEFAULT_ACTOR = "vdrmota~contact-info-scraper";
+// harvestapi/linkedin-profile-scraper — profile details + email, no cookies.
+const LINKEDIN_ACTOR = "LpVuK3Zozwuipa5bp";
 
 export interface ApifyContacts {
   email: string | null;
@@ -22,6 +24,70 @@ interface ApifyItem {
   phones?: string[];
   phonesUncertain?: string[];
   linkedIns?: string[];
+}
+
+export interface LinkedInProfile {
+  full_name: string | null;
+  designation: string | null;
+  email: string | null;
+}
+
+function str(v: unknown): string | null {
+  const s = String(v ?? "").trim();
+  return s && s.toLowerCase() !== "null" ? s : null;
+}
+
+/**
+ * Scrape one LinkedIn *person* profile (URL must contain /in/) via the
+ * "LinkedIn Profile Scraper + Email" actor. Used when vibe prospecting found
+ * a person's LinkedIn but no email. Fails soft on any error.
+ */
+export async function apifyLinkedInProfile(
+  profileUrl: string
+): Promise<LinkedInProfile | null> {
+  const token = process.env.APIFY_API_TOKEN;
+  if (!token || token.startsWith("your_")) return null;
+  if (!/linkedin\.com\/in\//i.test(profileUrl)) return null; // person pages only
+
+  const url = `https://api.apify.com/v2/acts/${LINKEDIN_ACTOR}/run-sync-get-dataset-items?token=${encodeURIComponent(
+    token
+  )}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45_000);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        profileScraperMode: "Profile details + email search ($10 per 1k)",
+        queries: [profileUrl],
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const items = (await res.json()) as Record<string, unknown>[];
+    const p = Array.isArray(items) ? items[0] : null;
+    if (!p) return null;
+
+    const fullName =
+      str(p.name) ??
+      ([str(p.firstName), str(p.lastName)].filter(Boolean).join(" ") || null);
+    // Output shape varies by actor version — check the common email spots.
+    const emails = (p.emails ?? p.contactEmails) as unknown;
+    const email =
+      str(p.email) ??
+      (Array.isArray(emails) ? str(emails[0]) : null);
+    const designation =
+      str(p.headline) ??
+      str((p.currentPosition as Record<string, unknown> | undefined)?.title);
+
+    if (!fullName && !email) return null;
+    return { full_name: fullName, designation, email };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function apifyContactScrape(

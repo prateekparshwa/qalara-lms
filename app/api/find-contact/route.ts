@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import type { DecisionMaker } from "@/lib/apollo";
 import { findContactViaHunter } from "@/lib/hunter";
 import { vibeProspect } from "@/lib/vibeProspect";
-import { apifyContactScrape } from "@/lib/apifyContacts";
+import { apifyContactScrape, apifyLinkedInProfile } from "@/lib/apifyContacts";
 import { firecrawlScrape } from "@/lib/firecrawl";
 import { harvestFromText, toDomain } from "@/lib/contact";
 
@@ -66,7 +66,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Apify deep-crawl fallback — emails/phones from contact/about pages.
+    // 3. LinkedIn profile scrape — when we know WHO (a /in/ LinkedIn URL)
+    //    but lack their email, pull it from their profile via Apify.
+    if (contact?.linkedin_url && !contact.email) {
+      const li = await apifyLinkedInProfile(contact.linkedin_url);
+      if (li) {
+        contact = {
+          ...contact,
+          full_name: contact.full_name ?? li.full_name,
+          designation: contact.designation ?? li.designation,
+          email: li.email ?? contact.email,
+          source: li.email
+            ? `${contact.source} + LinkedIn scrape`
+            : contact.source,
+        };
+      }
+    }
+
+    // 4. Apify deep-crawl fallback — emails/phones from contact/about pages.
     //    Skipped automatically when APIFY_API_TOKEN isn't configured.
     if (!contact?.email || !contact?.phone) {
       const apify = await apifyContactScrape(domain);
@@ -84,7 +101,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Firecrawl fallback — fill any missing email/phone from the site.
+    // 5. Firecrawl fallback — fill any missing email/phone from the site.
     if (!contact || !contact.email || !contact.phone) {
       const scrape = await firecrawlScrape(website!);
       if (scrape?.markdown) {
@@ -113,7 +130,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Fill gaps on the lead (never overwrite existing values).
+    // 6. Fill gaps on the lead (never overwrite existing values).
     let filled: string[] = [];
     if (body.leadId) {
       const { data: lead } = await supabaseAdmin
