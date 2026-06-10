@@ -186,10 +186,14 @@ export default function LeadDossier({ lead }: { lead: Partial<Lead> }) {
           <LinkField label="LinkedIn" href={lead.linkedin_url} />
           <Field label="LinkedIn Followers" value={lead.linkedin_followers} mono />
           <Field
-            label="Instagram"
+            label="IG/FB Account"
             value={
               clean(lead.instagram_handle)
-                ? `@${lead.instagram_handle!.replace("@", "")}`
+                ? /^https?:\/\/|facebook\.com|fb\.com/i.test(
+                    lead.instagram_handle!
+                  )
+                  ? lead.instagram_handle
+                  : `@${lead.instagram_handle!.replace("@", "")}`
                 : null
             }
           />

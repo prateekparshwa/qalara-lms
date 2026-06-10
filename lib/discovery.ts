@@ -56,7 +56,7 @@ export const RESEARCH_FIELDS: ResearchField[] = [
   { column: "linkedin_followers", hint: "LinkedIn follower count" },
   {
     column: "instagram_handle",
-    hint: "Instagram handle — the contact person's first if known, else the company's marked '(company)'",
+    hint: "Instagram handle or Facebook page — the contact person's first if known, else the company's marked '(company)'",
   },
   { column: "instagram_followers", hint: "Instagram follower count" },
   {
