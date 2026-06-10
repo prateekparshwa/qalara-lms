@@ -49,8 +49,13 @@ async function firecrawlPost(
         if (i === keys.length - 1 && status) status.quota = true;
         continue; // out of credits — try the next key
       }
+      console.error(
+        `firecrawl ${endpoint} failed (key ${i + 1}/${keys.length}): ${res.status}`,
+        JSON.stringify(j).slice(0, 300)
+      );
       return null; // non-quota error: don't burn the backup's credits
-    } catch {
+    } catch (err) {
+      console.error(`firecrawl ${endpoint} fetch error:`, err);
       return null;
     }
   }
