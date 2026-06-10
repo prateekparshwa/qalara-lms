@@ -14,7 +14,7 @@ import type { Lead } from "@/lib/leads";
 type Profile = Record<string, string | null>;
 
 const MODEL_OPTIONS = [
-  { value: "haiku", label: "Claude Haiku (sharpest, most reliable)" },
+  { value: "haiku", label: "Claude Haiku (sharpest, higher cost)" },
   { value: "deepseek", label: "DeepSeek (faster, cheaper bulk runs)" },
   { value: "qwen", label: "Qwen (free, quick basic lookups)" },
 ];
