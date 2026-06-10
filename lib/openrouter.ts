@@ -18,6 +18,9 @@ export interface CompleteOptions {
    * OpenRouter account — currently Firecrawl). The model searches the web
    * itself; results are consumed in-context. */
   webSearch?: boolean;
+  /** Override the primary model (full OpenRouter id); the standard fallback
+   * chain still applies after it. */
+  model?: string;
 }
 
 async function once(
@@ -70,9 +73,12 @@ export async function openrouterComplete(
   if (!key || !key.trim()) {
     throw new Error("OPENROUTER_API_KEY is not set.");
   }
-  const primary = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
+  const primary =
+    opts?.model || process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
   // OpenRouter allows at most 3 models in the fallback array.
-  const models = Array.from(new Set([primary, ...FALLBACKS])).slice(0, 3);
+  const models = Array.from(
+    new Set([primary, DEFAULT_MODEL, ...FALLBACKS])
+  ).slice(0, 3);
 
   // One retry across the whole fallback chain for transient provider errors.
   let lastErr: unknown;

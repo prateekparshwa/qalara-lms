@@ -115,11 +115,19 @@ export default function LeadDossier({ lead }: { lead: Partial<Lead> }) {
         </p>
       )}
 
-      {any(lead.full_name, lead.designation, lead.source) && (
+      {any(
+        lead.full_name,
+        lead.designation,
+        lead.email,
+        lead.phone,
+        lead.source
+      ) && (
         <>
           <SectionHeader title="Contact" color="#4F46E5" />
           <Field label="Full Name" value={lead.full_name} />
           <Field label="Designation" value={lead.designation} />
+          <Field label="Email ID" value={lead.email} mono />
+          <Field label="Phone No" value={lead.phone} mono />
           <Field label="Source" value={lead.source} />
         </>
       )}

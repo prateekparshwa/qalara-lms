@@ -33,15 +33,36 @@ export const RESEARCH_FIELDS: ResearchField[] = [
   { column: "revenue_turnover", hint: "Estimated revenue/turnover (note if unverified)" },
   { column: "competitors", hint: "Notable competitors" },
   { column: "target_audience", hint: "Who they sell to" },
-  { column: "store_count", hint: "Number of stores/showrooms if a retailer" },
-  { column: "import_countries", hint: "Countries they source/import from" },
-  { column: "price_points", hint: "Price positioning (budget / mid / premium / luxury)" },
-  { column: "imports_from_india", hint: "Do they source from India? Yes/No + detail" },
-  { column: "linkedin_url", hint: "Company LinkedIn URL" },
+  {
+    column: "store_count",
+    hint: "Number of stores/showrooms with the source in brackets, e.g. '120 stores (company website /stores page)'; only if no source exists, give a number clearly marked '(estimate)'",
+  },
+  {
+    column: "import_countries",
+    hint: "Countries they source/import from, each claim with its source in brackets — null if no source found; never guess",
+  },
+  {
+    column: "price_points",
+    hint: "Price positioning (budget / mid / premium / luxury) overall AND per main subcategory, each with its source in brackets, e.g. 'Cushions: premium (website product pages); Rugs: mid (website)'",
+  },
+  {
+    column: "imports_from_india",
+    hint: "Do they source from India? Yes/No + detail, with the source in brackets — null if no source found; never guess",
+  },
+  {
+    column: "linkedin_url",
+    hint: "LinkedIn URL — the key contact person's profile first if known, then the company page after ' / '",
+  },
   { column: "linkedin_followers", hint: "LinkedIn follower count" },
-  { column: "instagram_handle", hint: "Instagram handle" },
+  {
+    column: "instagram_handle",
+    hint: "Instagram handle — the contact person's first if known, else the company's marked '(company)'",
+  },
   { column: "instagram_followers", hint: "Instagram follower count" },
-  { column: "social_media_activity", hint: "Brief note on social presence/activity" },
+  {
+    column: "social_media_activity",
+    hint: "Brief note on social presence/activity incl. Facebook page if found — the person's page first, else the company's marked '(company)'",
+  },
   { column: "website_confidence", hint: "HIGH / MEDIUM / LOW — your confidence the website is the right, active company site" },
 ];
 
@@ -54,6 +75,7 @@ export function buildResearchSystemPrompt(): string {
     "- Use null ONLY when the content gives no basis at all; never invent specific facts.",
     "- Reasonable inference IS allowed and encouraged: e.g. infer price_points (budget / mid-market / premium / luxury) from the product prices shown; infer buyer_type, target_audience, materials_dealt, and categories from the products and language on the site; infer org_scale from store count or employee hints.",
     "- For estimates (revenue, employees, followers), give a brief value and add '(estimate)'.",
+    "- SOURCING IS MANDATORY for trade facts: store_count, import_countries, imports_from_india, price_points, and revenue_turnover must each cite WHERE the claim comes from in brackets after the value, e.g. '(company website /stores page)', '(LinkedIn)', '(press release via search)'. A number or claim with no source is worse than null — never write 'it imports' or a count without evidence. Only store_count and revenue_turnover may fall back to a clearly marked '(estimate)' when no source exists; import_countries and imports_from_india must be null without a source.",
     "- Keep each field concise (a phrase or 1-2 sentences).",
   ].join("\n");
 }

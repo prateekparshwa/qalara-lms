@@ -27,8 +27,15 @@ function clean(v: unknown): string | null {
 
 const ALLOWED = new Set(RESEARCH_FIELDS.map((f) => f.column));
 
+// User-selectable research models (whitelist — never trust a raw model id).
+const MODEL_CHOICES: Record<string, string> = {
+  haiku: "anthropic/claude-haiku-4.5",
+  deepseek: "deepseek/deepseek-v4-flash",
+  qwen: "qwen/qwen3.6-plus:free",
+};
+
 export async function POST(req: NextRequest) {
-  let body: { org?: string; website?: string; email?: string };
+  let body: { org?: string; website?: string; email?: string; model?: string };
   try {
     body = await req.json();
   } catch {
@@ -38,6 +45,7 @@ export async function POST(req: NextRequest) {
   const org = clean(body.org) ?? undefined;
   const website = clean(body.website) ?? undefined;
   const email = clean(body.email) ?? undefined;
+  const model = MODEL_CHOICES[body.model ?? ""] ?? undefined;
 
   if (!org && !website && !email) {
     return NextResponse.json(
@@ -99,7 +107,7 @@ export async function POST(req: NextRequest) {
     const raw = await openrouterComplete(
       buildResearchSystemPrompt(),
       buildResearchUserPrompt({ org, website, email }, context),
-      webPluginUsed ? { webSearch: true } : undefined
+      { model, webSearch: webPluginUsed || undefined }
     );
     const parsed = parseJsonLoose(raw);
 

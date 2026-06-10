@@ -13,6 +13,12 @@ import type { Lead } from "@/lib/leads";
 
 type Profile = Record<string, string | null>;
 
+const MODEL_OPTIONS = [
+  { value: "haiku", label: "Claude Haiku (sharpest, most reliable)" },
+  { value: "deepseek", label: "DeepSeek (faster, cheaper bulk runs)" },
+  { value: "qwen", label: "Qwen (free, quick basic lookups)" },
+];
+
 function Field({
   label,
   placeholder,
@@ -44,6 +50,7 @@ export default function DiscoverPage() {
   const [org, setOrg] = useState("");
   const [website, setWebsite] = useState("");
   const [email, setEmail] = useState("");
+  const [model, setModel] = useState("haiku");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -64,7 +71,7 @@ export default function DiscoverPage() {
       const res = await fetch("/api/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ org, website, email }),
+        body: JSON.stringify({ org, website, email, model }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Research failed (${res.status})`);
@@ -153,6 +160,22 @@ export default function DiscoverPage() {
                   value={email}
                   onChange={setEmail}
                 />
+              </div>
+              <div className="mt-4">
+                <label className="block text-[10px] font-code font-bold uppercase tracking-widest mb-1.5 text-editorial-secondary">
+                  AI Model
+                </label>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="w-full sm:w-auto px-3.5 py-2.5 text-sm font-sans text-editorial-black border border-editorial-border rounded-lg bg-white focus:outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/25 transition-colors cursor-pointer"
+                >
+                  {MODEL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-editorial-muted">
