@@ -4,6 +4,9 @@ import { priorityRank } from "@/lib/leads";
 import { DISCOVER_SEGMENT } from "@/lib/segments";
 import { firecrawlScrape, firecrawlSearch } from "@/lib/firecrawl";
 import { openrouterComplete, parseJsonLoose } from "@/lib/openrouter";
+import { findContactViaHunter } from "@/lib/hunter";
+import { harvestFromText, toDomain } from "@/lib/contact";
+import type { DecisionMaker } from "@/lib/apollo";
 import {
   RESEARCH_FIELDS,
   buildResearchSystemPrompt,
@@ -106,6 +109,49 @@ export async function POST(req: NextRequest) {
     row.website = row.website ?? website ?? null;
     row.email = row.email ?? email ?? null;
 
+    // 3b. POC lookup — fill missing contact fields (name, designation, email,
+    // phone, LinkedIn) via Hunter.io, ranked toward sourcing/purchasing/buyer
+    // roles. Best-effort: a Hunter failure never fails the research.
+    let contactSource: string | null = null;
+    const domain = toDomain(row.website);
+    const missingPoc =
+      !row.full_name || !row.designation || !row.email || !row.phone;
+    if (domain && missingPoc) {
+      try {
+        const contact = await findContactViaHunter(domain);
+        if (contact) {
+          const pocFields: (keyof DecisionMaker)[] = [
+            "full_name",
+            "designation",
+            "email",
+            "phone",
+            "linkedin_url",
+          ];
+          for (const k of pocFields) {
+            const found = clean(contact[k]);
+            if (found && !row[k]) {
+              row[k] = found;
+              contactSource = contact.source;
+            }
+          }
+        }
+      } catch {
+        /* Hunter quota/error — keep whatever the research found */
+      }
+      // Last resort: harvest a generic email/phone from the scraped site.
+      if ((!row.email || !row.phone) && scrape?.markdown) {
+        const harvested = harvestFromText(scrape.markdown, domain);
+        if (!row.email && harvested.email) {
+          row.email = harvested.email;
+          contactSource = contactSource ?? "Website";
+        }
+        if (!row.phone && harvested.phone) {
+          row.phone = harvested.phone;
+          contactSource = contactSource ?? "Website";
+        }
+      }
+    }
+
     if (!row.organization && !row.website && !row.email) {
       return NextResponse.json(
         { error: "Research produced no usable fields. Try again." },
@@ -170,6 +216,7 @@ export async function POST(req: NextRequest) {
       updated: !!existingId,
       usedScrape: !!scrape?.markdown,
       searchCount: hits.length,
+      contactSource,
     });
   } catch (err) {
     return NextResponse.json(

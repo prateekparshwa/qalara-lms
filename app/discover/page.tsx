@@ -50,6 +50,7 @@ export default function DiscoverPage() {
     profile: Profile;
     savedId: number | null;
     updated: boolean;
+    contactSource: string | null;
   } | null>(null);
 
   const canRun = !!(org.trim() || website.trim() || email.trim()) && !loading;
@@ -72,6 +73,7 @@ export default function DiscoverPage() {
         profile: data.profile,
         savedId: data.savedId ?? null,
         updated: !!data.updated,
+        contactSource: data.contactSource ?? null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Research failed.");
@@ -207,6 +209,11 @@ export default function DiscoverPage() {
                 {result?.updated
                   ? "Updated in your database"
                   : "Saved to your database as a discovered buyer"}
+                {result?.contactSource && (
+                  <span className="text-editorial-muted">
+                    · contact via {result.contactSource}
+                  </span>
+                )}
                 <Link
                   href="/directory/discover"
                   className="ml-1 inline-flex items-center gap-0.5 text-editorial-accent hover:underline"

@@ -34,6 +34,12 @@ const PRIORITY = [
   "supply chain",
   "merchand",
   "category",
+  // Leadership fallbacks — at small importers the founder/owner IS the buyer.
+  "founder",
+  "owner",
+  "managing director",
+  "ceo",
+  "director",
 ];
 
 export interface DecisionMaker {
