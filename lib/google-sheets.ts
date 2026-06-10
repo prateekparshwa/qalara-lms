@@ -150,6 +150,11 @@ export async function readLeadsSheet(
     for (const { index, column } of colMap) {
       obj[column] = clean(row[index]);
     }
+    // Virtual column: the AI rating wins over the legacy classification.
+    if (obj.__ai_classification) {
+      obj.buyer_classification = obj.__ai_classification;
+    }
+    delete obj.__ai_classification;
     rows.push(obj);
   }
 
