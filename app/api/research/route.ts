@@ -5,6 +5,7 @@ import { DISCOVER_SEGMENT } from "@/lib/segments";
 import { firecrawlScrape, firecrawlSearch } from "@/lib/firecrawl";
 import { openrouterComplete, parseJsonLoose } from "@/lib/openrouter";
 import { findContactViaHunter } from "@/lib/hunter";
+import { vibeProspect } from "@/lib/vibeProspect";
 import { harvestFromText, toDomain } from "@/lib/contact";
 import type { DecisionMaker } from "@/lib/apollo";
 import {
@@ -117,26 +118,31 @@ export async function POST(req: NextRequest) {
     const missingPoc =
       !row.full_name || !row.designation || !row.email || !row.phone;
     if (domain && missingPoc) {
-      try {
-        const contact = await findContactViaHunter(domain);
-        if (contact) {
-          const pocFields: (keyof DecisionMaker)[] = [
-            "full_name",
-            "designation",
-            "email",
-            "phone",
-            "linkedin_url",
-          ];
-          for (const k of pocFields) {
-            const found = clean(contact[k]);
-            if (found && !row[k]) {
-              row[k] = found;
-              contactSource = contact.source;
-            }
+      const pocFields: (keyof DecisionMaker)[] = [
+        "full_name",
+        "designation",
+        "email",
+        "phone",
+        "linkedin_url",
+      ];
+      const fillFrom = (contact: DecisionMaker | null) => {
+        if (!contact) return;
+        for (const k of pocFields) {
+          const found = clean(contact[k]);
+          if (found && !row[k]) {
+            row[k] = found;
+            contactSource = contactSource ?? contact.source;
           }
         }
+      };
+      try {
+        fillFrom(await findContactViaHunter(domain));
       } catch {
         /* Hunter quota/error — keep whatever the research found */
+      }
+      // Vibe prospecting fallback — AI web search when Hunter named no one.
+      if (!row.full_name) {
+        fillFrom(await vibeProspect(row.organization, domain));
       }
       // Last resort: harvest a generic email/phone from the scraped site.
       if ((!row.email || !row.phone) && scrape?.markdown) {

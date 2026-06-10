@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { DecisionMaker } from "@/lib/apollo";
 import { findContactViaHunter } from "@/lib/hunter";
+import { vibeProspect } from "@/lib/vibeProspect";
 import { firecrawlScrape } from "@/lib/firecrawl";
 import { harvestFromText, toDomain } from "@/lib/contact";
 
@@ -47,7 +48,24 @@ export async function POST(req: NextRequest) {
       providerError = "Hunter not configured";
     }
 
-    // 2. Firecrawl fallback — fill any missing email/phone from the site.
+    // 2. Vibe prospecting fallback — AI web search when Hunter named no one.
+    if (!contact?.full_name) {
+      const vibe = await vibeProspect(org ?? null, domain);
+      if (vibe) {
+        contact = {
+          full_name: contact?.full_name ?? vibe.full_name,
+          designation: contact?.designation ?? vibe.designation,
+          email: contact?.email ?? vibe.email,
+          phone: contact?.phone ?? vibe.phone,
+          linkedin_url: contact?.linkedin_url ?? vibe.linkedin_url,
+          source: contact?.source
+            ? `${contact.source} + ${vibe.source}`
+            : vibe.source,
+        };
+      }
+    }
+
+    // 3. Firecrawl fallback — fill any missing email/phone from the site.
     if (!contact || !contact.email || !contact.phone) {
       const scrape = await firecrawlScrape(website!);
       if (scrape?.markdown) {
