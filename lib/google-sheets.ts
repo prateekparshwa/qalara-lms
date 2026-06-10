@@ -49,6 +49,15 @@ function getCredentials(): { client_email: string; private_key: string } {
   return { client_email: parsed.client_email, private_key };
 }
 
+/** Normalize a sheet header for matching: trim and strip a trailing
+ * " (1234)" count suffix (the sheet now annotates headers with fill counts). */
+function normalizeHeader(h: unknown): string {
+  return String(h ?? "")
+    .trim()
+    .replace(/\s*\(\d+\)$/, "")
+    .trim();
+}
+
 function clean(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   const s = String(v).trim();
@@ -97,8 +106,27 @@ export async function readLeadsSheet(
     return { sheetTitle, rows: [], unknownHeaders: [], missingHeaders: [] };
   }
 
-  const headerRow = values[0].map((h) => String(h ?? "").trim());
   const expectedHeaders = Object.keys(HEADER_TO_COLUMN);
+
+  // The header row isn't always row 1 — banner/grouping rows get inserted
+  // above it. Scan the first few rows and use the one matching the schema best.
+  let headerIdx = 0;
+  let bestMatches = -1;
+  for (let i = 0; i < Math.min(values.length, 5); i++) {
+    const matches = values[i]
+      .map(normalizeHeader)
+      .filter((h) => h in HEADER_TO_COLUMN).length;
+    if (matches > bestMatches) {
+      bestMatches = matches;
+      headerIdx = i;
+    }
+  }
+  if (bestMatches === 0) {
+    throw new Error(
+      "No recognisable header row found in the first 5 rows of the sheet — have the column headers been renamed?"
+    );
+  }
+  const headerRow = values[headerIdx].map(normalizeHeader);
 
   const unknownHeaders = headerRow.filter(
     (h) => h !== "" && !(h in HEADER_TO_COLUMN)
@@ -113,7 +141,7 @@ export async function readLeadsSheet(
   });
 
   const rows: Record<string, string | null>[] = [];
-  for (let r = 1; r < values.length; r++) {
+  for (let r = headerIdx + 1; r < values.length; r++) {
     const row = values[r];
     // Skip fully-blank rows.
     if (!row || row.every((c) => clean(c) === null)) continue;
