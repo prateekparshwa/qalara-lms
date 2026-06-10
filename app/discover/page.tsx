@@ -14,8 +14,8 @@ import type { Lead } from "@/lib/leads";
 type Profile = Record<string, string | null>;
 
 const MODEL_OPTIONS = [
-  { value: "haiku", label: "Claude Haiku (sharpest, higher cost)" },
   { value: "deepseek", label: "DeepSeek (faster, cheaper bulk runs)" },
+  { value: "haiku", label: "Claude Haiku (sharpest, higher cost)" },
   { value: "qwen", label: "Qwen (free, quick basic lookups)" },
 ];
 
@@ -50,7 +50,9 @@ export default function DiscoverPage() {
   const [org, setOrg] = useState("");
   const [website, setWebsite] = useState("");
   const [email, setEmail] = useState("");
-  const [model, setModel] = useState("haiku");
+  const [buyerName, setBuyerName] = useState("");
+  const [country, setCountry] = useState("");
+  const [model, setModel] = useState("deepseek");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -71,7 +73,7 @@ export default function DiscoverPage() {
       const res = await fetch("/api/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ org, website, email, model }),
+        body: JSON.stringify({ org, website, email, buyerName, country, model }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Research failed (${res.status})`);
@@ -160,10 +162,22 @@ export default function DiscoverPage() {
                   value={email}
                   onChange={setEmail}
                 />
+                <Field
+                  label="Buyer Name"
+                  placeholder="Contact person, if known"
+                  value={buyerName}
+                  onChange={setBuyerName}
+                />
+                <Field
+                  label="Country"
+                  placeholder="e.g. USA, UAE, Germany"
+                  value={country}
+                  onChange={setCountry}
+                />
               </div>
               <div className="mt-4">
                 <label className="block text-[10px] font-code font-bold uppercase tracking-widest mb-1.5 text-editorial-secondary">
-                  AI Model
+                  AI Model <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={model}

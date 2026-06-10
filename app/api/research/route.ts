@@ -35,7 +35,14 @@ const MODEL_CHOICES: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
-  let body: { org?: string; website?: string; email?: string; model?: string };
+  let body: {
+    org?: string;
+    website?: string;
+    email?: string;
+    buyerName?: string;
+    country?: string;
+    model?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -45,6 +52,8 @@ export async function POST(req: NextRequest) {
   const org = clean(body.org) ?? undefined;
   const website = clean(body.website) ?? undefined;
   const email = clean(body.email) ?? undefined;
+  const buyerName = clean(body.buyerName) ?? undefined;
+  const country = clean(body.country) ?? undefined;
   const model = MODEL_CHOICES[body.model ?? ""] ?? undefined;
 
   if (!org && !website && !email) {
@@ -64,7 +73,7 @@ export async function POST(req: NextRequest) {
     // 1. Gather web context: scrape the site (if given) + a web search.
     const fcStatus: { quota?: boolean } = {};
     const scrape = website ? await firecrawlScrape(website, fcStatus) : null;
-    const searchQuery = [org, website, email, "company profile buyer"]
+    const searchQuery = [org, website, email, buyerName, country, "company profile buyer"]
       .filter(Boolean)
       .join(" ");
     const hits = await firecrawlSearch(searchQuery, 5, fcStatus);
@@ -106,7 +115,7 @@ export async function POST(req: NextRequest) {
     // 2. Synthesize the profile with the LLM.
     const raw = await openrouterComplete(
       buildResearchSystemPrompt(),
-      buildResearchUserPrompt({ org, website, email }, context),
+      buildResearchUserPrompt({ org, website, email, buyerName, country }, context),
       { model, webSearch: webPluginUsed || undefined }
     );
     const parsed = parseJsonLoose(raw);
@@ -119,6 +128,8 @@ export async function POST(req: NextRequest) {
     row.organization = row.organization ?? org ?? null;
     row.website = row.website ?? website ?? null;
     row.email = row.email ?? email ?? null;
+    row.full_name = row.full_name ?? buyerName ?? null;
+    row.country = row.country ?? country ?? null;
 
     // 3b. POC lookup — fill missing contact fields (name, designation, email,
     // phone, LinkedIn) via Hunter.io, ranked toward sourcing/purchasing/buyer

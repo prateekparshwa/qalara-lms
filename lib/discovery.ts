@@ -81,7 +81,13 @@ export function buildResearchSystemPrompt(): string {
 }
 
 export function buildResearchUserPrompt(
-  inputs: { org?: string; website?: string; email?: string },
+  inputs: {
+    org?: string;
+    website?: string;
+    email?: string;
+    buyerName?: string;
+    country?: string;
+  },
   context: string
 ): string {
   const fieldList = RESEARCH_FIELDS.map(
@@ -92,6 +98,8 @@ export function buildResearchUserPrompt(
     `- organization: ${inputs.org || "(unknown)"}`,
     `- website: ${inputs.website || "(unknown)"}`,
     `- email: ${inputs.email || "(unknown)"}`,
+    `- buyer/contact person name: ${inputs.buyerName || "(unknown)"}`,
+    `- country: ${inputs.country || "(unknown)"}`,
     ``,
     `Web content gathered (scrape + search results):`,
     `"""`,
