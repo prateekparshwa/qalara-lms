@@ -19,18 +19,16 @@ type ColId =
   | "country"
   | "buyer_type"
   | "buyer_classification"
-  | "website_confidence"
   | "current_am";
 
 const COLUMNS: { id: ColId; label: string; dot: string; sortable: boolean }[] = [
-  { id: "organization", label: "Organization", dot: "#4F46E5", sortable: true },
-  { id: "email", label: "Email", dot: "#0D9488", sortable: true },
-  { id: "website", label: "Website", dot: "#B45309", sortable: true },
-  { id: "country", label: "Country", dot: "#7C3AED", sortable: true },
-  { id: "buyer_type", label: "Type", dot: "#E11D48", sortable: true },
-  { id: "buyer_classification", label: "Priority", dot: "#4F46E5", sortable: true },
-  { id: "website_confidence", label: "Web", dot: "#0D9488", sortable: true },
-  { id: "current_am", label: "AM", dot: "#7C3AED", sortable: true },
+  { id: "organization", label: "Buyer Organization", dot: "#4F46E5", sortable: true },
+  { id: "email", label: "Buyer Email ID(s)", dot: "#0D9488", sortable: true },
+  { id: "website", label: "Brand Website", dot: "#B45309", sortable: true },
+  { id: "country", label: "Buyer Country", dot: "#7C3AED", sortable: true },
+  { id: "buyer_type", label: "Business Type", dot: "#E11D48", sortable: true },
+  { id: "buyer_classification", label: "AI Classification", dot: "#4F46E5", sortable: true },
+  { id: "current_am", label: "Account Manager", dot: "#7C3AED", sortable: true },
 ];
 
 function shortType(v: string): string {
@@ -89,8 +87,6 @@ function Cell({ lead, col }: { lead: Lead; col: ColId }) {
     }
     case "buyer_classification":
       return <Badge value={lead.buyer_classification} kind="priority" />;
-    case "website_confidence":
-      return <Badge value={lead.website_confidence} kind="web" />;
     case "current_am":
       return (
         <span className="text-xs font-sans text-editorial-secondary truncate block max-w-[110px]">

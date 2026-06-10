@@ -182,11 +182,11 @@ export default function LeadDossier({
         )) && (
         <>
           <SectionHeader title="Buyer Basic Details" color="#4F46E5" />
-          <Field showAll={showAll} label="Full Name" value={lead.full_name} />
-          <Field showAll={showAll} label="Designation" value={lead.designation} />
-          <Field showAll={showAll} label="Email ID" value={lead.email} mono />
-          <Field showAll={showAll} label="Phone No" value={lead.phone} mono />
-          <Field showAll={showAll} label="Source" value={lead.source} />
+          <Field showAll={showAll} label="Buyer Full Name" value={lead.full_name} />
+          <Field showAll={showAll} label="Buyer Designation" value={lead.designation} />
+          <Field showAll={showAll} label="Buyer Email ID(s)" value={lead.email} mono />
+          <Field showAll={showAll} label="Buyer Phone #" value={lead.phone} mono />
+          <Field showAll={showAll} label="Lead Source" value={lead.source} />
         </>
       )}
 
@@ -209,20 +209,25 @@ export default function LeadDossier({
         )) && (
         <>
           <SectionHeader title="Buyer Brand / Business Intelligence" color="#0D9488" />
-          <Field showAll={showAll} label="Address" value={lead.address} />
-          <Field showAll={showAll} label="Buyer Type" value={lead.buyer_type} />
-          <Field showAll={showAll} label="Categories" value={lead.categories} />
-          <Field showAll={showAll} label="Employee Size" value={lead.employee_size} />
-          <Field showAll={showAll} label="Org Scale" value={lead.org_scale} />
-          <Field showAll={showAll} label="Price Points" value={lead.price_points} />
-          <Field showAll={showAll} label="Store Count" value={lead.store_count} />
-          <Field showAll={showAll} label="Materials Dealt" value={lead.materials_dealt} />
-          <Field showAll={showAll} label="Customers & Markets" value={lead.customers_and_markets} />
-          <Field showAll={showAll} label="Revenue / Turnover" value={lead.revenue_turnover} />
-          <Field showAll={showAll} label="Competitors" value={lead.competitors} />
-          <Field showAll={showAll} label="Target Audience" value={lead.target_audience} />
-          <Field showAll={showAll} label="Import Countries" value={lead.import_countries} />
-          <Field showAll={showAll} label="Imports From India" value={lead.imports_from_india} />
+          <Field showAll={showAll} label="Buyer Full Address" value={lead.address} />
+          <Field showAll={showAll} label="Buyer Business Type" value={lead.buyer_type} />
+          <Field showAll={showAll} label="Categories Buyer Deals In" value={lead.categories} />
+          <Field showAll={showAll} label="No. of Employees in Buyer's Org" value={lead.employee_size} />
+          <Field showAll={showAll} label="Buyer Org Size Tier" value={lead.org_scale} />
+          <Field showAll={showAll} label="Retail Price Points" value={lead.price_points} />
+          <Field showAll={showAll} label="Count of Stores of the Buyer" value={lead.store_count} />
+          <Field showAll={showAll} label="Materials Dealt In" value={lead.materials_dealt} />
+          <Field showAll={showAll} label="Customers & Markets Buyer Is Present In" value={lead.customers_and_markets} />
+          <Field showAll={showAll} label="Potential Revenue / Turnover" value={lead.revenue_turnover} />
+          <Field showAll={showAll} label="Competitors of the Buyer" value={lead.competitors} />
+          <Field showAll={showAll} label="Target Audience of the Buyer" value={lead.target_audience} />
+          <Field showAll={showAll} label="Sourcing Countries of the Buyer" value={lead.import_countries} />
+          <Field showAll={showAll} label="Sources From India?" value={lead.imports_from_india} />
+          <Field
+            showAll={showAll}
+            label="Website Confidence (AI-Verified)"
+            value={lead.website_confidence}
+          />
         </>
       )}
 
@@ -236,11 +241,11 @@ export default function LeadDossier({
         )) && (
         <>
           <SectionHeader title="Social Media" color="#7C3AED" />
-          <LinkField showAll={showAll} label="LinkedIn" href={lead.linkedin_url} />
+          <LinkField showAll={showAll} label="LinkedIn URL of the Buyer" href={lead.linkedin_url} />
           <Field showAll={showAll} label="LinkedIn Followers" value={lead.linkedin_followers} mono />
           <Field
             showAll={showAll}
-            label="IG/FB Account"
+            label="Instagram Handle or FB Page of the Buyer/Org"
             value={
               clean(lead.instagram_handle)
                 ? /^https?:\/\/|facebook\.com|fb\.com/i.test(
@@ -251,8 +256,8 @@ export default function LeadDossier({
                 : null
             }
           />
-          <Field showAll={showAll} label="Instagram Followers" value={lead.instagram_followers} mono />
-          <Field showAll={showAll} label="Social Activity" value={lead.social_media_activity} />
+          <Field showAll={showAll} label="Instagram Followers of the Buyer/Org Page" value={lead.instagram_followers} mono />
+          <Field showAll={showAll} label="Social Media Activity of the Buyer" value={lead.social_media_activity} />
         </>
       )}
 
@@ -268,7 +273,7 @@ export default function LeadDossier({
           <SectionHeader title="Buyer Communication / Engagement" color="#E11D48" />
           <Field showAll={showAll} label="First Contact Date (By Buyer)" value={lead.first_contact_date} mono />
           <Field showAll={showAll} label="Last Contact Date (By Buyer)" value={lead.last_contact_date} mono />
-          <Field showAll={showAll} label="Account Manager" value={lead.current_am} />
+          <Field showAll={showAll} label="Current AM (Account Manager)" value={lead.current_am} />
           <Field showAll={showAll} label="Last Contact Date from Qalara to Buyer" value={lead.last_qalara_contact} mono />
           <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
           <Field showAll={showAll} label="Email Summary (Qalara to Buyer)" value={lead.email_contact_summary} />

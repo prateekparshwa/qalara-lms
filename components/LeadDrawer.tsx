@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { X, Mail, Phone, Globe, FileDown } from "lucide-react";
+import { X, Mail, Phone, Globe, FileDown, Info } from "lucide-react";
 import type { Lead } from "@/lib/leads";
+import { webHint } from "@/lib/glossary";
 import EnrichPanel from "./EnrichPanel";
 import Badge from "./Badge";
 import LeadDossier from "./LeadDossier";
@@ -90,8 +91,13 @@ export default function LeadDrawer({ lead, onClose }: LeadDrawerProps) {
                   </span>
                 )}
                 <Badge value={lead.buyer_classification} kind="priority" />
-                <span className="inline-flex items-center gap-1 text-[10px] font-code text-editorial-muted">
-                  web <Badge value={lead.website_confidence} kind="web" />
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-sans text-editorial-muted cursor-help"
+                  title={`Website Confidence — how sure we are that the website on file actually belongs to this buyer (AI-verified). ${webHint(lead.website_confidence)}`}
+                >
+                  Website Confidence{" "}
+                  <Badge value={lead.website_confidence} kind="web" />
+                  <Info size={11} className="text-editorial-muted" aria-hidden="true" />
                 </span>
               </div>
             </div>
