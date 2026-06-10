@@ -127,10 +127,21 @@ export default function LeadDossier({
 
   return (
     <div>
-      {standfirst && (
-        <p className="mt-5 text-[15px] leading-relaxed font-sans text-editorial-secondary">
-          {standfirst}
-        </p>
+      {(standfirst || showAll) && (
+        <div className="mt-5">
+          <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-1">
+            Brand Description
+          </div>
+          {standfirst ? (
+            <p className="text-[15px] leading-relaxed font-sans text-editorial-secondary">
+              {standfirst}
+            </p>
+          ) : (
+            <div className="text-sm font-sans italic text-editorial-muted">
+              Not Available
+            </div>
+          )}
+        </div>
       )}
 
       {(showAll ||
@@ -142,7 +153,7 @@ export default function LeadDossier({
           lead.source
         )) && (
         <>
-          <SectionHeader title="Contact" color="#4F46E5" />
+          <SectionHeader title="Buyer Basic Details" color="#4F46E5" />
           <Field showAll={showAll} label="Full Name" value={lead.full_name} />
           <Field showAll={showAll} label="Designation" value={lead.designation} />
           <Field showAll={showAll} label="Email ID" value={lead.email} mono />
@@ -159,22 +170,7 @@ export default function LeadDossier({
           lead.employee_size,
           lead.org_scale,
           lead.price_points,
-          lead.store_count
-        )) && (
-        <>
-          <SectionHeader title="Company" color="#0D9488" />
-          <Field showAll={showAll} label="Address" value={lead.address} />
-          <Field showAll={showAll} label="Buyer Type" value={lead.buyer_type} />
-          <Field showAll={showAll} label="Categories" value={lead.categories} />
-          <Field showAll={showAll} label="Employee Size" value={lead.employee_size} />
-          <Field showAll={showAll} label="Org Scale" value={lead.org_scale} />
-          <Field showAll={showAll} label="Price Points" value={lead.price_points} />
-          <Field showAll={showAll} label="Store Count" value={lead.store_count} />
-        </>
-      )}
-
-      {(showAll ||
-        any(
+          lead.store_count,
           lead.materials_dealt,
           lead.customers_and_markets,
           lead.revenue_turnover,
@@ -184,7 +180,14 @@ export default function LeadDossier({
           lead.imports_from_india
         )) && (
         <>
-          <SectionHeader title="Market Intelligence" color="#B45309" />
+          <SectionHeader title="Buyer Brand / Business Intelligence" color="#0D9488" />
+          <Field showAll={showAll} label="Address" value={lead.address} />
+          <Field showAll={showAll} label="Buyer Type" value={lead.buyer_type} />
+          <Field showAll={showAll} label="Categories" value={lead.categories} />
+          <Field showAll={showAll} label="Employee Size" value={lead.employee_size} />
+          <Field showAll={showAll} label="Org Scale" value={lead.org_scale} />
+          <Field showAll={showAll} label="Price Points" value={lead.price_points} />
+          <Field showAll={showAll} label="Store Count" value={lead.store_count} />
           <Field showAll={showAll} label="Materials Dealt" value={lead.materials_dealt} />
           <Field showAll={showAll} label="Customers & Markets" value={lead.customers_and_markets} />
           <Field showAll={showAll} label="Revenue / Turnover" value={lead.revenue_turnover} />
@@ -204,7 +207,7 @@ export default function LeadDossier({
           lead.social_media_activity
         )) && (
         <>
-          <SectionHeader title="Social" color="#7C3AED" />
+          <SectionHeader title="Social Media" color="#7C3AED" />
           <LinkField showAll={showAll} label="LinkedIn" href={lead.linkedin_url} />
           <Field showAll={showAll} label="LinkedIn Followers" value={lead.linkedin_followers} mono />
           <Field
@@ -234,11 +237,11 @@ export default function LeadDossier({
         lead.email_contact_summary
       ) && (
         <>
-          <SectionHeader title="Engagement" color="#E11D48" />
-          <Field showAll={showAll} label="First Contact (By Buyer)" value={lead.first_contact_date} mono />
-          <Field showAll={showAll} label="Last Contact (By Buyer)" value={lead.last_contact_date} mono />
+          <SectionHeader title="Buyer Communication / Engagement" color="#E11D48" />
+          <Field showAll={showAll} label="First Contact Date (By Buyer)" value={lead.first_contact_date} mono />
+          <Field showAll={showAll} label="Last Contact Date (By Buyer)" value={lead.last_contact_date} mono />
           <Field showAll={showAll} label="Account Manager" value={lead.current_am} />
-          <Field showAll={showAll} label="Last Qalara AM Contact to Buyer" value={lead.last_qalara_contact} mono />
+          <Field showAll={showAll} label="Last Contact Date from Qalara to Buyer" value={lead.last_qalara_contact} mono />
           <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
           <Field showAll={showAll} label="Email Summary (Qalara to Buyer)" value={lead.email_contact_summary} />
         </>
@@ -252,7 +255,7 @@ export default function LeadDossier({
               <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-2">
                 Sourcing@qalara
               </div>
-              <div className="space-y-1 text-xs font-sans text-editorial-secondary">
+              <div className="space-y-1 text-xs font-sans font-bold text-editorial-black">
                 {clean(lead.sourcing_emails_low) && (
                   <div>≤2 emails: {lead.sourcing_emails_low}</div>
                 )}
@@ -274,7 +277,7 @@ export default function LeadDossier({
               <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-2">
                 Buyers@qalara
               </div>
-              <div className="space-y-1 text-xs font-sans text-editorial-secondary">
+              <div className="space-y-1 text-xs font-sans font-bold text-editorial-black">
                 {clean(lead.buyers_emails_low) && (
                   <div>≤2 emails: {lead.buyers_emails_low}</div>
                 )}
@@ -289,6 +292,17 @@ export default function LeadDossier({
               </div>
             </div>
           </div>
+        </>
+      )}
+
+      {(showAll || any(lead.buyer_classification)) && (
+        <>
+          <SectionHeader title="Classification" color="#B45309" />
+          <Field
+            showAll={showAll}
+            label="AI Classification"
+            value={lead.buyer_classification}
+          />
         </>
       )}
     </div>

@@ -116,15 +116,22 @@ export default function LeadDrawer({ lead, onClose }: LeadDrawerProps) {
           </div>
 
           <div className="flex items-center gap-4 mt-3 flex-wrap">
-            {clean(lead.email) && (
-              <a
-                href={`mailto:${lead.email}`}
-                className="flex items-center gap-1.5 text-xs text-editorial-accent hover:underline font-sans"
-              >
-                <Mail size={12} />
-                {lead.email}
-              </a>
-            )}
+            {clean(lead.email) &&
+              // Multiple email IDs come as one string — link each separately.
+              lead
+                .email!.split(/[;,/]|\s+/)
+                .map((e) => e.trim())
+                .filter((e) => e.includes("@"))
+                .map((e) => (
+                  <a
+                    key={e}
+                    href={`mailto:${e}`}
+                    className="flex items-center gap-1.5 text-xs text-editorial-accent hover:underline font-sans"
+                  >
+                    <Mail size={12} />
+                    {e}
+                  </a>
+                ))}
             {clean(lead.phone) && (
               <span className="flex items-center gap-1.5 text-xs text-editorial-secondary font-sans">
                 <Phone size={12} />
