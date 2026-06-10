@@ -88,7 +88,9 @@ export async function POST(req: NextRequest) {
 
     const contextParts: string[] = [];
     if (scrape?.markdown) {
-      contextParts.push(`# Website content\n${scrape.markdown}`);
+      // Cap the scrape so it can't crowd the search/social results out of
+      // the 14k context window the prompt builder enforces.
+      contextParts.push(`# Website content\n${scrape.markdown.slice(0, 8000)}`);
     }
     if (hits.length) {
       contextParts.push(
