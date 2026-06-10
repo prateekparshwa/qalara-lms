@@ -235,12 +235,12 @@ export default function LeadDossier({
       ) && (
         <>
           <SectionHeader title="Engagement" color="#E11D48" />
-          <Field showAll={showAll} label="First Contact" value={lead.first_contact_date} mono />
-          <Field showAll={showAll} label="Last Contact (Buyer)" value={lead.last_contact_date} mono />
+          <Field showAll={showAll} label="First Contact (By Buyer)" value={lead.first_contact_date} mono />
+          <Field showAll={showAll} label="Last Contact (By Buyer)" value={lead.last_contact_date} mono />
           <Field showAll={showAll} label="Account Manager" value={lead.current_am} />
-          <Field showAll={showAll} label="Last Qalara Contact" value={lead.last_qalara_contact} mono />
-          <Field showAll={showAll} label="Last Email Subject" value={lead.last_email_subject} />
-          <Field showAll={showAll} label="Email Summary" value={lead.email_contact_summary} />
+          <Field showAll={showAll} label="Last Qalara AM Contact to Buyer" value={lead.last_qalara_contact} mono />
+          <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
+          <Field showAll={showAll} label="Email Summary (Qalara to Buyer)" value={lead.email_contact_summary} />
         </>
       )}
 
