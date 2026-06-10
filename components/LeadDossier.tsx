@@ -99,6 +99,34 @@ function SectionHeader({ title, color }: { title: string; color: string }) {
   );
 }
 
+/** True if a metric value is a real signal (not empty, 0, no, n/a, -). */
+function hasSignal(v: string | null | undefined): boolean {
+  const s = clean(v);
+  if (!s) return false;
+  return !/^(0+|no|n\/a|na|-|none|nil)$/i.test(s);
+}
+
+function MetricRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  if (!clean(value)) return null;
+  return (
+    <div
+      className={
+        hasSignal(value)
+          ? "font-bold text-editorial-black"
+          : "text-editorial-secondary"
+      }
+    >
+      {label}: {value}
+    </div>
+  );
+}
+
 /** True if any of the given values is non-empty. */
 function any(...vals: (string | null | undefined)[]): boolean {
   return vals.some((v) => clean(v) !== null);
@@ -255,56 +283,30 @@ export default function LeadDossier({
               <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-2">
                 Sourcing@qalara
               </div>
-              <div className="space-y-1 text-xs font-sans font-bold text-editorial-black">
-                {clean(lead.sourcing_emails_low) && (
-                  <div>≤2 emails: {lead.sourcing_emails_low}</div>
-                )}
-                {clean(lead.sourcing_emails_mid) && (
-                  <div>3–7 emails: {lead.sourcing_emails_mid}</div>
-                )}
-                {clean(lead.sourcing_emails_high) && (
-                  <div>8+ emails: {lead.sourcing_emails_high}</div>
-                )}
-                {clean(lead.quotations_request) && (
-                  <div>Quotations: {lead.quotations_request}</div>
-                )}
-                {clean(lead.samples_request) && (
-                  <div>Samples: {lead.samples_request}</div>
-                )}
+              <div className="space-y-1 text-xs font-sans">
+                <MetricRow label="≤2 emails" value={lead.sourcing_emails_low} />
+                <MetricRow label="3–7 emails" value={lead.sourcing_emails_mid} />
+                <MetricRow label="8+ emails" value={lead.sourcing_emails_high} />
+                <MetricRow label="Quotations" value={lead.quotations_request} />
+                <MetricRow label="Samples" value={lead.samples_request} />
               </div>
             </div>
             <div>
               <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-2">
                 Buyers@qalara
               </div>
-              <div className="space-y-1 text-xs font-sans font-bold text-editorial-black">
-                {clean(lead.buyers_emails_low) && (
-                  <div>≤2 emails: {lead.buyers_emails_low}</div>
-                )}
-                {clean(lead.buyers_emails_mid) && (
-                  <div>3–7 emails: {lead.buyers_emails_mid}</div>
-                )}
-                {clean(lead.buyers_emails_high) && (
-                  <div>8+ emails: {lead.buyers_emails_high}</div>
-                )}
-                {clean(lead.quotations) && <div>Quotations: {lead.quotations}</div>}
-                {clean(lead.samples) && <div>Samples: {lead.samples}</div>}
+              <div className="space-y-1 text-xs font-sans">
+                <MetricRow label="≤2 emails" value={lead.buyers_emails_low} />
+                <MetricRow label="3–7 emails" value={lead.buyers_emails_mid} />
+                <MetricRow label="8+ emails" value={lead.buyers_emails_high} />
+                <MetricRow label="Quotations" value={lead.quotations} />
+                <MetricRow label="Samples" value={lead.samples} />
               </div>
             </div>
           </div>
         </>
       )}
 
-      {(showAll || any(lead.buyer_classification)) && (
-        <>
-          <SectionHeader title="Classification" color="#B45309" />
-          <Field
-            showAll={showAll}
-            label="AI Classification"
-            value={lead.buyer_classification}
-          />
-        </>
-      )}
     </div>
   );
 }
