@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import type { DecisionMaker } from "@/lib/apollo";
 import { findContactViaHunter } from "@/lib/hunter";
 import { vibeProspect } from "@/lib/vibeProspect";
+import { apifyContactScrape } from "@/lib/apifyContacts";
 import { firecrawlScrape } from "@/lib/firecrawl";
 import { harvestFromText, toDomain } from "@/lib/contact";
 
@@ -65,7 +66,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Firecrawl fallback — fill any missing email/phone from the site.
+    // 3. Apify deep-crawl fallback — emails/phones from contact/about pages.
+    //    Skipped automatically when APIFY_API_TOKEN isn't configured.
+    if (!contact?.email || !contact?.phone) {
+      const apify = await apifyContactScrape(domain);
+      if (apify) {
+        contact = {
+          full_name: contact?.full_name ?? null,
+          designation: contact?.designation ?? null,
+          email: contact?.email ?? apify.email,
+          phone: contact?.phone ?? apify.phone,
+          linkedin_url: contact?.linkedin_url ?? apify.linkedin_url,
+          source: contact?.source
+            ? `${contact.source} + Apify`
+            : "Apify (site crawl)",
+        };
+      }
+    }
+
+    // 4. Firecrawl fallback — fill any missing email/phone from the site.
     if (!contact || !contact.email || !contact.phone) {
       const scrape = await firecrawlScrape(website!);
       if (scrape?.markdown) {
