@@ -73,15 +73,10 @@ const COUNTRY_TO_ISO: Record<string, string> = {
   vietnam: "VN",
 };
 
-/** Country name -> flag emoji, or null when unknown. */
-export function countryFlag(country: string | null | undefined): string | null {
+/** Country name -> ISO-3166 alpha-2 code, or null when unknown. */
+export function countryIso(country: string | null | undefined): string | null {
   if (!country) return null;
-  const iso = COUNTRY_TO_ISO[country.trim().toLowerCase()];
-  if (!iso) return null;
-  // Each ISO letter maps to a regional-indicator codepoint.
-  return String.fromCodePoint(
-    ...iso.split("").map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
-  );
+  return COUNTRY_TO_ISO[country.trim().toLowerCase()] ?? null;
 }
 
 /** "2025-03-12" -> "3 mo ago". Null when the value isn't a parseable date. */

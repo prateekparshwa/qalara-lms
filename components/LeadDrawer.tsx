@@ -8,7 +8,7 @@ import EnrichPanel from "./EnrichPanel";
 import Badge from "./Badge";
 import LeadDossier, { dossierSections } from "./LeadDossier";
 import { downloadLeadPdf } from "@/lib/leadPdf";
-import { countryFlag } from "@/lib/format";
+import CountryFlag from "./CountryFlag";
 
 interface LeadDrawerProps {
   lead: Lead | null;
@@ -88,11 +88,7 @@ export default function LeadDrawer({ lead, onClose }: LeadDrawerProps) {
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 {clean(lead.country) && (
                   <span className="text-xs font-sans text-editorial-secondary">
-                    {countryFlag(lead.country) && (
-                      <span className="mr-1" aria-hidden="true">
-                        {countryFlag(lead.country)}
-                      </span>
-                    )}
+                    <CountryFlag country={lead.country} />
                     {lead.country}
                   </span>
                 )}
