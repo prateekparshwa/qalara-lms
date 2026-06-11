@@ -37,7 +37,7 @@ function Field({
   if (!v && !showAll) return null;
   const rel = relative && v ? relativeDate(v) : null;
   return (
-    <div className="py-2 border-b border-zinc-100 last:border-0 break-inside-avoid">
+    <div className="py-2 border-b border-zinc-200 last:border-0 break-inside-avoid">
       <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-0.5">
         {label}
       </div>
@@ -78,7 +78,7 @@ function LinkField({
     return showAll ? <Field label={label} value={null} showAll /> : null;
   }
   return (
-    <div className="py-2 border-b border-zinc-100 last:border-0 break-inside-avoid">
+    <div className="py-2 border-b border-zinc-200 last:border-0 break-inside-avoid">
       <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-0.5">
         {label}
       </div>

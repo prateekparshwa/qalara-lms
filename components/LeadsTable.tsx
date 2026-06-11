@@ -28,7 +28,7 @@ const COLUMNS: { id: ColId; label: string; dot: string; sortable: boolean }[] = 
   { id: "website", label: "Brand Website", dot: "#B45309", sortable: true },
   { id: "country", label: "Buyer Country", dot: "#7C3AED", sortable: true },
   { id: "buyer_type", label: "Business Type", dot: "#E11D48", sortable: true },
-  { id: "buyer_classification", label: "AI Classification", dot: "#4F46E5", sortable: true },
+  { id: "buyer_classification", label: "Lead Quality (AI Recommended)", dot: "#4F46E5", sortable: true },
   { id: "current_am", label: "Account Manager", dot: "#7C3AED", sortable: true },
 ];
 
@@ -45,13 +45,13 @@ function Cell({ lead, col }: { lead: Lead; col: ColId }) {
   switch (col) {
     case "organization":
       return (
-        <span className="font-sans font-semibold text-sm text-editorial-black group-hover:text-editorial-accent transition-colors truncate block max-w-[240px]">
+        <span className="font-sans font-semibold text-sm text-editorial-black group-hover:text-editorial-accent transition-colors block max-w-[200px] break-words">
           {lead.organization ?? "—"}
         </span>
       );
     case "email":
       return (
-        <span className="text-xs font-sans text-editorial-secondary truncate block max-w-[200px]">
+        <span className="text-xs font-sans text-editorial-secondary block max-w-[190px] break-words">
           {lead.email ?? "—"}
         </span>
       );
@@ -64,16 +64,16 @@ function Cell({ lead, col }: { lead: Lead; col: ColId }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 font-sans max-w-[170px] truncate"
+          className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-start gap-1 font-sans max-w-[160px] break-all"
         >
           {v.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
-          <ExternalLink size={10} className="flex-shrink-0" />
+          <ExternalLink size={10} className="flex-shrink-0 mt-0.5" />
         </a>
       );
     }
     case "country":
       return (
-        <span className="text-xs font-sans text-editorial-secondary truncate block max-w-[150px]">
+        <span className="text-xs font-sans text-editorial-secondary block max-w-[140px] break-words">
           <CountryFlag country={lead.country} />
           {lead.country ?? "—"}
         </span>
@@ -91,7 +91,7 @@ function Cell({ lead, col }: { lead: Lead; col: ColId }) {
       return <Badge value={lead.buyer_classification} kind="priority" />;
     case "current_am":
       return (
-        <span className="text-xs font-sans text-editorial-secondary truncate block max-w-[110px]">
+        <span className="text-xs font-sans text-editorial-secondary block max-w-[120px] break-words">
           {lead.current_am ?? "—"}
         </span>
       );
@@ -143,7 +143,7 @@ export default function LeadsTable({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse min-w-[920px]">
+        <table className="w-full border-collapse min-w-[860px]">
           <thead className="sticky top-0 z-10">
             <tr style={{ backgroundColor: "#F5F7FF" }}>
               {COLUMNS.map((c) => {
@@ -152,13 +152,13 @@ export default function LeadsTable({
                   <th
                     key={c.id}
                     onClick={() => c.sortable && toggleSort(c.id)}
-                    className={`text-left px-4 py-3 text-[11px] font-code font-semibold tracking-wide border-b-2 border-editorial-black whitespace-nowrap ${
+                    className={`text-left px-3 py-2.5 text-[11px] font-code font-semibold tracking-wide border-b-2 border-editorial-black align-bottom ${
                       c.sortable
                         ? "cursor-pointer select-none hover:bg-indigo-100/60"
                         : ""
                     } ${active ? "text-editorial-black" : "text-editorial-secondary"}`}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-start gap-1.5">
                       <span
                         className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: c.dot }}
@@ -259,7 +259,7 @@ export default function LeadsTable({
                     }`}
                   >
                     {COLUMNS.map((c) => (
-                      <td key={c.id} className="px-4 py-3 align-middle">
+                      <td key={c.id} className="px-3 py-2.5 align-top">
                         <Cell lead={lead} col={c.id} />
                       </td>
                     ))}
