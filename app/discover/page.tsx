@@ -6,7 +6,7 @@ import { Loader2, CheckCircle2, ArrowRight, Globe, FileDown } from "lucide-react
 import Masthead from "@/components/Masthead";
 import Aurora from "@/components/Aurora";
 import RotatingWord from "@/components/RotatingWord";
-import LeadDossier from "@/components/LeadDossier";
+import LeadDossier, { dossierSections } from "@/components/LeadDossier";
 import Badge from "@/components/Badge";
 import { downloadLeadPdf } from "@/lib/leadPdf";
 import type { Lead } from "@/lib/leads";
@@ -282,8 +282,9 @@ export default function DiscoverPage() {
                           </span>
                         )}
                         {profile.website_confidence && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-code text-editorial-muted">
-                            web <Badge value={profile.website_confidence} kind="web" />
+                          <span className="inline-flex items-center gap-1 text-[10px] font-sans text-editorial-muted">
+                            Website Confidence{" "}
+                            <Badge value={profile.website_confidence} kind="web" />
                           </span>
                         )}
                         {website2 && (
@@ -307,7 +308,33 @@ export default function DiscoverPage() {
                     </button>
                   </div>
 
-                  <LeadDossier lead={leadObj} showAll />
+                  {dossierSections(leadObj, true).length > 1 && (
+                    <nav
+                      aria-label="Profile sections"
+                      className="flex items-center gap-1.5 mt-4 flex-wrap"
+                    >
+                      {dossierSections(leadObj, true).map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() =>
+                            document
+                              .getElementById(s.id)
+                              ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                          }
+                          className="px-2 py-0.5 text-[11px] font-sans rounded-full border border-zinc-200 text-editorial-secondary hover:border-editorial-black hover:text-editorial-black transition-colors cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <span
+                            className="inline-block w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: s.color }}
+                            aria-hidden="true"
+                          />
+                          {s.short}
+                        </button>
+                      ))}
+                    </nav>
+                  )}
+
+                  <LeadDossier lead={leadObj} showAll scrollMtClass="scroll-mt-6" />
                 </div>
               </div>
             </div>

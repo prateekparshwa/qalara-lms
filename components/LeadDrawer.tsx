@@ -6,8 +6,9 @@ import type { Lead } from "@/lib/leads";
 import { webHint } from "@/lib/glossary";
 import EnrichPanel from "./EnrichPanel";
 import Badge from "./Badge";
-import LeadDossier from "./LeadDossier";
+import LeadDossier, { dossierSections } from "./LeadDossier";
 import { downloadLeadPdf } from "@/lib/leadPdf";
+import { countryFlag } from "@/lib/format";
 
 interface LeadDrawerProps {
   lead: Lead | null;
@@ -87,6 +88,11 @@ export default function LeadDrawer({ lead, onClose }: LeadDrawerProps) {
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 {clean(lead.country) && (
                   <span className="text-xs font-sans text-editorial-secondary">
+                    {countryFlag(lead.country) && (
+                      <span className="mr-1" aria-hidden="true">
+                        {countryFlag(lead.country)}
+                      </span>
+                    )}
                     {lead.country}
                   </span>
                 )}
@@ -156,10 +162,37 @@ export default function LeadDrawer({ lead, onClose }: LeadDrawerProps) {
               </a>
             )}
           </div>
+
+          {/* Quick-nav: jump to a dossier section without scrolling blind */}
+          {dossierSections(lead).length > 1 && (
+            <nav
+              aria-label="Profile sections"
+              className="flex items-center gap-1.5 mt-3 flex-wrap"
+            >
+              {dossierSections(lead).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() =>
+                    document
+                      .getElementById(s.id)
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  }
+                  className="px-2 py-0.5 text-[11px] font-sans rounded-full border border-zinc-200 text-editorial-secondary hover:border-editorial-black hover:text-editorial-black transition-colors cursor-pointer inline-flex items-center gap-1"
+                >
+                  <span
+                    className="inline-block w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: s.color }}
+                    aria-hidden="true"
+                  />
+                  {s.short}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
 
         <div className="px-6">
-          <LeadDossier lead={lead} />
+          <LeadDossier lead={lead} scrollMtClass="scroll-mt-48" />
         </div>
 
         <EnrichPanel lead={lead} />

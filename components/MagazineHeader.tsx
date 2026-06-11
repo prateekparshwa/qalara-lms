@@ -23,59 +23,28 @@ interface MagazineHeaderProps {
   backHref?: string;
 }
 
-function SearchField({
-  label,
-  placeholder,
-  value,
-  dot,
-  ph,
-  onChange,
-}: {
-  label: string;
-  placeholder: string;
-  value: string;
-  dot: string;
-  /** AA-safe placeholder color for this field. */
-  ph: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="flex-1 min-w-0">
-      <label className="flex items-center gap-1.5 text-xs font-sans font-medium text-editorial-secondary mb-1">
-        <span
-          className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: dot }}
-          aria-hidden="true"
-        />
-        {label}
-      </label>
-      <div className="relative">
-        <Search
-          size={13}
-          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: dot }}
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          style={{ ["--ph" as string]: ph }}
-          className="search-input w-full pl-8 pr-8 py-2 text-sm font-sans text-editorial-black border border-zinc-200 rounded focus:outline-none focus:border-editorial-black focus-visible:ring-2 focus-visible:ring-editorial-accent bg-white transition-colors"
-        />
-        {value && (
-          <button
-            onClick={() => onChange("")}
-            aria-label={`Clear ${label} search`}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-editorial-muted hover:text-editorial-black cursor-pointer"
-          >
-            <X size={13} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+type Scope = "org" | "email" | "website";
+
+const SCOPES: { key: Scope; label: string; placeholder: string; dot: string }[] = [
+  {
+    key: "org",
+    label: "Organization",
+    placeholder: "Search by buyer brand or organization name",
+    dot: "#4F46E5",
+  },
+  {
+    key: "email",
+    label: "Email",
+    placeholder: "Search by buyer email ID",
+    dot: "#0D9488",
+  },
+  {
+    key: "website",
+    label: "Website",
+    placeholder: "Search by buyer website URL",
+    dot: "#B45309",
+  },
+];
 
 export default function MagazineHeader({
   search,
@@ -88,6 +57,20 @@ export default function MagazineHeader({
   backHref,
 }: MagazineHeaderProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [scope, setScope] = useState<Scope>("org");
+
+  const active = SCOPES.find((s) => s.key === scope)!;
+  const value = search[scope];
+
+  const setQuery = (v: string) =>
+    onSearchChange({ org: "", email: "", website: "", [scope]: v });
+
+  const switchScope = (next: Scope) => {
+    const current = search[scope];
+    setScope(next);
+    // Carry the typed text into the new scope so switching re-runs the search.
+    onSearchChange({ org: "", email: "", website: "", [next]: current });
+  };
 
   return (
     <header className="bg-white border-b border-zinc-200 sticky top-0 z-30">
@@ -179,32 +162,57 @@ export default function MagazineHeader({
       {/* Ruled divider */}
       <div className="rule mx-6" />
 
-      {/* Search fields */}
-      <div className="px-6 py-3 flex flex-col gap-3 md:flex-row md:items-end">
-        <SearchField
-          label="Brand / Organization"
-          placeholder="Enter Buyer Brand/Organization Name"
-          value={search.org}
-          dot="#4F46E5"
-          ph="#A5B4FC"
-          onChange={(v) => onSearchChange({ ...search, org: v })}
-        />
-        <SearchField
-          label="Email ID"
-          placeholder="Enter Buyer Email ID"
-          value={search.email}
-          dot="#0D9488"
-          ph="#5EB5AB"
-          onChange={(v) => onSearchChange({ ...search, email: v })}
-        />
-        <SearchField
-          label="Website URL"
-          placeholder="Enter Buyer Website URL"
-          value={search.website}
-          dot="#B45309"
-          ph="#D9A441"
-          onChange={(v) => onSearchChange({ ...search, website: v })}
-        />
+      {/* Unified search: one box, a scope picker beside it */}
+      <div className="px-6 py-3 flex items-center gap-2">
+        <div
+          role="group"
+          aria-label="Search scope"
+          className="flex items-center rounded border border-zinc-200 overflow-hidden flex-shrink-0"
+        >
+          {SCOPES.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => switchScope(s.key)}
+              aria-pressed={scope === s.key}
+              className={`px-3 py-2 text-xs font-sans transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+                scope === s.key
+                  ? "bg-editorial-black text-white"
+                  : "bg-white text-editorial-secondary hover:bg-zinc-50"
+              }`}
+            >
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: s.dot }}
+                aria-hidden="true"
+              />
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 min-w-0">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-editorial-muted"
+          />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={active.placeholder}
+            aria-label={`Search by ${active.label}`}
+            style={{ ["--ph" as string]: "#71717A" }}
+            className="search-input w-full pl-9 pr-8 py-2 text-sm font-sans text-editorial-black border border-zinc-200 rounded focus:outline-none focus:border-editorial-black focus-visible:ring-2 focus-visible:ring-editorial-accent bg-white transition-colors"
+          />
+          {value && (
+            <button
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-editorial-muted hover:text-editorial-black cursor-pointer"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );

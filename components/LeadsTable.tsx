@@ -11,6 +11,7 @@ import type { Lead } from "@/lib/leads";
 import Badge from "./Badge";
 import Legend from "./Legend";
 import { buyerTypeTag } from "@/lib/glossary";
+import { countryFlag } from "@/lib/format";
 
 type SortId =
   | "organization"
@@ -230,7 +231,12 @@ export default function LeadsTable({
                     {/* Right meta cluster */}
                     <div className="flex items-center gap-3 flex-shrink-0">
                       {lead.country && (
-                        <span className="text-xs font-sans text-editorial-secondary max-w-[120px] truncate hidden md:block">
+                        <span className="text-xs font-sans text-editorial-secondary max-w-[140px] truncate hidden md:block">
+                          {countryFlag(lead.country) && (
+                            <span className="mr-1" aria-hidden="true">
+                              {countryFlag(lead.country)}
+                            </span>
+                          )}
                           {lead.country}
                         </span>
                       )}
