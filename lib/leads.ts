@@ -186,11 +186,17 @@ export async function getLeadStats(segment?: string) {
     "%HIGH%"
   );
 
+  const { count: amAssigned } = await countQuery()
+    .not("current_am", "is", null)
+    .neq("current_am", "")
+    .neq("current_am", "No Active AM");
+
   return {
     total: total ?? 0,
     verified: verified ?? 0,
     highConfidence: highConf ?? 0,
     highClassification: highClass ?? 0,
+    amAssigned: amAssigned ?? 0,
   };
 }
 

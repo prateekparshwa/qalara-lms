@@ -3,13 +3,9 @@ interface Stats {
   verified: number;
   highConfidence: number;
   highClassification: number;
+  amAssigned?: number;
 }
 
-/**
- * Ledger summary band — a single broadsheet-style line of inline figures, not
- * a row of big-number "hero metric" tiles. Each figure carries its data accent
- * (indigo/teal/amber/rose) at reading scale, followed by the priority-mix bar.
- */
 export default function StatsBar({ stats }: { stats: Stats }) {
   const figures = [
     { value: stats.total, label: "leads", color: "#4F46E5" },
@@ -18,9 +14,8 @@ export default function StatsBar({ stats }: { stats: Stats }) {
     { value: stats.highClassification, label: "high-priority", color: "#E11D48" },
   ];
 
-  const highShare =
-    stats.total > 0 ? (stats.highClassification / stats.total) * 100 : 0;
-  const other = Math.max(stats.total - stats.highClassification, 0);
+  const amAssigned = stats.amAssigned ?? 0;
+  const amShare = stats.total > 0 ? (amAssigned / stats.total) * 100 : 0;
 
   return (
     <div className="px-6 py-3 border-b border-zinc-200 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -44,23 +39,26 @@ export default function StatsBar({ stats }: { stats: Stats }) {
       ))}
 
       {stats.total > 0 && (
-        <div className="ml-auto flex items-center gap-2.5 min-w-[180px]">
+        <div className="ml-auto flex items-center gap-2.5 min-w-[200px]">
+          <span className="text-[10px] font-code text-editorial-muted whitespace-nowrap">
+            AM assigned
+          </span>
           <div
-            className="flex-1 h-1.5 rounded-full overflow-hidden bg-zinc-100 flex"
+            className="flex-1 h-1.5 rounded-full overflow-hidden bg-zinc-100"
             role="img"
-            aria-label={`${stats.highClassification.toLocaleString()} high-priority buyers of ${stats.total.toLocaleString()} total`}
+            aria-label={`${amAssigned.toLocaleString()} leads with AM assigned out of ${stats.total.toLocaleString()} total`}
           >
             <div
-              className="h-full"
+              className="h-full rounded-full"
               style={{
-                width: `${Math.max(highShare, 0.5)}%`,
-                backgroundColor: "#E11D48",
+                width: `${Math.max(amShare, 0.5)}%`,
+                backgroundColor: "#7C3AED",
               }}
             />
           </div>
           <span className="text-[11px] font-code text-editorial-muted whitespace-nowrap">
-            <span className="font-semibold" style={{ color: "#E11D48" }}>
-              {stats.highClassification.toLocaleString()}
+            <span className="font-semibold" style={{ color: "#7C3AED" }}>
+              {amAssigned.toLocaleString()}
             </span>{" "}
             / {stats.total.toLocaleString()}
           </span>
