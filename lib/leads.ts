@@ -214,41 +214,54 @@ export async function getLastSynced(segment?: string): Promise<string | null> {
 }
 
 export async function getFilterOptions(segment?: string) {
-  const col = (name: string) => {
-    let q = supabase
-      .from("leads")
-      .select(name)
-      .not(name, "is", null)
-      .neq(name, "")
-      .order(name)
-      .limit(50000);
-    if (segment) q = q.eq("segment", segment);
-    return q;
+  // Supabase/PostgREST caps each response at ~1000 rows regardless of .limit(),
+  // and an .order() would bias that window alphabetically — so distinct values
+  // for AMs/countries past the cut-off (e.g. "Srijaa", "Shivani") never surface.
+  // Instead, page through EVERY row in 1000-row chunks and collect distinct
+  // values for all four filters in a single pass.
+  const PAGE = 1000;
+  const SELECT = "country,buyer_type,buyer_classification,current_am";
+
+  const countries = new Set<string>();
+  const buyerTypes = new Set<string>();
+  const classifications = new Set<string>();
+  const ams = new Set<string>();
+
+  const add = (set: Set<string>, v: unknown) => {
+    const s = (v == null ? "" : String(v)).trim();
+    if (s && s.toLowerCase() !== "null") set.add(s);
   };
 
-  const [countries, buyerTypes, classifications, ams] = await Promise.all([
-    col("country"),
-    col("buyer_type"),
-    col("buyer_classification"),
-    col("current_am"),
-  ]);
+  for (let from = 0; ; from += PAGE) {
+    let q = supabase
+      .from("leads")
+      .select(SELECT)
+      .range(from, from + PAGE - 1);
+    if (segment) q = q.eq("segment", segment);
 
-  const unique = (
-    arr: Record<string, unknown>[] | null,
-    key: string
-  ): string[] =>
-    Array.from(
-      new Set((arr ?? []).map((r) => String(r[key])).filter(Boolean))
-    );
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
 
-  const rows = (r: { data: unknown }) =>
-    (r.data as Record<string, unknown>[] | null) ?? [];
+    const rows = (data as Record<string, unknown>[] | null) ?? [];
+    for (const r of rows) {
+      add(countries, r.country);
+      add(buyerTypes, r.buyer_type);
+      add(classifications, r.buyer_classification);
+      add(ams, r.current_am);
+    }
+
+    // A short page means we've reached the end of the table.
+    if (rows.length < PAGE) break;
+  }
+
+  const sorted = (s: Set<string>) =>
+    Array.from(s).sort((a, b) => a.localeCompare(b));
 
   return {
-    countries: unique(rows(countries), "country"),
-    buyerTypes: unique(rows(buyerTypes), "buyer_type"),
-    classifications: unique(rows(classifications), "buyer_classification"),
-    ams: unique(rows(ams), "current_am"),
+    countries: sorted(countries),
+    buyerTypes: sorted(buyerTypes),
+    classifications: sorted(classifications),
+    ams: sorted(ams),
   };
 }
 
