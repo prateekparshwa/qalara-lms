@@ -80,6 +80,8 @@ export default function LeadDrawer({
   return (
     <>
       <div className="drawer-overlay" onClick={onClose} />
+      {/* Moving amber boundary around the dossier panel */}
+      <div className="amber-ring drawer-ring" aria-hidden="true" />
 
       <div
         ref={panelRef}

@@ -176,7 +176,7 @@ export default function MagazineHeader({
         <div
           role="group"
           aria-label="Search scope"
-          className="flex items-center rounded border border-zinc-200 overflow-hidden flex-shrink-0"
+          className="flex items-center rounded border border-zinc-200 divide-x divide-zinc-200 overflow-hidden flex-shrink-0"
         >
           {SCOPES.map((s) => (
             <button
