@@ -221,7 +221,7 @@ export async function getFilterOptions(segment?: string) {
       .not(name, "is", null)
       .neq(name, "")
       .order(name)
-      .limit(10000);
+      .limit(50000);
     if (segment) q = q.eq("segment", segment);
     return q;
   };
