@@ -95,6 +95,101 @@ function LinkField({
   );
 }
 
+/**
+ * Parse a free-text social field like
+ * "https://…/company/x (company) / https://…/in/y (Jane Doe)" into clickable
+ * entries. The sheet appends the source name after each URL, which breaks the
+ * link if rendered as one anchor — so each URL gets its own redirect icon.
+ */
+function parseLinkEntries(
+  v: string
+): { url: string; label: string | null }[] {
+  const out: { url: string; label: string | null }[] = [];
+  const re = /(https?:\/\/[^\s()]+)\s*(?:\(([^)]+)\))?/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(v)) !== null) {
+    const url = m[1].replace(/[.,;]+$/, "");
+    if (!out.some((e) => e.url === url)) {
+      out.push({ url, label: m[2]?.trim() ?? null });
+    }
+  }
+  return out;
+}
+
+/**
+ * Append the source of a follower count in brackets, derived from the matching
+ * URL field — e.g. "885 (company)" or "1088 (@bel_epok)". Values that already
+ * carry a bracketed source pass through untouched.
+ */
+function withSourceTag(
+  count: string | null | undefined,
+  urlField: string | null
+): string | null {
+  const c = clean(count);
+  if (!c) return null;
+  if (/\(/.test(c) || !urlField) return c;
+  const first = parseLinkEntries(urlField)[0];
+  let label = first?.label ?? null;
+  if (!label && first?.url) {
+    const insta = first.url.match(/instagram\.com\/([^/?#]+)/i);
+    const liCompany = first.url.match(/linkedin\.com\/company\/([^/?#]+)/i);
+    const liPerson = first.url.match(/linkedin\.com\/in\//i);
+    label = insta
+      ? `@${insta[1]}`
+      : liCompany
+        ? "company"
+        : liPerson
+          ? "personal profile"
+          : null;
+  }
+  return label ? `${c} (${label})` : c;
+}
+
+/** A field whose value may contain one or more URLs (each with a source tag). */
+function LinksField({
+  label,
+  value,
+  showAll = false,
+}: {
+  label: string;
+  value: string | null | undefined;
+  showAll?: boolean;
+}) {
+  const v = clean(value);
+  if (!v) {
+    return showAll ? <Field label={label} value={null} showAll /> : null;
+  }
+  const entries = parseLinkEntries(v);
+  if (entries.length === 0) {
+    return <Field label={label} value={v} showAll={showAll} />;
+  }
+  return (
+    <div className="py-2 border-b border-zinc-200 last:border-0 break-inside-avoid">
+      <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-0.5">
+        {label}
+      </div>
+      <div className="space-y-1">
+        {entries.map((e) => (
+          <div key={e.url} className="text-sm font-sans break-all">
+            <a
+              href={e.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+            >
+              {e.url}
+              <ExternalLink size={11} className="flex-shrink-0" />
+            </a>
+            {e.label && (
+              <span className="text-xs text-editorial-muted"> ({e.label})</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SectionHeader({
   title,
   color,
@@ -169,13 +264,10 @@ function MetricRow({
       </div>
     );
   }
-  // Quotations / Samples: keyword stays quiet, only the count is bold.
+  // Quotations / Samples: keyword breakdowns stay quiet — no bolding at all.
   return (
     <div className="text-editorial-secondary">
-      {label}:{" "}
-      <span className={signal ? "font-bold text-editorial-black" : undefined}>
-        {value}
-      </span>
+      {label}: {value}
     </div>
   );
 }
@@ -385,22 +477,39 @@ export default function LeadDossier({
             color="#7C3AED"
           />
           <div className={cols}>
-            <LinkField showAll={showAll} label="LinkedIn URL of the Buyer" href={lead.linkedin_url} />
-            <Field showAll={showAll} label="LinkedIn Followers" value={lead.linkedin_followers} mono />
+            <LinksField showAll={showAll} label="LinkedIn URL of the Buyer" value={lead.linkedin_url} />
             <Field
               showAll={showAll}
-              label="Instagram Handle or FB Page of the Buyer/Org"
-              value={
-                clean(lead.instagram_handle)
-                  ? /^https?:\/\/|facebook\.com|fb\.com/i.test(
-                      lead.instagram_handle!
-                    )
-                    ? lead.instagram_handle
-                    : `@${lead.instagram_handle!.replace("@", "")}`
-                  : null
-              }
+              label="LinkedIn Followers"
+              value={withSourceTag(lead.linkedin_followers, clean(lead.linkedin_url))}
+              mono
             />
-            <Field showAll={showAll} label="Instagram Followers of the Buyer/Org Page" value={lead.instagram_followers} mono />
+            {/^https?:\/\//i.test(clean(lead.instagram_handle) ?? "") ? (
+              <LinksField
+                showAll={showAll}
+                label="Instagram Handle or FB Page of the Buyer/Org"
+                value={lead.instagram_handle}
+              />
+            ) : (
+              <Field
+                showAll={showAll}
+                label="Instagram Handle or FB Page of the Buyer/Org"
+                value={
+                  clean(lead.instagram_handle)
+                    ? `@${lead.instagram_handle!.replace("@", "")}`
+                    : null
+                }
+              />
+            )}
+            <Field
+              showAll={showAll}
+              label="Instagram Followers of the Buyer/Org Page"
+              value={withSourceTag(
+                lead.instagram_followers,
+                clean(lead.instagram_handle)
+              )}
+              mono
+            />
             <Field showAll={showAll} label="Social Media Activity of the Buyer" value={lead.social_media_activity} />
           </div>
         </>

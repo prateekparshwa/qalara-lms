@@ -42,15 +42,10 @@ function rank(e: HunterEmail): number {
   return 50 - (e.confidence ?? 0) / 100;
 }
 
-export async function findContactViaHunter(
-  domain: string
-): Promise<DecisionMaker | null> {
-  const key = process.env.HUNTER_API_KEY;
-  if (!key || !domain) return null;
-  const cleanDomain = domain
-    .replace(/^https?:\/\/(www\.)?/, "")
-    .replace(/\/.*$/, "");
-
+async function hunterDomainSearch(
+  cleanDomain: string,
+  key: string
+): Promise<HunterEmail[]> {
   // Free plan caps domain-search at 10 results; requesting more 400s.
   const url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(
     cleanDomain
@@ -63,8 +58,35 @@ export async function findContactViaHunter(
       j?.errors?.[0]?.details || j?.errors?.[0]?.code || `Hunter ${res.status}`;
     throw new Error(String(msg));
   }
+  return (j?.data?.emails ?? []) as HunterEmail[];
+}
 
-  const emails = (j?.data?.emails ?? []) as HunterEmail[];
+export async function findContactViaHunter(
+  domain: string
+): Promise<DecisionMaker | null> {
+  // Primary key first; spare key takes over when the primary errors
+  // (rate limit / monthly quota exhausted on the free plan).
+  const keys = [
+    process.env.HUNTER_API_KEY,
+    process.env.HUNTER_API_KEY_BACKUP,
+  ].filter((k): k is string => Boolean(k));
+  if (keys.length === 0 || !domain) return null;
+  const cleanDomain = domain
+    .replace(/^https?:\/\/(www\.)?/, "")
+    .replace(/\/.*$/, "");
+
+  let emails: HunterEmail[] = [];
+  let lastErr: unknown = null;
+  for (const key of keys) {
+    try {
+      emails = await hunterDomainSearch(cleanDomain, key);
+      lastErr = null;
+      break;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  if (lastErr) throw lastErr;
   if (emails.length === 0) return null;
 
   const best = [...emails].sort((a, b) => rank(a) - rank(b))[0];

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     // 1. Hunter — find the decision-maker (name + title + email) by domain.
     let contact: DecisionMaker | null = null;
     let providerError: string | null = null;
-    if (process.env.HUNTER_API_KEY) {
+    if (process.env.HUNTER_API_KEY || process.env.HUNTER_API_KEY_BACKUP) {
       try {
         contact = await findContactViaHunter(domain);
       } catch (e) {
