@@ -283,6 +283,12 @@ export default function LeadsDashboard({
 
   return (
     <div className="min-h-screen flex flex-col bg-editorial-bg">
+      {/* Amber vignette around the viewport edges — sits under drawer/toast */}
+      <div
+        className="pointer-events-none fixed inset-0 z-30"
+        aria-hidden="true"
+        style={{ boxShadow: "inset 0 0 140px rgba(245,158,11,0.25)" }}
+      />
       <MagazineHeader
         segmentLabel={segmentLabel}
         backHref="/directory"

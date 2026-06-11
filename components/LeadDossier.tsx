@@ -337,7 +337,7 @@ export default function LeadDossier({
             <Field showAll={showAll} label="No. of Employees in Buyer's Org" value={lead.employee_size} />
             <Field showAll={showAll} label="Buyer Org Size Tier" value={lead.org_scale} />
             <Field showAll={showAll} label="Retail Price Points" value={lead.price_points} />
-            <Field showAll={showAll} label="No. of Stores" value={lead.store_count} />
+            <Field showAll={showAll} label="No. of Stores of the Buyer" value={lead.store_count} />
             <Field showAll={showAll} label="Materials Dealt In" value={lead.materials_dealt} />
             <Field showAll={showAll} label="Customers & Markets Buyer Is Present In" value={lead.customers_and_markets} />
             <Field showAll={showAll} label="Potential Revenue / Turnover" value={lead.revenue_turnover} />
