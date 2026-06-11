@@ -1,7 +1,7 @@
 "use client";
 
-import { X, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, Check } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 export interface Filters {
   country: string;
@@ -37,6 +37,48 @@ function FilterSelect({
   onChange: (v: string) => void;
   dot: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const [openUp, setOpenUp] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        !triggerRef.current?.contains(e.target as Node) &&
+        !listRef.current?.contains(e.target as Node)
+      ) {
+        close();
+      }
+    };
+    const escHandler = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("keydown", escHandler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", escHandler);
+    };
+  }, [open, close]);
+
+  const toggle = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setOpenUp(spaceBelow < 240);
+    }
+    setOpen((v) => !v);
+  };
+
+  const select = (opt: string) => {
+    onChange(opt);
+    close();
+  };
+
+  const display = value || "All";
+
   return (
     <div className="relative">
       <label className="flex items-center gap-1.5 text-xs font-sans font-medium text-editorial-secondary mb-1.5">
@@ -47,24 +89,46 @@ function FilterSelect({
         />
         {label}
       </label>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none text-xs font-sans border border-zinc-200 rounded px-3 py-2 pr-8 focus:outline-none focus:border-editorial-black bg-white text-editorial-text cursor-pointer"
+      <button
+        ref={triggerRef}
+        onClick={toggle}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="w-full flex items-center justify-between text-xs font-sans border border-zinc-200 rounded px-3 py-2 bg-white text-editorial-text cursor-pointer hover:border-zinc-300 focus:outline-none focus:border-editorial-black transition-colors"
+      >
+        <span className={value ? "text-editorial-black" : "text-editorial-muted"}>{display}</span>
+        <ChevronDown size={12} className={`text-editorial-muted flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div
+          ref={listRef}
+          role="listbox"
+          className={`absolute left-0 right-0 z-50 bg-white border border-zinc-200 rounded shadow-lg overflow-y-auto max-h-56 ${openUp ? "bottom-full mb-1" : "top-full mt-1"}`}
         >
-          <option value="">All</option>
+          <button
+            role="option"
+            aria-selected={value === ""}
+            onClick={() => select("")}
+            className="w-full text-left px-3 py-2 text-xs font-sans hover:bg-zinc-50 flex items-center justify-between cursor-pointer"
+          >
+            <span className={value === "" ? "text-editorial-black font-medium" : "text-editorial-muted"}>All</span>
+            {value === "" && <Check size={11} className="text-editorial-accent" />}
+          </button>
           {options.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
+            <button
+              key={opt}
+              role="option"
+              aria-selected={value === opt}
+              onClick={() => select(opt)}
+              className="w-full text-left px-3 py-2 text-xs font-sans hover:bg-zinc-50 flex items-center justify-between cursor-pointer border-t border-zinc-50"
+            >
+              <span className={value === opt ? "text-editorial-black font-medium" : "text-editorial-text"}>{opt}</span>
+              {value === opt && <Check size={11} className="text-editorial-accent" />}
+            </button>
           ))}
-        </select>
-        <ChevronDown
-          size={12}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-editorial-muted pointer-events-none"
-        />
-      </div>
+        </div>
+      )}
     </div>
   );
 }
