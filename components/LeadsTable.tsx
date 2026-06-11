@@ -11,6 +11,7 @@ import type { Lead } from "@/lib/leads";
 import Badge from "./Badge";
 import Legend from "./Legend";
 import { buyerTypeTag } from "@/lib/glossary";
+import { primaryEmail } from "@/lib/format";
 import CountryFlag from "./CountryFlag";
 
 type ColId =
@@ -24,7 +25,7 @@ type ColId =
 
 const COLUMNS: { id: ColId; label: string; dot: string; sortable: boolean }[] = [
   { id: "organization", label: "Buyer Organization", dot: "#4F46E5", sortable: true },
-  { id: "email", label: "Buyer Email ID(s)", dot: "#0D9488", sortable: true },
+  { id: "email", label: "Buyer Email ID", dot: "#0D9488", sortable: true },
   { id: "website", label: "Brand Website", dot: "#B45309", sortable: true },
   { id: "country", label: "Buyer Country", dot: "#7C3AED", sortable: true },
   { id: "buyer_type", label: "Business Type", dot: "#E11D48", sortable: true },
@@ -50,9 +51,11 @@ function Cell({ lead, col }: { lead: Lead; col: ColId }) {
         </span>
       );
     case "email":
+      // One email only — the buyer's own when it matches their name, else the
+      // first on file. The full list stays in the dossier.
       return (
         <span className="text-xs font-sans text-editorial-secondary block max-w-[190px] break-words">
-          {lead.email ?? "—"}
+          {primaryEmail(lead.email, lead.full_name) ?? "—"}
         </span>
       );
     case "website": {
@@ -259,7 +262,12 @@ export default function LeadsTable({
                     }`}
                   >
                     {COLUMNS.map((c) => (
-                      <td key={c.id} className="px-3 py-2.5 align-top">
+                      <td
+                        key={c.id}
+                        className={`px-3 py-2.5 align-top ${
+                          c.id === "buyer_classification" ? "text-center" : ""
+                        }`}
+                      >
                         <Cell lead={lead} col={c.id} />
                       </td>
                     ))}

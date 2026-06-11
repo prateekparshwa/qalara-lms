@@ -79,6 +79,31 @@ export function countryIso(country: string | null | undefined): string | null {
   return COUNTRY_TO_ISO[country.trim().toLowerCase()] ?? null;
 }
 
+/**
+ * Pick ONE email from a multi-email field: prefer the address that matches
+ * the buyer's name (e.g. "gabor.bottka@…" for Gabor), else the first on file.
+ * Used by the table's email column and the dossier header.
+ */
+export function primaryEmail(
+  email: string | null | undefined,
+  fullName: string | null | undefined
+): string | null {
+  const emails = (email ?? "")
+    .split(/[;,/]|\s+/)
+    .map((e) => e.trim())
+    .filter((e) => e.includes("@"));
+  if (emails.length === 0) return null;
+  const nameTokens = (fullName ?? "")
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((t) => t.length >= 3);
+  return (
+    emails.find((e) =>
+      nameTokens.some((t) => e.toLowerCase().split("@")[0].includes(t))
+    ) ?? emails[0]
+  );
+}
+
 /** "2025-03-12" -> "3 mo ago". Null when the value isn't a parseable date. */
 export function relativeDate(value: string | null | undefined): string | null {
   if (!value) return null;

@@ -8,6 +8,7 @@ import EnrichPanel from "./EnrichPanel";
 import Badge from "./Badge";
 import LeadDossier, { dossierSections } from "./LeadDossier";
 import { downloadLeadPdf } from "@/lib/leadPdf";
+import { primaryEmail as pickPrimaryEmail } from "@/lib/format";
 import CountryFlag from "./CountryFlag";
 
 interface LeadDrawerProps {
@@ -77,20 +78,8 @@ export default function LeadDrawer({
 
   const website = clean(lead.website);
 
-  // Pick ONE email for the compact header: prefer the address that matches the
-  // buyer's name (e.g. "gabor.bottka@…" for Gabor), else the first on file.
-  const emails = (clean(lead.email) ?? "")
-    .split(/[;,/]|\s+/)
-    .map((e) => e.trim())
-    .filter((e) => e.includes("@"));
-  const nameTokens = (clean(lead.full_name) ?? "")
-    .toLowerCase()
-    .split(/[^a-z]+/)
-    .filter((t) => t.length >= 3);
-  const primaryEmail =
-    emails.find((e) =>
-      nameTokens.some((t) => e.toLowerCase().split("@")[0].includes(t))
-    ) ?? emails[0];
+  // One email for the compact header — shared logic with the table column.
+  const primaryEmail = pickPrimaryEmail(lead.email, lead.full_name);
 
   return (
     <>
