@@ -25,8 +25,8 @@ interface MagazineHeaderProps {
   backHref?: string;
   /** Segment key used to scope typeahead suggestions. */
   segment?: string;
-  /** Called when the user picks a typeahead suggestion — opens that profile. */
-  onPickSuggestion?: (lead: Lead) => void;
+  /** Enable the typeahead suggestion dropdown under the search box. */
+  suggest?: boolean;
 }
 
 type Scope = "org" | "email" | "website";
@@ -62,7 +62,7 @@ export default function MagazineHeader({
   segmentLabel,
   backHref,
   segment,
-  onPickSuggestion,
+  suggest = false,
 }: MagazineHeaderProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [scope, setScope] = useState<Scope>("org");
@@ -96,7 +96,7 @@ export default function MagazineHeader({
       return;
     }
     const term = value.trim();
-    if (!onPickSuggestion || term.length < 2) {
+    if (!suggest || term.length < 2) {
       setSuggestions([]);
       setLoadingSuggest(false);
       return;
@@ -124,7 +124,7 @@ export default function MagazineHeader({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [value, segment, onPickSuggestion]);
+  }, [value, segment, suggest]);
 
   // Close the suggestion dropdown on outside click.
   useEffect(() => {
@@ -138,13 +138,21 @@ export default function MagazineHeader({
     return () => document.removeEventListener("mousedown", handler);
   }, [showSuggest]);
 
+  // Picking a suggestion fills the search box with that buyer (org name when
+  // known, else the email), so the table narrows to that row — the user then
+  // clicks the row to open the dossier.
   const pick = useCallback(
     (lead: Lead) => {
+      const target: Scope = lead.organization ? "org" : "email";
+      const text = lead.organization ?? lead.email ?? "";
+      skipNextFetch.current = true; // don't re-open suggestions for this fill
+      setScope(target);
+      onSearchChange({ org: "", email: "", website: "", [target]: text });
       setShowSuggest(false);
       setSuggestions([]);
-      onPickSuggestion?.(lead);
+      setActiveIdx(-1);
     },
-    [onPickSuggestion]
+    [onSearchChange]
   );
 
   const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -327,7 +335,7 @@ export default function MagazineHeader({
           )}
 
           {/* Typeahead suggestions */}
-          {showSuggest && onPickSuggestion && value.trim().length >= 2 && (
+          {showSuggest && suggest && value.trim().length >= 2 && (
             <div
               id="search-suggestions"
               role="listbox"

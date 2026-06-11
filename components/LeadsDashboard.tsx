@@ -330,7 +330,7 @@ export default function LeadsDashboard({
         totalLeads={stats.total}
         isSyncing={isSyncing}
         segment={segment}
-        onPickSuggestion={setSelectedLead}
+        suggest
       />
 
       <div className="bg-white">

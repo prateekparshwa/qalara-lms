@@ -77,6 +77,21 @@ export default function LeadDrawer({
 
   const website = clean(lead.website);
 
+  // Pick ONE email for the compact header: prefer the address that matches the
+  // buyer's name (e.g. "gabor.bottka@…" for Gabor), else the first on file.
+  const emails = (clean(lead.email) ?? "")
+    .split(/[;,/]|\s+/)
+    .map((e) => e.trim())
+    .filter((e) => e.includes("@"));
+  const nameTokens = (clean(lead.full_name) ?? "")
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((t) => t.length >= 3);
+  const primaryEmail =
+    emails.find((e) =>
+      nameTokens.some((t) => e.toLowerCase().split("@")[0].includes(t))
+    ) ?? emails[0];
+
   return (
     <>
       <div className="drawer-overlay" onClick={onClose} />
@@ -146,22 +161,18 @@ export default function LeadDrawer({
           </div>
 
           <div className="flex items-center gap-4 mt-3 flex-wrap">
-            {clean(lead.email) &&
-              // Multiple email IDs come as one string — link each separately.
-              lead
-                .email!.split(/[;,/]|\s+/)
-                .map((e) => e.trim())
-                .filter((e) => e.includes("@"))
-                .map((e) => (
-                  <a
-                    key={e}
-                    href={`mailto:${e}`}
-                    className="flex items-center gap-1.5 text-xs text-editorial-accent hover:underline font-sans"
-                  >
-                    <Mail size={12} />
-                    {e}
-                  </a>
-                ))}
+            {primaryEmail && (
+              // One email only, to keep the header compact — the buyer's own
+              // address when it matches their name, otherwise the first on
+              // file. The full list stays in the dossier's Basics section.
+              <a
+                href={`mailto:${primaryEmail}`}
+                className="flex items-center gap-1.5 text-xs text-editorial-accent hover:underline font-sans"
+              >
+                <Mail size={12} />
+                {primaryEmail}
+              </a>
+            )}
             {clean(lead.phone) && (
               <span className="flex items-center gap-1.5 text-xs text-editorial-secondary font-sans">
                 <Phone size={12} />
@@ -181,45 +192,49 @@ export default function LeadDrawer({
             )}
           </div>
 
-          {/* Assign AM: updates the dashboard, database, and Google Sheet */}
-          {onAssignAm && (
-            <div className="flex items-center gap-2 mt-3">
-              <UserCheck size={13} className="text-editorial-secondary flex-shrink-0" />
-              <label
-                htmlFor="assign-am"
-                className="text-xs font-sans text-editorial-secondary whitespace-nowrap"
-              >
-                Account Manager
-              </label>
-              <select
-                id="assign-am"
-                value={lead.current_am ?? ""}
-                disabled={isAssigning}
-                onChange={(e) => handleAssign(e.target.value)}
-                className="text-xs font-sans border border-zinc-200 rounded px-2 py-1 bg-white text-editorial-text focus:outline-none focus:border-editorial-black cursor-pointer disabled:opacity-50 max-w-[220px]"
-              >
-                <option value="" disabled>
-                  Assign an AM…
-                </option>
-                {Array.from(
-                  new Set(
-                    [lead.current_am, ...amOptions].filter(
-                      (v): v is string => !!v && v.trim() !== ""
-                    )
-                  )
-                ).map((am) => (
-                  <option key={am} value={am}>
-                    {am}
+          {/* Account Manager: editable for allow-listed users, read-only for everyone else */}
+          <div className="flex items-center gap-2 mt-3">
+            <UserCheck size={13} className="text-editorial-secondary flex-shrink-0" />
+            <span className="text-xs font-sans text-editorial-secondary whitespace-nowrap">
+              Account Manager
+            </span>
+            {onAssignAm ? (
+              <>
+                <select
+                  id="assign-am"
+                  aria-label="Assign an Account Manager"
+                  value={lead.current_am ?? ""}
+                  disabled={isAssigning}
+                  onChange={(e) => handleAssign(e.target.value)}
+                  className="text-xs font-sans border border-zinc-200 rounded px-2 py-1 bg-white text-editorial-text focus:outline-none focus:border-editorial-black cursor-pointer disabled:opacity-50 max-w-[220px]"
+                >
+                  <option value="" disabled>
+                    Assign an AM…
                   </option>
-                ))}
-              </select>
-              {isAssigning && (
-                <span className="text-[11px] font-sans text-editorial-muted">
-                  Saving…
-                </span>
-              )}
-            </div>
-          )}
+                  {Array.from(
+                    new Set(
+                      [lead.current_am, ...amOptions].filter(
+                        (v): v is string => !!v && v.trim() !== ""
+                      )
+                    )
+                  ).map((am) => (
+                    <option key={am} value={am}>
+                      {am}
+                    </option>
+                  ))}
+                </select>
+                {isAssigning && (
+                  <span className="text-[11px] font-sans text-editorial-muted">
+                    Saving…
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-xs font-sans font-medium text-editorial-black">
+                {clean(lead.current_am) ?? "No Active AM"}
+              </span>
+            )}
+          </div>
 
           {/* Quick-nav: jump to a dossier section without scrolling blind */}
           {dossierSections(lead).length > 1 && (
