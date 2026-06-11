@@ -92,6 +92,9 @@ export default function LeadsDashboard({
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [leadsError, setLeadsError] = useState<string | null>(null);
+  // Set when a typeahead pick optimistically filled the table — the confirming
+  // background fetch then skips the loading skeleton (no flash).
+  const optimisticPick = useRef(false);
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
@@ -137,7 +140,7 @@ export default function LeadsDashboard({
 
   // Load leads whenever segment/query/filters/page/sort change
   const fetchLeads = useCallback(async () => {
-    setIsLoading(true);
+    if (!optimisticPick.current) setIsLoading(true);
     try {
       const params = new URLSearchParams({
         segment,
@@ -171,6 +174,7 @@ export default function LeadsDashboard({
       );
     } finally {
       setIsLoading(false);
+      optimisticPick.current = false;
     }
   }, [segment, debouncedSearch, filters, page, sort, order]);
 
@@ -335,6 +339,14 @@ export default function LeadsDashboard({
         isSyncing={isSyncing}
         segment={segment}
         suggest
+        onPick={(lead) => {
+          // Render the picked row instantly; the search-driven refetch confirms it.
+          optimisticPick.current = true;
+          setLeadsData({ data: [lead], total: 1, page: 1, limit: 50 });
+          setLeadsError(null);
+          setIsLoading(false);
+          setPage(1);
+        }}
       />
 
       <div className="bg-white">

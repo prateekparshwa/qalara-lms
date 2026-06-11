@@ -27,6 +27,8 @@ interface MagazineHeaderProps {
   segment?: string;
   /** Enable the typeahead suggestion dropdown under the search box. */
   suggest?: boolean;
+  /** Notified with the picked lead so the host can show its row instantly. */
+  onPick?: (lead: Lead) => void;
 }
 
 type Scope = "org" | "email" | "website";
@@ -63,6 +65,7 @@ export default function MagazineHeader({
   backHref,
   segment,
   suggest = false,
+  onPick,
 }: MagazineHeaderProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [scope, setScope] = useState<Scope>("org");
@@ -151,8 +154,11 @@ export default function MagazineHeader({
       setShowSuggest(false);
       setSuggestions([]);
       setActiveIdx(-1);
+      // We already hold the full row — let the host render it immediately
+      // instead of waiting out the search debounce + refetch.
+      onPick?.(lead);
     },
-    [onSearchChange]
+    [onSearchChange, onPick]
   );
 
   const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
