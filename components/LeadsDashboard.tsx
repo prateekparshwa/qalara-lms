@@ -213,6 +213,45 @@ export default function LeadsDashboard({
     }
   };
 
+  const handleAssignAm = async (lead: Lead, am: string) => {
+    try {
+      const res = await fetch("/api/leads/assign-am", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: lead.id, am }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
+
+      // Reflect the change everywhere on screen without a refetch.
+      setSelectedLead((cur) =>
+        cur && cur.id === lead.id ? { ...cur, current_am: am } : cur
+      );
+      setLeadsData((d) => ({
+        ...d,
+        data: d.data.map((l) =>
+          l.id === lead.id ? { ...l, current_am: am } : l
+        ),
+      }));
+
+      if (data.sheet === "updated") {
+        showToast(`Assigned ${am} — saved to database and Google Sheet.`, "success");
+      } else {
+        showToast(
+          `Assigned ${am} — saved to database, but the Google Sheet wasn't updated${
+            data.sheetError ? `: ${data.sheetError}` : "."
+          }`,
+          "info"
+        );
+      }
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Couldn't assign the AM.",
+        "error"
+      );
+    }
+  };
+
   const handleExport = (format: "csv" | "xlsx") => {
     const params = new URLSearchParams({
       segment,
@@ -305,7 +344,12 @@ export default function LeadsDashboard({
         </main>
       </div>
 
-      <LeadDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} />
+      <LeadDrawer
+        lead={selectedLead}
+        onClose={() => setSelectedLead(null)}
+        amOptions={filterOptions.ams}
+        onAssignAm={handleAssignAm}
+      />
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );

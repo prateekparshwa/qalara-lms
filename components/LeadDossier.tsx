@@ -37,7 +37,7 @@ function Field({
   if (!v && !showAll) return null;
   const rel = relative && v ? relativeDate(v) : null;
   return (
-    <div className="py-2 border-b border-zinc-100 last:border-0">
+    <div className="py-2 border-b border-zinc-100 last:border-0 break-inside-avoid">
       <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-0.5">
         {label}
       </div>
@@ -78,7 +78,7 @@ function LinkField({
     return showAll ? <Field label={label} value={null} showAll /> : null;
   }
   return (
-    <div className="py-2 border-b border-zinc-100 last:border-0">
+    <div className="py-2 border-b border-zinc-100 last:border-0 break-inside-avoid">
       <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-0.5">
         {label}
       </div>
@@ -282,7 +282,8 @@ export default function LeadDossier({
   const sections = dossierSections(lead, showAll);
   const has = (id: string) => sections.some((s) => s.id === id);
   // Discovery renders the dossier full-width: two columns halve the scroll.
-  const cols = showAll ? "sm:grid sm:grid-cols-2 sm:gap-x-10 sm:items-start" : "";
+  // CSS columns (not grid) so each column packs tight — no row-height gaps.
+  const cols = showAll ? "sm:columns-2 sm:gap-x-10" : "";
 
   return (
     <div>
@@ -336,7 +337,7 @@ export default function LeadDossier({
             <Field showAll={showAll} label="No. of Employees in Buyer's Org" value={lead.employee_size} />
             <Field showAll={showAll} label="Buyer Org Size Tier" value={lead.org_scale} />
             <Field showAll={showAll} label="Retail Price Points" value={lead.price_points} />
-            <Field showAll={showAll} label="Count of Stores of the Buyer" value={lead.store_count} />
+            <Field showAll={showAll} label="No. of Stores" value={lead.store_count} />
             <Field showAll={showAll} label="Materials Dealt In" value={lead.materials_dealt} />
             <Field showAll={showAll} label="Customers & Markets Buyer Is Present In" value={lead.customers_and_markets} />
             <Field showAll={showAll} label="Potential Revenue / Turnover" value={lead.revenue_turnover} />

@@ -66,6 +66,107 @@ function clean(v: unknown): string | null {
     : s;
 }
 
+/** 0-based column index -> A1 letters (0 = A, 26 = AA). */
+function columnLetter(index: number): string {
+  let s = "";
+  let n = index + 1;
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+/**
+ * Write a new Account Manager into the sheet row matching this lead.
+ * Matches by organization name (and email when several rows share the name).
+ * Requires the service account to have EDITOR access on the spreadsheet.
+ */
+export async function updateLeadAmInSheet(
+  spreadsheetIdArg: string | undefined,
+  match: { organization: string | null; email: string | null },
+  newAm: string
+): Promise<void> {
+  const spreadsheetId =
+    spreadsheetIdArg?.trim() || process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  if (!spreadsheetId) throw new Error("No spreadsheet id configured.");
+  const org = (match.organization ?? "").trim().toLowerCase();
+  if (!org) throw new Error("Lead has no organization name to match on.");
+
+  const { client_email, private_key } = getCredentials();
+  const auth = new google.auth.JWT({
+    email: client_email,
+    key: private_key,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+  const sheets = google.sheets({ version: "v4", auth });
+
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets.properties.title",
+  });
+  const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
+  if (!sheetTitle) throw new Error("Could not find any tab in the spreadsheet.");
+
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: sheetTitle,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  const values = (resp.data.values ?? []) as unknown[][];
+  if (values.length === 0) throw new Error("Sheet is empty.");
+
+  // Same header-row detection as readLeadsSheet (banner rows above headers).
+  let headerIdx = 0;
+  let bestMatches = -1;
+  for (let i = 0; i < Math.min(values.length, 5); i++) {
+    const matches = values[i]
+      .map(normalizeHeader)
+      .filter((h) => h in HEADER_TO_COLUMN).length;
+    if (matches > bestMatches) {
+      bestMatches = matches;
+      headerIdx = i;
+    }
+  }
+  if (bestMatches === 0) throw new Error("No recognisable header row found.");
+  const headerRow = values[headerIdx].map(normalizeHeader);
+
+  const orgCol = headerRow.indexOf("Buyer Organization Name");
+  const emailCol = headerRow.indexOf("Buyer Email ID(s)");
+  const amCol = headerRow.indexOf("Current AM(Account Manager)");
+  if (orgCol === -1 || amCol === -1) {
+    throw new Error(
+      "Sheet is missing the Buyer Organization Name or Current AM column."
+    );
+  }
+
+  const email = (match.email ?? "").trim().toLowerCase();
+  const candidates: number[] = [];
+  for (let r = headerIdx + 1; r < values.length; r++) {
+    const rowOrg = String(values[r]?.[orgCol] ?? "").trim().toLowerCase();
+    if (rowOrg && rowOrg === org) candidates.push(r);
+  }
+  if (candidates.length === 0) {
+    throw new Error(`No sheet row found for "${match.organization}".`);
+  }
+  let rowIdx = candidates[0];
+  if (candidates.length > 1 && email && emailCol !== -1) {
+    const byEmail = candidates.find((r) =>
+      String(values[r]?.[emailCol] ?? "").trim().toLowerCase().includes(email)
+    );
+    if (byEmail !== undefined) rowIdx = byEmail;
+  }
+
+  const cell = `${sheetTitle}!${columnLetter(amCol)}${rowIdx + 1}`;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: cell,
+    valueInputOption: "RAW",
+    requestBody: { values: [[newAm]] },
+  });
+}
+
 export async function readLeadsSheet(
   spreadsheetIdArg?: string
 ): Promise<SheetReadResult> {
