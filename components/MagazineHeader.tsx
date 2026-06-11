@@ -176,7 +176,7 @@ export default function MagazineHeader({
               aria-pressed={scope === s.key}
               className={`px-3 py-2 text-xs font-sans transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
                 scope === s.key
-                  ? "bg-editorial-black text-white"
+                  ? "bg-editorial-accent text-white"
                   : "bg-white text-editorial-secondary hover:bg-zinc-50"
               }`}
             >

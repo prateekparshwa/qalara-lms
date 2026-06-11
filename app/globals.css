@@ -89,12 +89,12 @@
   animation: auroraFloat3 21s ease-in-out infinite;
 }
 .aurora .b4 {
-  width: 240px;
-  height: 240px;
+  width: 340px;
+  height: 340px;
   background: var(--accent-amber);
-  top: 120px;
+  top: 80px;
   left: 32%;
-  opacity: 0.32;
+  opacity: 0.5;
   animation: auroraFloat1 26s ease-in-out infinite reverse;
 }
 .aurora .b5 {

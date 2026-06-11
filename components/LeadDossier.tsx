@@ -145,14 +145,15 @@ function MetricRow({
 }) {
   if (!clean(value)) return null;
   return (
-    <div
-      className={
-        hasSignal(value)
-          ? "font-bold text-editorial-black"
-          : "text-editorial-secondary"
-      }
-    >
-      {label}: {value}
+    <div className="text-editorial-secondary">
+      {label}:{" "}
+      <span
+        className={
+          hasSignal(value) ? "font-bold text-editorial-black" : undefined
+        }
+      >
+        {value}
+      </span>
     </div>
   );
 }
