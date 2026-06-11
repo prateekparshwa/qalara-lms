@@ -227,6 +227,23 @@ function SectionHeader({
   );
 }
 
+/**
+ * Column AG arrives as "2026-06-11 (gunjan.kumari@qalara / sourcing@qalara)" —
+ * date plus the sending inbox. Show "date · via <inbox>", preferring the
+ * sourcing@/buyers@ inbox over a personal sender when both are listed.
+ */
+function formatQalaraContact(v: string | null | undefined): string | null {
+  const s = clean(v);
+  if (!s) return null;
+  const m = s.match(/^([^(]*?)\s*\(([^)]+)\)\s*$/);
+  if (!m) return s;
+  const date = m[1].trim();
+  const parts = m[2].split("/").map((p) => p.trim()).filter(Boolean);
+  const inbox =
+    parts.find((p) => /^(sourcing|buyers)@/i.test(p)) ?? parts[0] ?? null;
+  return inbox ? `${date} · via ${inbox}` : date;
+}
+
 /** True if any of the given values is non-empty. */
 function any(...vals: (string | null | undefined)[]): boolean {
   return vals.some((v) => clean(v) !== null);
@@ -543,9 +560,15 @@ export default function LeadDossier({
             <Field showAll={showAll} label="First Contact Date (By Buyer) · YYYY-MM-DD" value={lead.first_contact_date} mono relative />
             <Field showAll={showAll} label="Last Contact Date (By Buyer) · YYYY-MM-DD" value={lead.last_contact_date} mono relative />
             <Field showAll={showAll} label="Current AM (Account Manager)" value={lead.current_am} />
-            <Field showAll={showAll} label="Last Contact Date from Qalara to Buyer · YYYY-MM-DD" value={lead.last_qalara_contact} mono relative />
+            <Field
+              showAll={showAll}
+              label="Last Contact Date from Qalara to Buyer · YYYY-MM-DD"
+              value={formatQalaraContact(lead.last_qalara_contact)}
+              mono
+              relative
+            />
             <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
-            <Field showAll={showAll} label="Email Summary (Qalara to Buyer)" value={lead.email_contact_summary} />
+            <Field showAll={showAll} label="Last Email Summary" value={lead.email_contact_summary} />
           </div>
         </>
       )}

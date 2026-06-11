@@ -107,7 +107,9 @@ export function primaryEmail(
 /** "2025-03-12" -> "3 mo ago". Null when the value isn't a parseable date. */
 export function relativeDate(value: string | null | undefined): string | null {
   if (!value) return null;
-  const d = new Date(value.trim());
+  // Tolerate annotated dates like "2026-06-11 · via sourcing@qalara".
+  const iso = value.match(/\d{4}-\d{2}-\d{2}/);
+  const d = new Date(iso ? iso[0] : value.trim());
   if (isNaN(d.getTime())) return null;
   const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
   if (days < 0) return null;
