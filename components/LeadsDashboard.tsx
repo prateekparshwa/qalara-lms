@@ -16,6 +16,8 @@ interface Stats {
   verified: number;
   highConfidence: number;
   highClassification: number;
+  amAssigned?: number;
+  lastSynced?: string | null;
 }
 
 interface FilterOptions {
