@@ -95,7 +95,8 @@
   top: 80px;
   left: 32%;
   opacity: 0.5;
-  animation: auroraFloat1 26s ease-in-out infinite reverse;
+  /* Static: the warm amber glow anchors the page instead of drifting away. */
+  animation: none;
 }
 .aurora .b5 {
   width: 220px;
