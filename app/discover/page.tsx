@@ -259,7 +259,10 @@ export default function DiscoverPage() {
                 </Link>
               </div>
 
-              <div className="bg-white border border-editorial-border rounded-md overflow-hidden">
+              <div
+                className="bg-white border border-editorial-border rounded-md overflow-hidden"
+                style={{ boxShadow: "0 0 48px rgba(245, 158, 11, 0.35)" }}
+              >
                 {/* accent strip */}
                 <div
                   className="h-1 w-full"
