@@ -83,8 +83,17 @@ export default function MagazineHeader({
         }}
         aria-hidden="true"
       />
+      {/* Soft aurora wash — the same warm glow as the landing page, static */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden="true"
+        style={{
+          background:
+            "radial-gradient(620px 240px at 36% 0%, rgba(245,158,11,0.16), transparent 70%), radial-gradient(520px 220px at 8% 0%, rgba(79,70,229,0.10), transparent 70%), radial-gradient(460px 200px at 72% 0%, rgba(13,148,136,0.09), transparent 70%), radial-gradient(380px 180px at 95% 8%, rgba(225,29,72,0.07), transparent 70%)",
+        }}
+      />
       {/* Top bar */}
-      <div className="px-6 pt-5 pb-3">
+      <div className="relative px-6 pt-5 pb-3">
         <div className="flex items-start justify-between gap-6">
           {/* Dateline: back link + segment title + count */}
           <div className="flex-shrink-0 min-w-0">
@@ -163,7 +172,7 @@ export default function MagazineHeader({
       <div className="rule mx-6" />
 
       {/* Unified search: one box, a scope picker beside it */}
-      <div className="px-6 py-3 flex items-center gap-2">
+      <div className="relative px-6 py-3 flex items-center gap-2">
         <div
           role="group"
           aria-label="Search scope"
