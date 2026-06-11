@@ -8,6 +8,8 @@ import LeadsTable from "@/components/LeadsTable";
 import LeadDrawer from "@/components/LeadDrawer";
 import Toast, { ToastState, ToastType } from "@/components/Toast";
 import type { Lead } from "@/lib/leads";
+import { canEditAm, getStoredEmail, setStoredEmail } from "@/lib/access";
+import { UserCheck, Lock } from "lucide-react";
 
 interface Stats {
   total: number;
@@ -90,6 +92,14 @@ export default function LeadsDashboard({
   const [leadsError, setLeadsError] = useState<string | null>(null);
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+
+  // Soft identity (shared Basic-Auth login carries no per-user identity, so the
+  // user self-identifies; only the hard-coded AM editors get the assign control).
+  const [userEmail, setUserEmail] = useState("");
+  useEffect(() => {
+    setUserEmail(getStoredEmail());
+  }, []);
+  const canAssign = canEditAm(userEmail);
 
   const [toast, setToast] = useState<ToastState | null>(null);
   const toastKey = useRef(0);
@@ -252,6 +262,27 @@ export default function LeadsDashboard({
     }
   };
 
+  const handleIdentify = () => {
+    const input = window.prompt(
+      "Enter your Qalara email to enable Account Manager editing:",
+      userEmail
+    );
+    if (input === null) return; // cancelled
+    const e = input.trim().toLowerCase();
+    setStoredEmail(e);
+    setUserEmail(e);
+    if (!e) {
+      showToast("Signed out. AM editing is now hidden.", "info");
+    } else if (canEditAm(e)) {
+      showToast("AM editing enabled.", "success");
+    } else {
+      showToast(
+        "That email doesn't have AM-edit access — you can still browse.",
+        "info"
+      );
+    }
+  };
+
   const handleExport = (format: "csv" | "xlsx") => {
     const params = new URLSearchParams({
       segment,
@@ -298,6 +329,8 @@ export default function LeadsDashboard({
         onExport={handleExport}
         totalLeads={stats.total}
         isSyncing={isSyncing}
+        segment={segment}
+        onPickSuggestion={setSelectedLead}
       />
 
       <div className="bg-white">
@@ -315,7 +348,7 @@ export default function LeadsDashboard({
         />
 
         <main className="flex-1 flex flex-col overflow-hidden bg-white border-l border-zinc-100">
-          <div className="px-6 py-3 border-b border-zinc-100 flex items-baseline gap-3">
+          <div className="px-6 py-3 border-b border-zinc-100 flex items-center gap-3">
             <span className="text-sm font-sans font-semibold text-editorial-black">
               {segmentLabel}
             </span>
@@ -324,6 +357,33 @@ export default function LeadsDashboard({
                 {leadsData.total.toLocaleString()} results
               </span>
             )}
+            {/* Soft identity control — gates AM editing to the allowlist */}
+            <div className="ml-auto flex items-center">
+              {canAssign ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-editorial-secondary">
+                  <UserCheck size={12} className="text-green-600" />
+                  AM editing as{" "}
+                  <span className="font-medium text-editorial-black">
+                    {userEmail}
+                  </span>
+                  <button
+                    onClick={handleIdentify}
+                    className="ml-1 text-editorial-accent hover:underline cursor-pointer"
+                  >
+                    change
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={handleIdentify}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-sans text-editorial-muted hover:text-editorial-black cursor-pointer"
+                  title="Account Manager editing is limited to authorized users"
+                >
+                  <Lock size={11} />
+                  {userEmail ? "View only · switch account" : "Sign in to edit AMs"}
+                </button>
+              )}
+            </div>
           </div>
 
           <LeadsTable
@@ -353,8 +413,8 @@ export default function LeadsDashboard({
       <LeadDrawer
         lead={selectedLead}
         onClose={() => setSelectedLead(null)}
-        amOptions={filterOptions.ams}
-        onAssignAm={handleAssignAm}
+        amOptions={canAssign ? filterOptions.ams : undefined}
+        onAssignAm={canAssign ? handleAssignAm : undefined}
       />
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>

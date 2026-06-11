@@ -152,6 +152,33 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
   };
 }
 
+/**
+ * Typeahead suggestions for the search box — matches the term against BOTH the
+ * organization name and any email ID at once, so a user can find a buyer
+ * whether they type a brand name or an email fragment. Returns full rows (cheap
+ * at limit 8) so the caller can open the profile drawer directly on click.
+ */
+export async function suggestLeads(
+  q: string,
+  segment?: string,
+  limit = 8
+): Promise<Lead[]> {
+  // Strip characters that would break PostgREST's .or()/ilike filter grammar.
+  const term = q.replace(/[%,()]/g, " ").trim();
+  if (term.length < 2) return [];
+
+  let query = supabase.from("leads").select("*");
+  if (segment) query = query.eq("segment", segment);
+  query = query
+    .or(`organization.ilike.%${term}%,email.ilike.%${term}%`)
+    .order("organization", { ascending: true })
+    .limit(limit);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data as Lead[]) ?? [];
+}
+
 export async function getLeadById(id: number): Promise<Lead | null> {
   const { data, error } = await supabase
     .from("leads")

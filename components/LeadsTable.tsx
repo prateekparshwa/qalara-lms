@@ -152,19 +152,19 @@ export default function LeadsTable({
                   <th
                     key={c.id}
                     onClick={() => c.sortable && toggleSort(c.id)}
-                    className={`text-left px-3 py-2.5 text-[11px] font-code font-semibold tracking-wide border-b-2 border-editorial-black align-bottom ${
+                    className={`text-left px-3 py-2.5 text-[11px] font-code font-semibold tracking-wide border-b-2 border-editorial-black align-middle ${
                       c.sortable
                         ? "cursor-pointer select-none hover:bg-indigo-100/60"
                         : ""
                     } ${active ? "text-editorial-black" : "text-editorial-secondary"}`}
                   >
-                    <div className="flex items-start gap-1.5">
+                    <div className="flex items-center gap-1.5">
                       <span
                         className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: c.dot }}
                         aria-hidden="true"
                       />
-                      {c.label}
+                      <span className="leading-tight">{c.label}</span>
                       {c.sortable && (
                         <span className="ml-0.5">
                           {active ? (

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Search, RefreshCw, Download, X, ArrowLeft } from "lucide-react";
+import { Search, RefreshCw, Download, X, ArrowLeft, Loader2 } from "lucide-react";
+import type { Lead } from "@/lib/leads";
+import CountryFlag from "./CountryFlag";
 
 export interface SearchState {
   org: string;
@@ -21,6 +23,10 @@ interface MagazineHeaderProps {
   segmentLabel?: string;
   /** Back link target (the directory chooser). */
   backHref?: string;
+  /** Segment key used to scope typeahead suggestions. */
+  segment?: string;
+  /** Called when the user picks a typeahead suggestion — opens that profile. */
+  onPickSuggestion?: (lead: Lead) => void;
 }
 
 type Scope = "org" | "email" | "website";
@@ -55,9 +61,19 @@ export default function MagazineHeader({
   isSyncing,
   segmentLabel,
   backHref,
+  segment,
+  onPickSuggestion,
 }: MagazineHeaderProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [scope, setScope] = useState<Scope>("org");
+
+  // Typeahead suggestions (org OR email match) shown beneath the search box.
+  const [suggestions, setSuggestions] = useState<Lead[]>([]);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const [loadingSuggest, setLoadingSuggest] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  const skipNextFetch = useRef(false);
 
   const active = SCOPES.find((s) => s.key === scope)!;
   const value = search[scope];
@@ -70,6 +86,81 @@ export default function MagazineHeader({
     setScope(next);
     // Carry the typed text into the new scope so switching re-runs the search.
     onSearchChange({ org: "", email: "", website: "", [next]: current });
+  };
+
+  // Debounced fetch of suggestions as the user types (suggestions search BOTH
+  // org and email, so it doesn't matter which scope tab is active).
+  useEffect(() => {
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false;
+      return;
+    }
+    const term = value.trim();
+    if (!onPickSuggestion || term.length < 2) {
+      setSuggestions([]);
+      setLoadingSuggest(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingSuggest(true);
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ q: term });
+        if (segment) params.set("segment", segment);
+        const res = await fetch(`/api/leads/suggest?${params}`);
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled) {
+          setSuggestions(res.ok ? data.suggestions ?? [] : []);
+          setShowSuggest(true);
+          setActiveIdx(-1);
+        }
+      } catch {
+        if (!cancelled) setSuggestions([]);
+      } finally {
+        if (!cancelled) setLoadingSuggest(false);
+      }
+    }, 220);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [value, segment, onPickSuggestion]);
+
+  // Close the suggestion dropdown on outside click.
+  useEffect(() => {
+    if (!showSuggest) return;
+    const handler = (e: MouseEvent) => {
+      if (!searchBoxRef.current?.contains(e.target as Node)) {
+        setShowSuggest(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showSuggest]);
+
+  const pick = useCallback(
+    (lead: Lead) => {
+      setShowSuggest(false);
+      setSuggestions([]);
+      onPickSuggestion?.(lead);
+    },
+    [onPickSuggestion]
+  );
+
+  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggest || suggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => (i + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    } else if (e.key === "Enter" && activeIdx >= 0) {
+      e.preventDefault();
+      pick(suggestions[activeIdx]);
+    } else if (e.key === "Escape") {
+      setShowSuggest(false);
+    }
   };
 
   return (
@@ -198,7 +289,7 @@ export default function MagazineHeader({
             </button>
           ))}
         </div>
-        <div className="relative flex-1 min-w-0">
+        <div className="relative flex-1 min-w-0" ref={searchBoxRef}>
           <Search
             size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-editorial-muted"
@@ -207,19 +298,77 @@ export default function MagazineHeader({
             type="text"
             value={value}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => suggestions.length > 0 && setShowSuggest(true)}
+            onKeyDown={onSearchKeyDown}
             placeholder={active.placeholder}
             aria-label={`Search by ${active.label}`}
+            role="combobox"
+            aria-expanded={showSuggest}
+            aria-controls="search-suggestions"
+            aria-autocomplete="list"
+            autoComplete="off"
             style={{ ["--ph" as string]: "#71717A" }}
             className="search-input w-full pl-9 pr-8 py-2 text-sm font-sans text-editorial-black border border-zinc-200 rounded focus:outline-none focus:border-editorial-black focus-visible:ring-2 focus-visible:ring-editorial-accent bg-white transition-colors"
           />
-          {value && (
-            <button
-              onClick={() => setQuery("")}
-              aria-label="Clear search"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-editorial-muted hover:text-editorial-black cursor-pointer"
+          {(loadingSuggest || value) && (
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center">
+              {loadingSuggest ? (
+                <Loader2 size={13} className="animate-spin text-editorial-muted" />
+              ) : (
+                <button
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  className="text-editorial-muted hover:text-editorial-black cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </span>
+          )}
+
+          {/* Typeahead suggestions */}
+          {showSuggest && onPickSuggestion && value.trim().length >= 2 && (
+            <div
+              id="search-suggestions"
+              role="listbox"
+              className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-zinc-200 rounded-md shadow-lg overflow-hidden max-h-80 overflow-y-auto"
             >
-              <X size={13} />
-            </button>
+              {suggestions.length === 0 && !loadingSuggest ? (
+                <div className="px-3 py-3 text-xs font-sans text-editorial-muted">
+                  No buyers match “{value.trim()}”.
+                </div>
+              ) : (
+                suggestions.map((lead, i) => (
+                  <button
+                    key={lead.id}
+                    role="option"
+                    aria-selected={i === activeIdx}
+                    onMouseEnter={() => setActiveIdx(i)}
+                    onClick={() => pick(lead)}
+                    className={`w-full text-left px-3 py-2 flex items-start gap-2 border-b border-zinc-50 last:border-0 cursor-pointer transition-colors ${
+                      i === activeIdx ? "bg-indigo-50" : "hover:bg-zinc-50"
+                    }`}
+                  >
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-sans font-semibold text-editorial-black truncate">
+                        {lead.organization ?? "—"}
+                      </span>
+                      {lead.email && (
+                        <span className="block text-[11px] font-sans text-editorial-secondary truncate">
+                          {lead.email}
+                        </span>
+                      )}
+                    </span>
+                    {lead.country && (
+                      <span className="text-[11px] font-sans text-editorial-muted whitespace-nowrap flex items-center">
+                        <CountryFlag country={lead.country} />
+                        {lead.country}
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
           )}
         </div>
       </div>
