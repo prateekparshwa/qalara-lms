@@ -10,7 +10,6 @@ export default function StatsBar({ stats }: { stats: Stats }) {
   const figures = [
     { value: stats.total, label: "leads", color: "#4F46E5" },
     { value: stats.verified, label: "verified sites", color: "#0F766E" },
-    { value: stats.highConfidence, label: "high-confidence", color: "#B45309" },
     { value: stats.highClassification, label: "high-priority", color: "#E11D48" },
   ];
 

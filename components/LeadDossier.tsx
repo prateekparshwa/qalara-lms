@@ -242,32 +242,48 @@ function hasSignal(v: string | null | undefined): boolean {
 function MetricRow({
   label,
   value,
-  boldRow = false,
 }: {
   label: string;
   value: string | null | undefined;
-  /** Bold the ENTIRE row (label + count) when the value is a real signal. */
-  boldRow?: boolean;
 }) {
   if (!clean(value)) return null;
-  const signal = hasSignal(value);
-  if (boldRow) {
-    return (
-      <div
-        className={
-          signal
-            ? "font-bold text-editorial-black"
-            : "text-editorial-secondary"
-        }
-      >
-        {label}: {value}
-      </div>
-    );
-  }
   // Quotations / Samples: keyword breakdowns stay quiet — no bolding at all.
   return (
     <div className="text-editorial-secondary">
       {label}: {value}
+    </div>
+  );
+}
+
+/**
+ * The sheet splits ONE inbound-email count across three bucket columns
+ * (≤2 / 3–7 / 8+) — e.g. BEL EPOK arrives as mid=3, high=9 meaning 12 emails
+ * total. Sum the buckets and show a single row under the bucket the TOTAL
+ * falls in: "8+ emails: 12".
+ */
+function EmailCountRow({
+  low,
+  mid,
+  high,
+}: {
+  low: string | null | undefined;
+  mid: string | null | undefined;
+  high: string | null | undefined;
+}) {
+  const parts = [low, mid, high].map(clean);
+  if (parts.every((p) => p === null)) return null;
+  const total = parts.reduce((sum, p) => {
+    const n = parseInt((p ?? "").replace(/[^\d]/g, ""), 10);
+    return sum + (isNaN(n) ? 0 : n);
+  }, 0);
+  const bucket = total <= 2 ? "≤2 emails" : total <= 7 ? "3–7 emails" : "8+ emails";
+  return (
+    <div
+      className={
+        total > 0 ? "font-bold text-editorial-black" : "text-editorial-secondary"
+      }
+    >
+      {bucket}: {total}
     </div>
   );
 }
@@ -549,9 +565,11 @@ export default function LeadDossier({
                 Sourcing@qalara
               </div>
               <div className="space-y-1 text-xs font-sans">
-                <MetricRow boldRow label="≤2 emails" value={lead.sourcing_emails_low} />
-                <MetricRow boldRow label="3–7 emails" value={lead.sourcing_emails_mid} />
-                <MetricRow boldRow label="8+ emails" value={lead.sourcing_emails_high} />
+                <EmailCountRow
+                  low={lead.sourcing_emails_low}
+                  mid={lead.sourcing_emails_mid}
+                  high={lead.sourcing_emails_high}
+                />
                 <MetricRow label="Quotations" value={lead.quotations_request} />
                 <MetricRow label="Samples" value={lead.samples_request} />
               </div>
@@ -561,9 +579,11 @@ export default function LeadDossier({
                 Buyers@qalara
               </div>
               <div className="space-y-1 text-xs font-sans">
-                <MetricRow boldRow label="≤2 emails" value={lead.buyers_emails_low} />
-                <MetricRow boldRow label="3–7 emails" value={lead.buyers_emails_mid} />
-                <MetricRow boldRow label="8+ emails" value={lead.buyers_emails_high} />
+                <EmailCountRow
+                  low={lead.buyers_emails_low}
+                  mid={lead.buyers_emails_mid}
+                  high={lead.buyers_emails_high}
+                />
                 <MetricRow label="Quotations" value={lead.quotations} />
                 <MetricRow label="Samples" value={lead.samples} />
               </div>
