@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
       classification: sp.get("classification") ?? undefined,
       am: sp.get("am") ?? undefined,
       confidence: sp.get("confidence") ?? undefined,
+      org_scale: sp.get("org_scale") ?? undefined,
+      india: sp.get("india") ?? undefined,
       page: 1,
       limit: 10000,
     });

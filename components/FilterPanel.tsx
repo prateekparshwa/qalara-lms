@@ -8,7 +8,9 @@ export interface Filters {
   buyer_type: string;
   classification: string;
   am: string;
-  confidence: string;
+  org_scale: string;
+  /** "yes" → only buyers with a confirmed Sources-From-India. */
+  india: string;
 }
 
 interface FilterOptions {
@@ -16,6 +18,7 @@ interface FilterOptions {
   buyerTypes: string[];
   classifications: string[];
   ams: string[];
+  orgScales?: string[];
 }
 
 interface FilterPanelProps {
@@ -144,9 +147,7 @@ export default function FilterPanel({
     onChange({ ...filters, [key]: "" });
 
   const clearAll = () =>
-    onChange({ country: "", buyer_type: "", classification: "", am: "", confidence: "" });
-
-  const confidenceOptions = ["HIGH", "MEDIUM", "LOW"];
+    onChange({ country: "", buyer_type: "", classification: "", am: "", org_scale: "", india: "" });
 
   return (
     <aside className="w-56 flex-shrink-0 border-r border-zinc-200 bg-[#F7F8FE] px-4 py-5 overflow-y-auto">
@@ -196,10 +197,16 @@ export default function FilterPanel({
               <button onClick={() => clear("am")} aria-label="Remove account manager filter">×</button>
             </span>
           )}
-          {filters.confidence && (
+          {filters.org_scale && (
             <span className="filter-chip chip-amber">
-              {filters.confidence}
-              <button onClick={() => clear("confidence")} aria-label={`Remove confidence filter ${filters.confidence}`}>×</button>
+              {filters.org_scale}
+              <button onClick={() => clear("org_scale")} aria-label={`Remove org size filter ${filters.org_scale}`}>×</button>
+            </span>
+          )}
+          {filters.india === "yes" && (
+            <span className="filter-chip chip-teal">
+              Sources From India
+              <button onClick={() => clear("india")} aria-label="Remove Sources From India filter">×</button>
             </span>
           )}
         </div>
@@ -215,7 +222,7 @@ export default function FilterPanel({
           onChange={(v) => onChange({ ...filters, country: v })}
         />
         <FilterSelect
-          label="Buyer Type"
+          label="Buyer Business Type"
           dot="#0D9488"
           value={filters.buyer_type}
           options={options.buyerTypes}
@@ -236,12 +243,32 @@ export default function FilterPanel({
           onChange={(v) => onChange({ ...filters, am: v })}
         />
         <FilterSelect
-          label="Web Confidence"
+          label="Buyer Org Size Tier"
           dot="#B45309"
-          value={filters.confidence}
-          options={confidenceOptions}
-          onChange={(v) => onChange({ ...filters, confidence: v })}
+          value={filters.org_scale}
+          options={options.orgScales ?? []}
+          onChange={(v) => onChange({ ...filters, org_scale: v })}
         />
+
+        {/* Sources From India? — confirmed-Yes toggle */}
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={filters.india === "yes"}
+            onChange={(e) =>
+              onChange({ ...filters, india: e.target.checked ? "yes" : "" })
+            }
+            className="w-3.5 h-3.5 rounded border-zinc-300 accent-[#0D9488] cursor-pointer"
+          />
+          <span className="flex items-center gap-1.5 text-xs font-sans font-medium text-editorial-secondary">
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: "#0D9488" }}
+              aria-hidden="true"
+            />
+            Sources From India?
+          </span>
+        </label>
       </div>
     </aside>
   );

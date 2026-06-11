@@ -71,6 +71,9 @@ export interface LeadsQueryParams {
   classification?: string;
   am?: string;
   confidence?: string;
+  org_scale?: string;
+  /** "yes" → only buyers whose Sources-From-India field is a confirmed Yes. */
+  india?: string;
   page?: number;
   limit?: number;
   sort?: string;
@@ -96,6 +99,8 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
     classification,
     am,
     confidence,
+    org_scale,
+    india,
     page = 1,
     limit = 50,
     sort = "organization",
@@ -131,6 +136,9 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
   if (classification) query = query.ilike("buyer_classification", `%${classification}%`);
   if (am) query = query.ilike("current_am", `%${am}%`);
   if (confidence) query = query.ilike("website_confidence", `%${confidence}%`);
+  if (org_scale) query = query.eq("org_scale", org_scale);
+  // Sources-From-India is free text, but confirmed entries always start "Yes".
+  if (india === "yes") query = query.ilike("imports_from_india", "yes%");
 
   // Priority is text (HIGH/MED/LOW), so sort by the numeric rank instead.
   const sortCol = sort === "buyer_classification" ? "priority_rank" : sort;
@@ -247,12 +255,13 @@ export async function getFilterOptions(segment?: string) {
   // Instead, page through EVERY row in 1000-row chunks and collect distinct
   // values for all four filters in a single pass.
   const PAGE = 1000;
-  const SELECT = "country,buyer_type,buyer_classification,current_am";
+  const SELECT = "country,buyer_type,buyer_classification,current_am,org_scale";
 
   const countries = new Set<string>();
   const buyerTypes = new Set<string>();
   const classifications = new Set<string>();
   const ams = new Set<string>();
+  const orgScales = new Set<string>();
 
   const add = (set: Set<string>, v: unknown) => {
     const s = (v == null ? "" : String(v)).trim();
@@ -275,6 +284,7 @@ export async function getFilterOptions(segment?: string) {
       add(buyerTypes, r.buyer_type);
       add(classifications, r.buyer_classification);
       add(ams, r.current_am);
+      add(orgScales, r.org_scale);
     }
 
     // A short page means we've reached the end of the table.
@@ -289,6 +299,7 @@ export async function getFilterOptions(segment?: string) {
     buyerTypes: sorted(buyerTypes),
     classifications: sorted(classifications),
     ams: sorted(ams),
+    orgScales: sorted(orgScales),
   };
 }
 

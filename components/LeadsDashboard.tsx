@@ -23,6 +23,7 @@ interface FilterOptions {
   buyerTypes: string[];
   classifications: string[];
   ams: string[];
+  orgScales?: string[];
 }
 
 interface LeadsResponse {
@@ -51,7 +52,8 @@ const DEFAULT_FILTERS: Filters = {
   buyer_type: "",
   classification: "",
   am: "",
-  confidence: "",
+  org_scale: "",
+  india: "",
 };
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -150,7 +152,8 @@ export default function LeadsDashboard({
         ...(filters.buyer_type && { buyer_type: filters.buyer_type }),
         ...(filters.classification && { classification: filters.classification }),
         ...(filters.am && { am: filters.am }),
-        ...(filters.confidence && { confidence: filters.confidence }),
+        ...(filters.org_scale && { org_scale: filters.org_scale }),
+        ...(filters.india && { india: filters.india }),
       });
       const res = await fetch(`/api/leads?${params}`);
       if (!res.ok) {
@@ -294,7 +297,8 @@ export default function LeadsDashboard({
       ...(filters.buyer_type && { buyer_type: filters.buyer_type }),
       ...(filters.classification && { classification: filters.classification }),
       ...(filters.am && { am: filters.am }),
-      ...(filters.confidence && { confidence: filters.confidence }),
+      ...(filters.org_scale && { org_scale: filters.org_scale }),
+      ...(filters.india && { india: filters.india }),
     });
     window.open(`/api/leads/export?${params}`, "_blank");
     showToast(

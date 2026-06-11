@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import { relativeDate } from "@/lib/format";
 
@@ -100,11 +100,14 @@ function SectionHeader({
   color,
   id,
   scrollMtClass,
+  hint,
 }: {
   title: string;
   color: string;
   id: string;
   scrollMtClass: string;
+  /** Optional tooltip explaining what this section measures. */
+  hint?: string;
 }) {
   return (
     <div id={id} className={`mt-7 mb-2 flex items-center gap-2 ${scrollMtClass}`}>
@@ -119,6 +122,11 @@ function SectionHeader({
       >
         {title}
       </span>
+      {hint && (
+        <span title={hint} className="cursor-help flex items-center">
+          <Info size={12} className="text-editorial-muted" aria-label={hint} />
+        </span>
+      )}
       <span className="flex-1 border-t border-zinc-400" />
     </div>
   );
@@ -139,19 +147,33 @@ function hasSignal(v: string | null | undefined): boolean {
 function MetricRow({
   label,
   value,
+  boldRow = false,
 }: {
   label: string;
   value: string | null | undefined;
+  /** Bold the ENTIRE row (label + count) when the value is a real signal. */
+  boldRow?: boolean;
 }) {
   if (!clean(value)) return null;
+  const signal = hasSignal(value);
+  if (boldRow) {
+    return (
+      <div
+        className={
+          signal
+            ? "font-bold text-editorial-black"
+            : "text-editorial-secondary"
+        }
+      >
+        {label}: {value}
+      </div>
+    );
+  }
+  // Quotations / Samples: keyword stays quiet, only the count is bold.
   return (
     <div className="text-editorial-secondary">
       {label}:{" "}
-      <span
-        className={
-          hasSignal(value) ? "font-bold text-editorial-black" : undefined
-        }
-      >
+      <span className={signal ? "font-bold text-editorial-black" : undefined}>
         {value}
       </span>
     </div>
@@ -393,10 +415,10 @@ export default function LeadDossier({
             color="#E11D48"
           />
           <div className={cols}>
-            <Field showAll={showAll} label="First Contact Date (By Buyer)" value={lead.first_contact_date} mono relative />
-            <Field showAll={showAll} label="Last Contact Date (By Buyer)" value={lead.last_contact_date} mono relative />
+            <Field showAll={showAll} label="First Contact Date (By Buyer) · YYYY-MM-DD" value={lead.first_contact_date} mono relative />
+            <Field showAll={showAll} label="Last Contact Date (By Buyer) · YYYY-MM-DD" value={lead.last_contact_date} mono relative />
             <Field showAll={showAll} label="Current AM (Account Manager)" value={lead.current_am} />
-            <Field showAll={showAll} label="Last Contact Date from Qalara to Buyer" value={lead.last_qalara_contact} mono relative />
+            <Field showAll={showAll} label="Last Contact Date from Qalara to Buyer · YYYY-MM-DD" value={lead.last_qalara_contact} mono relative />
             <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
             <Field showAll={showAll} label="Email Summary (Qalara to Buyer)" value={lead.email_contact_summary} />
           </div>
@@ -410,6 +432,7 @@ export default function LeadDossier({
             scrollMtClass={scrollMtClass}
             title="Engagement Metrics"
             color="#4F46E5"
+            hint="Count of emails received from Buyers"
           />
           <div className="grid grid-cols-2 gap-x-6 py-2">
             <div>
@@ -417,9 +440,9 @@ export default function LeadDossier({
                 Sourcing@qalara
               </div>
               <div className="space-y-1 text-xs font-sans">
-                <MetricRow label="≤2 emails" value={lead.sourcing_emails_low} />
-                <MetricRow label="3–7 emails" value={lead.sourcing_emails_mid} />
-                <MetricRow label="8+ emails" value={lead.sourcing_emails_high} />
+                <MetricRow boldRow label="≤2 emails" value={lead.sourcing_emails_low} />
+                <MetricRow boldRow label="3–7 emails" value={lead.sourcing_emails_mid} />
+                <MetricRow boldRow label="8+ emails" value={lead.sourcing_emails_high} />
                 <MetricRow label="Quotations" value={lead.quotations_request} />
                 <MetricRow label="Samples" value={lead.samples_request} />
               </div>
@@ -429,9 +452,9 @@ export default function LeadDossier({
                 Buyers@qalara
               </div>
               <div className="space-y-1 text-xs font-sans">
-                <MetricRow label="≤2 emails" value={lead.buyers_emails_low} />
-                <MetricRow label="3–7 emails" value={lead.buyers_emails_mid} />
-                <MetricRow label="8+ emails" value={lead.buyers_emails_high} />
+                <MetricRow boldRow label="≤2 emails" value={lead.buyers_emails_low} />
+                <MetricRow boldRow label="3–7 emails" value={lead.buyers_emails_mid} />
+                <MetricRow boldRow label="8+ emails" value={lead.buyers_emails_high} />
                 <MetricRow label="Quotations" value={lead.quotations} />
                 <MetricRow label="Samples" value={lead.samples} />
               </div>
