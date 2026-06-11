@@ -62,7 +62,7 @@ export default function StatsBar({ stats }: { stats: Stats }) {
             <span className="font-semibold" style={{ color: "#E11D48" }}>
               {stats.highClassification.toLocaleString()}
             </span>{" "}
-            / {other.toLocaleString()}
+            / {stats.total.toLocaleString()}
           </span>
         </div>
       )}
