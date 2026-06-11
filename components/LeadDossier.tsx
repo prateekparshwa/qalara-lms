@@ -119,7 +119,7 @@ function SectionHeader({
       >
         {title}
       </span>
-      <span className="flex-1 border-t border-editorial-border" />
+      <span className="flex-1 border-t border-zinc-300" />
     </div>
   );
 }

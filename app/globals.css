@@ -292,8 +292,11 @@ body {
 }
 .drawer-ring {
   position: fixed;
+  inset: auto; /* clear .amber-ring's inset:0 so width+right anchor correctly */
   top: 0;
   right: 0;
+  left: auto;
+  bottom: auto;
   height: 100vh;
   width: 600px;
   max-width: 100vw;
