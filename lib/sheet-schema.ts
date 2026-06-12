@@ -125,6 +125,11 @@ export const SHEET_COLUMNS: SheetColumn[] = [
   // filled. The __ prefix marks it virtual: google-sheets.ts merges it into
   // buyer_classification instead of writing it to the db.
   { header: "AI Classification of Buyer", column: "__ai_classification" },
+  // The sheet renamed the AI column (Jun 2026) — accept both names.
+  {
+    header: "Buyer Purchase Potential ( AI Recommended )",
+    column: "__ai_classification",
+  },
   { header: "Full_Name_Original", column: "full_name_original" },
   { header: "Website_Confidence (Claude verification)", column: "website_confidence" },
 ];
