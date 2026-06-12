@@ -17,14 +17,20 @@ export interface MoodboardPdfData {
     colors: { hex: string; name?: string }[];
     logos: { url: string }[];
   } | null;
-  images: { src: string; alt: string | null }[];
+  images: { src: string; alt: string | null; label?: string | null }[];
   screenshot: string | null;
   editorial: {
-    tagline: string | null;
+    quote: { text: string; type: "slogan" | "essence" } | null;
+    dateline: string | null;
     aesthetic: string | null;
     voiceKeywords: string[];
-    collections: string[];
+    programs: string[];
     palette: { hex: string; name: string }[];
+    displaySample: string | null;
+  } | null;
+  typography: {
+    display: { name: string | null; category: string | null };
+    text: { name: string | null; category: string | null };
   } | null;
   fetchedAt: string;
 }
@@ -124,7 +130,13 @@ export async function downloadMoodboardPdf(
         hex: c.hex,
         name: c.name ?? c.hex,
       }));
-  const accent = palette[0]?.hex ?? "#18181b";
+  const lum = (hex: string) => {
+    const [r, g, b] = hexToRgb(hex);
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  };
+  const accent = palette.filter((c) => lum(c.hex) <= 215)[0]?.hex ?? "#18181b";
+  const label = (img: { alt: string | null; label?: string | null }) =>
+    img.label ?? img.alt;
 
   // ── Masthead ────────────────────────────────────────────────────────────
   doc.setFont("times", "normal");
@@ -137,7 +149,8 @@ export async function downloadMoodboardPdf(
   doc.setTextColor(120);
   const sub = [
     "BRAND MOODBOARD",
-    data.editorial?.aesthetic?.toUpperCase(),
+    data.editorial?.dateline?.toUpperCase() ??
+      data.editorial?.aesthetic?.toUpperCase(),
     data.website?.replace(/^https?:\/\/(www\.)?/i, ""),
   ]
     .filter(Boolean)
@@ -157,12 +170,13 @@ export async function downloadMoodboardPdf(
     if (hero) {
       ensure(heroH + 8);
       doc.addImage(hero, "JPEG", margin, y, width, heroH);
-      if (imgs[0].alt) {
+      const heroLabel = label(imgs[0]);
+      if (heroLabel) {
         doc.setFillColor(24, 24, 27);
-        doc.rect(margin + 8, y + heroH - 22, Math.min(imgs[0].alt.length * 4.4 + 12, width - 16), 14, "F");
+        doc.rect(margin + 8, y + heroH - 22, Math.min(heroLabel.length * 4.4 + 12, width - 16), 14, "F");
         doc.setTextColor(245);
         doc.setFontSize(7);
-        doc.text(imgs[0].alt.toUpperCase().slice(0, 60), margin + 14, y + heroH - 12.5);
+        doc.text(heroLabel.toUpperCase().slice(0, 60), margin + 14, y + heroH - 12.5);
       }
       y += heroH + 10;
     }
@@ -182,12 +196,13 @@ export async function downloadMoodboardPdf(
       if (col === 0) ensure(cellH + gap);
       const x = margin + col * (cellW + gap);
       doc.addImage(dataUrl, "JPEG", x, y, cellW, cellH);
-      if (rest[i].alt) {
+      const cellLabel = label(rest[i]);
+      if (cellLabel) {
         doc.setFillColor(24, 24, 27);
-        doc.rect(x + 5, y + cellH - 17, Math.min(rest[i].alt!.length * 3.6 + 10, cellW - 10), 11, "F");
+        doc.rect(x + 5, y + cellH - 17, Math.min(cellLabel.length * 3.6 + 10, cellW - 10), 11, "F");
         doc.setTextColor(245);
         doc.setFontSize(6);
-        doc.text(rest[i].alt!.toUpperCase().slice(0, 38), x + 10, y + cellH - 9.5);
+        doc.text(cellLabel.toUpperCase().slice(0, 38), x + 10, y + cellH - 9.5);
       }
       col++;
       if (col === cols) {
@@ -207,10 +222,14 @@ export async function downloadMoodboardPdf(
     }
   }
 
-  // ── Quote panel ─────────────────────────────────────────────────────────
-  const tagline = data.editorial?.tagline ?? data.brand?.slogan;
-  if (tagline) {
-    const lines = doc.splitTextToSize(`“${tagline}”`, width - 64);
+  // ── Quote panel — REAL brand words only (MOODBOARD.md §3) ───────────────
+  const quote =
+    data.editorial?.quote ??
+    (data.brand?.slogan
+      ? { text: data.brand.slogan, type: "slogan" as const }
+      : null);
+  if (quote) {
+    const lines = doc.splitTextToSize(`“${quote.text}”`, width - 64);
     const boxH = 46 + lines.length * 18;
     ensure(boxH + 8);
     const [r, g, b] = hexToRgb(accent);
@@ -221,17 +240,13 @@ export async function downloadMoodboardPdf(
     doc.setFont("times", "italic");
     doc.setFontSize(15);
     doc.text(lines, margin + 32, y + 30);
-    if (data.editorial?.voiceKeywords?.length) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      doc.text(
-        data.editorial.voiceKeywords
-          .map((k) => k.toUpperCase())
-          .join("   ·   "),
-        margin + 32,
-        y + boxH - 16
-      );
-    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.text(
+      quote.type === "slogan" ? "SLOGAN" : "BRAND ESSENCE",
+      margin + 32,
+      y + boxH - 16
+    );
     y += boxH + 14;
   }
 
@@ -263,23 +278,82 @@ export async function downloadMoodboardPdf(
     y += swH + 16;
   }
 
-  // ── Collections ────────────────────────────────────────────────────────
-  if (data.editorial?.collections?.length) {
+  // ── Typography & voice ─────────────────────────────────────────────────
+  // jsPDF can't embed the buyer's woff2 files, so samples render in a serif/
+  // sans stand-in matching each face's category, labeled with the real name.
+  if (data.typography?.display.name || data.typography?.text.name) {
+    ensure(110);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text("T Y P O G R A P H Y   &   V O I C E", margin, y + 6);
+    y += 14;
+    const gap = 8;
+    const colW = (width - gap) / 2;
+    const boxH = 84;
+    const faces: ["Display" | "Text", { name: string | null; category: string | null } | undefined][] = [
+      ["Display", data.typography?.display],
+      ["Text", data.typography?.text],
+    ];
+    faces.forEach(([label, face], i) => {
+      const x = margin + i * (colW + gap);
+      doc.setDrawColor(220);
+      doc.setLineWidth(0.75);
+      doc.rect(x, y, colW, boxH);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(120);
+      doc.text(
+        `${label.toUpperCase()}${face?.name ? ` · ${face.name.toUpperCase()}` : ""}`,
+        x + 12,
+        y + 16
+      );
+      const serif = !!face?.category && /serif/i.test(face.category) && !/sans/i.test(face.category);
+      doc.setFont(serif ? "times" : "helvetica", "normal");
+      doc.setFontSize(label === "Display" ? 24 : 17);
+      doc.setTextColor(24);
+      doc.text(label === "Display" ? "Aa Bb Cc" : "Aa Bb Cc 0123456789", x + 12, y + 46);
+      if (label === "Display" && data.editorial?.displaySample) {
+        doc.setFont(serif ? "times" : "helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(90);
+        doc.text(
+          doc.splitTextToSize(data.editorial.displaySample, colW - 24).slice(0, 2),
+          x + 12,
+          y + 62
+        );
+      }
+      if (label === "Text" && data.editorial?.voiceKeywords?.length) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(90);
+        doc.text(
+          data.editorial.voiceKeywords.map((k) => k.toUpperCase()).join("  ·  "),
+          x + 12,
+          y + boxH - 14
+        );
+      }
+    });
+    y += boxH + 16;
+  }
+
+  // ── Programs & lines (own sub-brands / memberships, MOODBOARD.md §4) ────
+  if (data.editorial?.programs?.length) {
     ensure(44);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(120);
-    doc.text("C O L L E C T I O N S   &   L I N E S", margin, y + 6);
+    doc.text("P R O G R A M S   &   L I N E S", margin, y + 6);
     y += 16;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(40);
-    doc.text(
-      doc.splitTextToSize(data.editorial.collections.join("   ·   "), width),
-      margin,
-      y + 4
+    const progLines = doc.splitTextToSize(
+      data.editorial.programs.join("   ·   "),
+      width
     );
-    y += 22;
+    doc.text(progLines, margin, y + 4);
+    y += progLines.length * 12 + 12;
   }
 
   // ── About ──────────────────────────────────────────────────────────────

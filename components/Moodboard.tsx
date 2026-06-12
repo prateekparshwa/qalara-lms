@@ -7,8 +7,8 @@ import { downloadMoodboardPdf, MoodboardPdfData } from "@/lib/moodboardPdf";
 
 /**
  * "Moodboard" — an editorial board of the buyer's visual identity, built on
- * demand from their website (context.dev images + brand data, an LLM
- * editorial layer, Firecrawl screenshot fallback).
+ * demand from their website. The board contract lives in MOODBOARD.md —
+ * change both together.
  *
  * The dossier carries only a launcher button; the board itself opens in a
  * full-height panel on the LEFT (the dossier drawer stays on the right), with
@@ -16,7 +16,16 @@ import { downloadMoodboardPdf, MoodboardPdfData } from "@/lib/moodboardPdf";
  * board; afterwards it's served from a 7-day server-side cache.
  */
 
+const BOARD_VERSION = 3; // must match app/api/enrich/moodboard/route.ts
+
+interface TypographyFace {
+  name: string | null;
+  category: string | null;
+  files: Record<string, string>;
+}
+
 interface MoodboardData {
+  version?: number;
   brand: {
     title: string | null;
     description: string | null;
@@ -25,32 +34,87 @@ interface MoodboardData {
     logos: { url: string; mode?: string; type?: string }[];
     socials: { type: string; url: string }[];
   } | null;
-  images: { src: string; alt: string | null }[];
+  images: { src: string; alt: string | null; label?: string | null }[];
   screenshot: string | null;
   editorial: {
-    tagline: string | null;
+    quote: { text: string; type: "slogan" | "essence" } | null;
+    dateline: string | null;
     aesthetic: string | null;
     voiceKeywords: string[];
-    collections: string[];
+    programs: string[];
     palette: { hex: string; name: string }[];
+    displaySample: string | null;
+  } | null;
+  typography: {
+    display: TypographyFace;
+    text: TypographyFace;
   } | null;
   fetchedAt: string;
 }
 
-function contrastText(hex: string): string {
+/** Font names come from an external API — keep only safe identifier chars. */
+function safeFontName(name: string): string {
+  return name.replace(/[^A-Za-z0-9 _-]/g, "").trim();
+}
+
+/** @font-face rules so type samples render in the buyer's REAL typefaces.
+ * Injected via a <style> tag, so every value is strictly whitelisted:
+ * names reduced to [A-Za-z0-9 _-], URLs and weights pattern-matched. */
+function fontFaceCss(typography: MoodboardData["typography"]): string {
+  if (!typography) return "";
+  const rules: string[] = [];
+  for (const face of [typography.display, typography.text]) {
+    const name = face?.name ? safeFontName(face.name) : "";
+    if (!name) continue;
+    for (const [weight, url] of Object.entries(face.files)) {
+      if (!/^https:\/\/[A-Za-z0-9._~:/?#@!$&*+,;=%()-]+$/.test(url)) continue;
+      if (!/^\d{3}$/.test(weight)) continue;
+      rules.push(
+        `@font-face{font-family:'mb-${name}';src:url('${url}');font-weight:${weight};font-display:swap;}`
+      );
+    }
+  }
+  return rules.join("\n");
+}
+
+/** CSS stack: the loaded brand face first, category fallback after. */
+function faceStack(face: TypographyFace | undefined | null): string {
+  const fallback =
+    face?.category && /serif/i.test(face.category) && !/sans/i.test(face.category)
+      ? "Georgia, serif"
+      : "Helvetica, Arial, sans-serif";
+  const name = face?.name ? safeFontName(face.name) : "";
+  return name && face && Object.keys(face.files).length > 0
+    ? `'mb-${name}', ${fallback}`
+    : fallback;
+}
+
+function luminance(hex: string): number {
   const m = hex.replace("#", "");
   const r = parseInt(m.slice(0, 2), 16);
   const g = parseInt(m.slice(2, 4), 16);
   const b = parseInt(m.slice(4, 6), 16);
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#18181b" : "#fafaf9";
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function contrastText(hex: string): string {
+  return luminance(hex) > 150 ? "#18181b" : "#fafaf9";
+}
+
+/** The palette's lightest paper tone for the board canvas (MOODBOARD.md §8). */
+function paperTone(palette: { hex: string }[]): string | null {
+  const light = palette
+    .filter((c) => luminance(c.hex) > 215)
+    .sort((a, b) => luminance(b.hex) - luminance(a.hex))[0];
+  return light?.hex ?? null;
 }
 
 export default function Moodboard({ lead }: { lead: Lead }) {
   const initial =
     (lead.enrichment_cache?.moodboard as MoodboardData | undefined) ?? null;
-  // Pre-v2 cache entries (no editorial layer) are rebuilt on open.
+  // Boards from older contract versions rebuild on open.
   const [data, setData] = useState<MoodboardData | null>(
-    initial && "editorial" in initial ? initial : null
+    initial?.version === BOARD_VERSION ? initial : null
   );
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -110,6 +174,7 @@ export default function Moodboard({ lead }: { lead: Lead }) {
         images: (data.images ?? []).filter((i) => !failed.has(i.src)),
         screenshot: data.screenshot,
         editorial: data.editorial,
+        typography: data.typography,
         fetchedAt: data.fetchedAt,
       };
       await downloadMoodboardPdf(pdfData);
@@ -125,12 +190,20 @@ export default function Moodboard({ lead }: { lead: Lead }) {
         hex: c.hex,
         name: c.name ?? c.hex,
       }));
-  const accent = palette[0]?.hex ?? "#18181b";
+  const accent =
+    palette.filter((c) => luminance(c.hex) <= 215)[0]?.hex ?? "#18181b";
+  const paper = paperTone(palette);
   const images = (data?.images ?? []).filter((i) => !failed.has(i.src));
   const hero = images[0] ?? null;
   const rest = images.slice(1);
-  const tagline = data?.editorial?.tagline ?? data?.brand?.slogan ?? null;
+  const quote =
+    data?.editorial?.quote ??
+    (data?.brand?.slogan
+      ? { text: data.brand.slogan, type: "slogan" as const }
+      : null);
   const orgName = data?.brand?.title ?? lead.organization ?? "Buyer";
+  const imgLabel = (img: { alt: string | null; label?: string | null }) =>
+    img.label ?? img.alt;
 
   return (
     <>
@@ -161,7 +234,7 @@ export default function Moodboard({ lead }: { lead: Lead }) {
       </div>
       <p className="text-[11px] font-sans text-editorial-muted">
         An editorial board of the buyer&apos;s visual identity — imagery, brand
-        colors, voice and collections from their website. Opens alongside the
+        colors, voice and programs from their website. Opens alongside the
         dossier; exportable as PDF.
       </p>
 
@@ -183,6 +256,11 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                 <h2 className="font-sans font-semibold text-xl text-editorial-black leading-tight truncate">
                   {orgName}
                 </h2>
+                {data?.editorial?.dateline && (
+                  <div className="text-[10px] font-code uppercase tracking-[0.2em] text-editorial-muted mt-0.5 truncate">
+                    {data.editorial.dateline}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
@@ -222,7 +300,10 @@ export default function Moodboard({ lead }: { lead: Lead }) {
             </div>
           </div>
 
-          <div className="px-6 py-5">
+          <div
+            className="px-6 py-5 min-h-full"
+            style={paper ? { backgroundColor: paper } : undefined}
+          >
             {loading && (
               <div className="flex items-center gap-2 text-sm font-sans text-editorial-muted py-10 justify-center">
                 <Loader2 size={16} className="animate-spin" />
@@ -262,22 +343,22 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={hero.src}
-                      alt={hero.alt ?? ""}
+                      alt={imgLabel(hero) ?? ""}
                       loading="lazy"
                       className="w-full h-56 object-cover bg-zinc-50"
                       onError={() =>
                         setFailed((prev) => new Set(prev).add(hero.src))
                       }
                     />
-                    {hero.alt && (
+                    {imgLabel(hero) && (
                       <span className="absolute left-2.5 bottom-2.5 px-2 py-1 rounded-sm bg-zinc-900/85 text-zinc-100 text-[9px] font-code uppercase tracking-wider">
-                        {hero.alt.slice(0, 60)}
+                        {imgLabel(hero)!.slice(0, 60)}
                       </span>
                     )}
                   </div>
                 )}
 
-                {/* Image grid with labels */}
+                {/* Image grid with curated labels */}
                 {rest.length > 0 && (
                   <div className="grid grid-cols-3 gap-1.5">
                     {rest.map((img) => (
@@ -288,17 +369,17 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={img.src}
-                          alt={img.alt ?? ""}
-                          title={img.alt ?? undefined}
+                          alt={imgLabel(img) ?? ""}
+                          title={imgLabel(img) ?? undefined}
                           loading="lazy"
                           className="w-full aspect-square object-cover bg-zinc-50"
                           onError={() =>
                             setFailed((prev) => new Set(prev).add(img.src))
                           }
                         />
-                        {img.alt && (
+                        {imgLabel(img) && (
                           <span className="absolute left-1.5 bottom-1.5 px-1.5 py-0.5 rounded-sm bg-zinc-900/85 text-zinc-100 text-[8px] font-code uppercase tracking-wider max-w-[90%] truncate">
-                            {img.alt}
+                            {imgLabel(img)}
                           </span>
                         )}
                       </div>
@@ -323,8 +404,8 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                   </div>
                 )}
 
-                {/* Brand quote panel */}
-                {tagline && (
+                {/* Brand quote panel — REAL brand words only (MOODBOARD.md §3) */}
+                {quote && (
                   <div
                     className="rounded px-6 py-5"
                     style={{
@@ -333,17 +414,15 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                     }}
                   >
                     <p className="font-serif italic text-base leading-snug">
-                      “{tagline}”
+                      “{quote.text}”
                     </p>
-                    {(data.editorial?.voiceKeywords?.length ?? 0) > 0 && (
-                      <p className="mt-2.5 text-[9px] font-code uppercase tracking-[0.2em] opacity-75">
-                        {data.editorial!.voiceKeywords.join("  ·  ")}
-                      </p>
-                    )}
+                    <p className="mt-2.5 text-[9px] font-code uppercase tracking-[0.2em] opacity-75">
+                      {quote.type === "slogan" ? "Slogan" : "Brand essence"}
+                    </p>
                   </div>
                 )}
 
-                {/* Color palette */}
+                {/* Color palette — 6 swatches */}
                 {palette.length > 0 && (
                   <div>
                     <div className="text-[10px] font-code font-semibold uppercase tracking-[0.25em] text-editorial-muted mb-1.5">
@@ -352,22 +431,22 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                     <div
                       className="grid gap-1.5"
                       style={{
-                        gridTemplateColumns: `repeat(${Math.min(palette.length, 4)}, 1fr)`,
+                        gridTemplateColumns: `repeat(${Math.min(palette.length, 6)}, 1fr)`,
                       }}
                     >
-                      {palette.slice(0, 4).map((c) => (
+                      {palette.slice(0, 6).map((c) => (
                         <div
                           key={c.hex}
-                          className="h-16 rounded border border-zinc-200 flex flex-col justify-end p-2"
+                          className="h-16 rounded border border-zinc-200 flex flex-col justify-end p-1.5"
                           style={{
                             backgroundColor: c.hex,
                             color: contrastText(c.hex),
                           }}
                         >
-                          <span className="text-[10px] font-sans font-semibold leading-tight">
+                          <span className="text-[9px] font-sans font-semibold leading-tight">
                             {c.name}
                           </span>
-                          <span className="text-[9px] font-code opacity-75">
+                          <span className="text-[8px] font-code opacity-75">
                             {c.hex.toUpperCase()}
                           </span>
                         </div>
@@ -376,19 +455,90 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                   </div>
                 )}
 
-                {/* Collections / lines */}
-                {(data.editorial?.collections?.length ?? 0) > 0 && (
+                {/* Typography & voice — samples render in the buyer's real
+                    typefaces, loaded straight from their font files */}
+                {(data.typography || (data.editorial?.voiceKeywords?.length ?? 0) > 0) && (
+                  <div>
+                    {data.typography && (
+                      <style
+                        dangerouslySetInnerHTML={{
+                          __html: fontFaceCss(data.typography),
+                        }}
+                      />
+                    )}
+                    <div className="text-[10px] font-code font-semibold uppercase tracking-[0.25em] text-editorial-muted mb-1.5">
+                      Typography &amp; Voice
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="rounded border border-zinc-200 bg-white p-4">
+                        <div className="text-[9px] font-code uppercase tracking-[0.2em] text-editorial-muted mb-2">
+                          Display
+                          {data.typography?.display.name
+                            ? ` · ${data.typography.display.name}`
+                            : ""}
+                        </div>
+                        <div
+                          className="text-2xl leading-tight text-editorial-black"
+                          style={{ fontFamily: faceStack(data.typography?.display) }}
+                        >
+                          Aa Bb Cc
+                        </div>
+                        {/* Specimen line in the brand's own voice (§6) */}
+                        <div
+                          className="text-sm mt-1.5 text-editorial-secondary"
+                          style={{ fontFamily: faceStack(data.typography?.display) }}
+                        >
+                          {data.editorial?.displaySample ?? orgName}
+                        </div>
+                      </div>
+                      <div className="rounded border border-zinc-200 bg-white p-4">
+                        <div className="text-[9px] font-code uppercase tracking-[0.2em] text-editorial-muted mb-2">
+                          Text
+                          {data.typography?.text.name
+                            ? ` · ${data.typography.text.name}`
+                            : ""}
+                        </div>
+                        <div
+                          className="text-xl leading-tight text-editorial-black"
+                          style={{ fontFamily: faceStack(data.typography?.text) }}
+                        >
+                          Aa Bb Cc 0123456789
+                        </div>
+                        {(data.editorial?.voiceKeywords?.length ?? 0) > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2.5">
+                            {data.editorial!.voiceKeywords.map((k) => (
+                              <span
+                                key={k}
+                                className="px-2 py-0.5 text-[9px] font-code uppercase tracking-wider border border-zinc-300 rounded-full text-editorial-secondary"
+                              >
+                                {k}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Programs & lines — the buyer's OWN sub-brands and
+                    memberships, solid chips (§4) */}
+                {(data.editorial?.programs?.length ?? 0) > 0 && (
                   <div>
                     <div className="text-[10px] font-code font-semibold uppercase tracking-[0.25em] text-editorial-muted mb-1.5">
-                      Collections &amp; Lines
+                      Programs &amp; Lines
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {data.editorial!.collections.map((c) => (
+                      {data.editorial!.programs.map((p) => (
                         <span
-                          key={c}
-                          className="px-2.5 py-1 text-[10px] font-sans border border-zinc-300 rounded-full text-editorial-secondary"
+                          key={p}
+                          className="px-2.5 py-1 text-[10px] font-sans rounded-full"
+                          style={{
+                            backgroundColor: accent,
+                            color: contrastText(accent),
+                          }}
                         >
-                          {c}
+                          {p}
                         </span>
                       ))}
                     </div>
@@ -407,9 +557,10 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                   </div>
                 )}
 
-                <p className="text-[10px] font-code text-editorial-muted border-t border-zinc-200 pt-3">
-                  Source: {website.replace(/^https?:\/\/(www\.)?/i, "")} ·
-                  imagery and colors extracted from the official site · built{" "}
+                <p className="text-[10px] font-code text-editorial-muted border-t border-zinc-300 pt-3">
+                  Source: {website.replace(/^https?:\/\/(www\.)?/i, "")}
+                  {data.editorial?.dateline ? ` · ${data.editorial.dateline}` : ""}
+                  {" · imagery via live site · built "}
                   {new Date(data.fetchedAt).toLocaleDateString("en-IN", {
                     day: "numeric",
                     month: "short",
