@@ -7,6 +7,7 @@ import { webHint } from "@/lib/glossary";
 import EnrichPanel from "./EnrichPanel";
 import Badge from "./Badge";
 import LeadDossier, { dossierSections } from "./LeadDossier";
+import Moodboard from "./Moodboard";
 import { downloadLeadPdf } from "@/lib/leadPdf";
 import { primaryEmail as pickPrimaryEmail } from "@/lib/format";
 import CountryFlag from "./CountryFlag";
@@ -255,6 +256,7 @@ export default function LeadDrawer({
 
         <div className="px-6">
           <LeadDossier lead={lead} scrollMtClass="scroll-mt-48" />
+          <Moodboard lead={lead} />
         </div>
 
         <EnrichPanel lead={lead} />
