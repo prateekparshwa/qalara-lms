@@ -339,6 +339,7 @@ export default function LeadsDashboard({
         onExport={handleExport}
         totalLeads={stats.total}
         isSyncing={isSyncing}
+        lastSynced={stats.lastSynced}
         segment={segment}
         suggest
         onPick={(lead) => {

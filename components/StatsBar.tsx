@@ -8,23 +8,6 @@ interface Stats {
   lastSynced?: string | null;
 }
 
-/** "2026-06-12T08:15:00Z" -> "12 Jun 2026, 1:45 pm IST". */
-function formatIst(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return null;
-  return (
-    new Intl.DateTimeFormat("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(d) + " IST"
-  );
-}
 
 export default function StatsBar({ stats }: { stats: Stats }) {
   const figures = [
@@ -35,7 +18,6 @@ export default function StatsBar({ stats }: { stats: Stats }) {
 
   const amAssigned = stats.amAssigned ?? 0;
   const amShare = stats.total > 0 ? (amAssigned / stats.total) * 100 : 0;
-  const synced = formatIst(stats.lastSynced);
 
   return (
     <div className="px-6 py-3 border-b border-zinc-200 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -57,12 +39,6 @@ export default function StatsBar({ stats }: { stats: Stats }) {
           </span>
         </div>
       ))}
-
-      {synced && (
-        <span className="text-[11px] font-code text-editorial-muted whitespace-nowrap">
-          Last synced: {synced}
-        </span>
-      )}
 
       {stats.total > 0 && (
         <div className="ml-auto flex items-center gap-2.5 min-w-[200px]">

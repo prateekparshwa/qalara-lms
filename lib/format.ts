@@ -79,6 +79,24 @@ export function countryIso(country: string | null | undefined): string | null {
   return COUNTRY_TO_ISO[country.trim().toLowerCase()] ?? null;
 }
 
+/** "2026-06-12T08:15:00Z" -> "12 Jun 2026, 1:45 pm IST". */
+export function formatIst(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return (
+    new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(d) + " IST"
+  );
+}
+
 /**
  * Pick ONE email from a multi-email field: prefer the address that matches
  * the buyer's name (e.g. "gabor.bottka@…" for Gabor), else the first on file.

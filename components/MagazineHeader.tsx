@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, RefreshCw, Download, X, ArrowLeft, Loader2 } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import CountryFlag from "./CountryFlag";
+import { formatIst } from "@/lib/format";
 
 export interface SearchState {
   org: string;
@@ -29,6 +30,8 @@ interface MagazineHeaderProps {
   suggest?: boolean;
   /** Notified with the picked lead so the host can show its row instantly. */
   onPick?: (lead: Lead) => void;
+  /** ISO timestamp of the most recent sheet sync — shown under the Sync button. */
+  lastSynced?: string | null;
 }
 
 type Scope = "org" | "email" | "website";
@@ -66,7 +69,9 @@ export default function MagazineHeader({
   segment,
   suggest = false,
   onPick,
+  lastSynced,
 }: MagazineHeaderProps) {
+  const synced = formatIst(lastSynced);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [scope, setScope] = useState<Scope>("org");
 
@@ -222,7 +227,8 @@ export default function MagazineHeader({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-col items-end gap-1 mt-1">
+          <div className="flex items-center gap-2">
             <button
               onClick={onSync}
               disabled={isSyncing}
@@ -269,6 +275,12 @@ export default function MagazineHeader({
                 </>
               )}
             </div>
+          </div>
+          {synced && (
+            <span className="text-[10px] font-code text-editorial-muted whitespace-nowrap">
+              Last synced: {synced}
+            </span>
+          )}
           </div>
         </div>
       </div>
