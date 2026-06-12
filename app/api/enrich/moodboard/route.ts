@@ -51,6 +51,8 @@ interface EditorialLayer {
   displaySample: string | null;
   /** Curated editorial tags per image index (≤5 words each). */
   imageLabels: Record<string, string>;
+  /** LLM-chosen lead image index (lifestyle/campaign, not promo strips). */
+  heroIndex: number | null;
 }
 
 /** Typography as stored on the board: family + loadable files per face. */
@@ -79,22 +81,40 @@ function typographyFromStyleguide(
   return { display, text };
 }
 
-/** Drop icons, logos, trackers and non-photographic assets; dedupe; cap. */
+/** Asset identity key — responsive variants of the SAME image (desktop/mobile
+ * crops, CDN resize prefixes, size suffixes) must collapse to one entry. */
+function assetKey(src: string): string {
+  return src
+    .replace(/^https?:\/\/[^/]+/i, "")
+    .replace(/\/cdn-cgi\/image\/[^/]*/i, "") // Cloudflare resize prefix
+    .replace(/\?.*$/, "")
+    .replace(/\.[a-z0-9]+$/i, "") // extension (dt/mb crops may differ in format)
+    .replace(/[_-](dt|mb|desktop|mobile|sm|md|lg|xl)$/i, "")
+    .replace(/@\dx$/i, "")
+    .toLowerCase();
+}
+
+/** Drop icons, logos, trackers and non-photographic assets; dedupe exact and
+ * responsive-variant repeats (desktop crop preferred); cap. */
 function filterImages(images: CtxImage[]): { src: string; alt: string | null }[] {
-  const seen = new Set<string>();
-  const out: { src: string; alt: string | null }[] = [];
+  const byKey = new Map<string, { src: string; alt: string | null }>();
   for (const img of images) {
     const src = (img.src ?? "").trim();
     if (!/^https?:\/\//i.test(src)) continue; // skip data: URIs / inline SVGs
     if (/\.(svg|ico|gif)(\?|$)/i.test(src)) continue;
     if (/(favicon|icon|sprite|logo|badge|pixel|tracking|placeholder|loader|spinner|flag)/i.test(src))
       continue;
-    if (seen.has(src)) continue;
-    seen.add(src);
-    out.push({ src, alt: img.alt?.trim() || null });
-    if (out.length >= MAX_IMAGES) break;
+    const key = assetKey(src);
+    const existing = byKey.get(key);
+    const isMobileCrop = /[_-](mb|mobile)(?=\.[a-z]+$)/i.test(src);
+    if (!existing) {
+      byKey.set(key, { src, alt: img.alt?.trim() || null });
+    } else if (/[_-](mb|mobile)(?=\.[a-z]+$)/i.test(existing.src) && !isMobileCrop) {
+      // A desktop crop replaces a previously seen mobile crop.
+      byKey.set(key, { src, alt: img.alt?.trim() || existing.alt });
+    }
   }
-  return out;
+  return Array.from(byKey.values()).slice(0, MAX_IMAGES);
 }
 
 /** Firecrawl full-page screenshot — the always-works visual fallback. */
@@ -165,7 +185,10 @@ async function buildEditorialLayer(input: {
     .map((c) => (c.name ? `${c.hex} (${c.name})` : c.hex))
     .join(", ");
   const imageList = input.images
-    .map((img, i) => `${i}: ${img.alt ?? "(no caption)"}`)
+    .map((img, i) => {
+      const file = img.src.split("/").pop()?.split("?")[0] ?? "";
+      return `${i}: ${img.alt ?? "(no caption)"} [file: ${file}]`;
+    })
     .join("\n");
   const user = [
     `Brand: ${input.org ?? "Unknown"}`,
@@ -198,7 +221,8 @@ async function buildEditorialLayer(input: {
   "programs": ["up to 6 of the brand's OWN sub-brands, lines or membership/loyalty programs named in the content (e.g. 'Linen Lovers — 40% off, early access'); EXCLUDE licensed third-party names like NBA or Disney; [] if none"],
   "palette": [{"hex": "#RRGGBB", "name": "evocative color name"} — exactly 6 colors: official brand colors first, then colors evident in the imagery and current campaign; at most 2 plain neutrals (black/white/grey)],
   "display_sample": "a short sentence in the brand's own voice for a type specimen, taken or adapted from site copy",
-  "image_labels": {"<index>": "curated editorial tag, max 5 words, title case — e.g. 'High Winter Campaign'"} — only for indexes where the caption gives you something SPECIFIC to say about that image; every label must be distinct; omit an index rather than repeat a label or write a generic one
+  "image_labels": {"<index>": "curated editorial tag, max 5 words, title case — e.g. 'High Winter Campaign'"} — only for indexes where the caption or filename gives you something SPECIFIC to say about that image; every label must be distinct; omit an index rather than repeat a label or write a generic one,
+  "hero_index": <index of the best LEAD image for the board — an evocative lifestyle/campaign photo, judged from captions and filenames; avoid promo strips, sale banners and logos>
 }`,
   ]
     .filter((l) => l !== null)
@@ -260,6 +284,12 @@ async function buildEditorialLayer(input: {
       palette,
       displaySample: String(j.display_sample ?? "").trim() || null,
       imageLabels,
+      heroIndex:
+        typeof j.hero_index === "number" &&
+        j.hero_index >= 0 &&
+        j.hero_index < input.images.length
+          ? j.hero_index
+          : null,
     };
   } catch {
     return null; // best-effort — the visual board still renders without it
@@ -350,13 +380,37 @@ export async function POST(req: NextRequest) {
     const orgNorm = normForMatch(
       brand?.title ?? (lead?.organization as string | null) ?? ""
     );
+    // Last-resort label: humanize a descriptive filename tail —
+    // "mss-2_tile---bedlinen_dt.jpg" → "Bedlinen".
+    const fromFilename = (src: string): string | null => {
+      const file = src.split("/").pop()?.split("?")[0] ?? "";
+      const stem = file
+        .replace(/\.[a-z0-9]+$/i, "")
+        .replace(/[_-](dt|mb|desktop|mobile)$/i, "");
+      const tail = stem.split(/-{2,}|_{2}/).pop() ?? "";
+      const words = tail.replace(/[_-]+/g, " ").trim();
+      if (!/^[a-z][a-z &]{2,28}$/i.test(words)) return null;
+      if (orgNorm && normForMatch(words) === orgNorm) return null;
+      return words.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+    };
     const labeledImages = images.map((img, i) => {
-      const fallback =
+      const altFallback =
         img.alt && orgNorm && normForMatch(img.alt) === orgNorm
           ? null
           : img.alt;
-      return { ...img, label: editorial?.imageLabels?.[String(i)] ?? fallback };
+      return {
+        ...img,
+        label:
+          editorial?.imageLabels?.[String(i)] ??
+          altFallback ??
+          fromFilename(img.src),
+      };
     });
+    // The LLM-chosen hero leads the board (promo strips stay in the grid).
+    if (editorial?.heroIndex != null && editorial.heroIndex > 0) {
+      const [heroImg] = labeledImages.splice(editorial.heroIndex, 1);
+      labeledImages.unshift(heroImg);
+    }
 
     const result = {
       version: BOARD_VERSION,
