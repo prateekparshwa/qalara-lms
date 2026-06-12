@@ -132,7 +132,12 @@ async function buildEditorialLayer(input: {
     .join("\n");
 
   try {
-    const raw = await openrouterComplete(system, user);
+    // Free Qwen first — this is a soft summarization task, not precision
+    // extraction. openrouterComplete's chain still falls back to Haiku /
+    // DeepSeek automatically when the free tier errors or rate-limits.
+    const raw = await openrouterComplete(system, user, {
+      model: "qwen/qwen3.6-plus:free",
+    });
     const j = parseJsonLoose(raw);
     const palette = (Array.isArray(j.palette) ? j.palette : [])
       .map((p) => ({
