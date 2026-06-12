@@ -94,8 +94,18 @@ function assetKey(src: string): string {
     .toLowerCase();
 }
 
+/** Sale/promo graphics say nothing about the brand's look — product and
+ * lifestyle photography must win the board (MOODBOARD.md §2). */
+function isPromo(src: string, alt: string | null): boolean {
+  const hay = `${src.split("/").pop() ?? ""} ${alt ?? ""}`.toLowerCase();
+  return /(sale|promo|clearance|markdown|discount|offer|deal|strip|voucher|coupon|\d{1,2}-?(%|percent|off))/i.test(
+    hay
+  );
+}
+
 /** Drop icons, logos, trackers and non-photographic assets; dedupe exact and
- * responsive-variant repeats (desktop crop preferred); cap. */
+ * responsive-variant repeats (desktop crop preferred); rank photography
+ * above promo banners; cap. */
 function filterImages(images: CtxImage[]): { src: string; alt: string | null }[] {
   const byKey = new Map<string, { src: string; alt: string | null }>();
   for (const img of images) {
@@ -114,7 +124,11 @@ function filterImages(images: CtxImage[]): { src: string; alt: string | null }[]
       byKey.set(key, { src, alt: img.alt?.trim() || existing.alt });
     }
   }
-  return Array.from(byKey.values()).slice(0, MAX_IMAGES);
+  const all = Array.from(byKey.values());
+  // Stable two-bucket sort: photography first, promo banners as filler.
+  const photos = all.filter((i) => !isPromo(i.src, i.alt));
+  const promos = all.filter((i) => isPromo(i.src, i.alt));
+  return [...photos, ...promos].slice(0, MAX_IMAGES);
 }
 
 /** Firecrawl full-page screenshot — the always-works visual fallback. */
