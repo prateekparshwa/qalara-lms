@@ -16,6 +16,12 @@ export interface CtxImage {
   alt: string | null;
   element?: string;
   type?: string;
+  /** Present when classification/resolution enrichment is requested. */
+  enrichment?: {
+    type?: string; // "photography" | "graphic" | "wordmark" | "icon" | …
+    width?: number;
+    height?: number;
+  };
 }
 
 export interface CtxBrandColor {
@@ -87,8 +93,19 @@ async function withKeyFallback<T>(
  * and fall back to a screenshot.
  */
 export async function scrapeImages(url: string): Promise<CtxImage[]> {
+  // Classification looks at the PIXELS (photography vs sale graphic vs
+  // wordmark) — filenames lie. Costs extra credits but decides the board.
   const j = await withKeyFallback((key) =>
-    ctxGet("/web/scrape/images", { url, waitForMs: "3000" }, key)
+    ctxGet(
+      "/web/scrape/images",
+      {
+        url,
+        waitForMs: "3000",
+        "enrichment[classification]": "true",
+        "enrichment[resolution]": "true",
+      },
+      key
+    )
   );
   const images = (j.images ?? []) as CtxImage[];
   return images;
@@ -110,6 +127,60 @@ export async function brandRetrieve(domain: string): Promise<CtxBrand | null> {
     socials: ((b.socials ?? []) as { type: string; url: string }[]).filter(
       (s) => s?.url
     ),
+  };
+}
+
+export interface CtxFontLink {
+  type: string; // "google" | "custom"
+  files: Record<string, string>; // weight -> font file URL
+  category?: string; // "serif" | "sans-serif" | …
+  displayName?: string;
+}
+
+export interface CtxTypography {
+  /** Heading/display face (from the site's h1). */
+  display: { family: string | null; weight: number | null };
+  /** Body face (from the site's p). */
+  text: { family: string | null; weight: number | null };
+  fontLinks: Record<string, CtxFontLink>;
+}
+
+export interface CtxStyleguide {
+  colors: { accent?: string; background?: string; text?: string };
+  typography: CtxTypography;
+}
+
+/**
+ * Design system of a site (GET /web/styleguide, 10 credits): real typography
+ * from the rendered CSS — heading + body families with font-file URLs — and
+ * the site's working colors.
+ */
+export async function scrapeStyleguide(
+  domain: string
+): Promise<CtxStyleguide | null> {
+  const j = await withKeyFallback((key) =>
+    ctxGet("/web/styleguide", { domain }, key)
+  );
+  const sg = j.styleguide as Record<string, unknown> | undefined;
+  if (!sg) return null;
+  const typo = (sg.typography ?? {}) as Record<string, unknown>;
+  const h1 = ((typo.headings ?? {}) as Record<string, unknown>).h1 as
+    | Record<string, unknown>
+    | undefined;
+  const p = typo.p as Record<string, unknown> | undefined;
+  return {
+    colors: (sg.colors ?? {}) as CtxStyleguide["colors"],
+    typography: {
+      display: {
+        family: (h1?.fontFamily as string) ?? null,
+        weight: (h1?.fontWeight as number) ?? null,
+      },
+      text: {
+        family: (p?.fontFamily as string) ?? null,
+        weight: (p?.fontWeight as number) ?? null,
+      },
+      fontLinks: (sg.fontLinks ?? {}) as Record<string, CtxFontLink>,
+    },
   };
 }
 

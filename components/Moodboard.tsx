@@ -101,12 +101,14 @@ function contrastText(hex: string): string {
   return luminance(hex) > 150 ? "#18181b" : "#fafaf9";
 }
 
-/** The palette's lightest paper tone for the board canvas (MOODBOARD.md §8). */
-function paperTone(palette: { hex: string }[]): string | null {
+/** Board canvas: the palette's lightest WARM paper tone, else light amber —
+ * never plain white (MOODBOARD.md §8). */
+const AMBER_PAPER = "#FBF4E6";
+function paperTone(palette: { hex: string }[]): string {
   const light = palette
-    .filter((c) => luminance(c.hex) > 215)
+    .filter((c) => luminance(c.hex) > 215 && luminance(c.hex) < 250)
     .sort((a, b) => luminance(b.hex) - luminance(a.hex))[0];
-  return light?.hex ?? null;
+  return light?.hex ?? AMBER_PAPER;
 }
 
 export default function Moodboard({ lead }: { lead: Lead }) {
@@ -302,7 +304,7 @@ export default function Moodboard({ lead }: { lead: Lead }) {
 
           <div
             className="px-6 py-5 min-h-full"
-            style={paper ? { backgroundColor: paper } : undefined}
+            style={{ backgroundColor: paper }}
           >
             {loading && (
               <div className="flex items-center gap-2 text-sm font-sans text-editorial-muted py-10 justify-center">

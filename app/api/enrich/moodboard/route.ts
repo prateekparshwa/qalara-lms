@@ -107,28 +107,44 @@ function isPromo(src: string, alt: string | null): boolean {
  * responsive-variant repeats (desktop crop preferred); rank photography
  * above promo banners; cap. */
 function filterImages(images: CtxImage[]): { src: string; alt: string | null }[] {
-  const byKey = new Map<string, { src: string; alt: string | null }>();
+  type Entry = { src: string; alt: string | null; kind: string };
+  const byKey = new Map<string, Entry>();
   for (const img of images) {
     const src = (img.src ?? "").trim();
+    const kind = (img.enrichment?.type ?? "").toLowerCase();
     if (!/^https?:\/\//i.test(src)) continue; // skip data: URIs / inline SVGs
     if (/\.(svg|ico|gif)(\?|$)/i.test(src)) continue;
+    // Pixel classification: icons and wordmarks never belong on the board.
+    if (kind === "icon" || kind === "wordmark" || kind === "logo") continue;
     if (/(favicon|icon|sprite|logo|badge|pixel|tracking|placeholder|loader|spinner|flag)/i.test(src))
       continue;
+    const w = img.enrichment?.width ?? 0;
+    const h = img.enrichment?.height ?? 0;
+    if (w > 0 && (w < 220 || h < 120)) continue; // thumbnails and strips
     const key = assetKey(src);
     const existing = byKey.get(key);
     const isMobileCrop = /[_-](mb|mobile)(?=\.[a-z]+$)/i.test(src);
+    const entry: Entry = { src, alt: img.alt?.trim() || null, kind };
     if (!existing) {
-      byKey.set(key, { src, alt: img.alt?.trim() || null });
-    } else if (/[_-](mb|mobile)(?=\.[a-z]+$)/i.test(existing.src) && !isMobileCrop) {
-      // A desktop crop replaces a previously seen mobile crop.
-      byKey.set(key, { src, alt: img.alt?.trim() || existing.alt });
+      byKey.set(key, entry);
+    } else if (
+      // A desktop crop or a photography-classified variant wins the slot.
+      (/[_-](mb|mobile)(?=\.[a-z]+$)/i.test(existing.src) && !isMobileCrop) ||
+      (kind === "photography" && existing.kind !== "photography")
+    ) {
+      byKey.set(key, { ...entry, alt: entry.alt || existing.alt });
     }
   }
   const all = Array.from(byKey.values());
-  // Stable two-bucket sort: photography first, promo banners as filler.
-  const photos = all.filter((i) => !isPromo(i.src, i.alt));
-  const promos = all.filter((i) => isPromo(i.src, i.alt));
-  return [...photos, ...promos].slice(0, MAX_IMAGES);
+  // Rank by what the pixels show: photography → unclassified → other
+  // graphics; promo-named assets sink within each band.
+  const rank = (e: Entry) =>
+    (e.kind === "photography" ? 0 : e.kind === "" ? 10 : 20) +
+    (isPromo(e.src, e.alt) ? 5 : 0);
+  return all
+    .sort((a, b) => rank(a) - rank(b))
+    .slice(0, MAX_IMAGES)
+    .map(({ src, alt }) => ({ src, alt }));
 }
 
 /** Firecrawl full-page screenshot — the always-works visual fallback. */
