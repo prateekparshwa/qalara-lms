@@ -29,7 +29,7 @@ const COLUMNS: { id: ColId; label: string; dot: string; sortable: boolean }[] = 
   { id: "website", label: "Brand Website", dot: "#B45309", sortable: true },
   { id: "country", label: "Buyer Country", dot: "#7C3AED", sortable: true },
   { id: "buyer_type", label: "Business Type", dot: "#E11D48", sortable: true },
-  { id: "buyer_classification", label: "Lead Quality (AI Recommended)", dot: "#4F46E5", sortable: true },
+  { id: "buyer_classification", label: "Buyer Purchase Potential (AI Recommended)", dot: "#4F46E5", sortable: true },
   { id: "current_am", label: "Account Manager", dot: "#7C3AED", sortable: true },
 ];
 

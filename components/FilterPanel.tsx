@@ -229,7 +229,7 @@ export default function FilterPanel({
           onChange={(v) => onChange({ ...filters, buyer_type: v })}
         />
         <FilterSelect
-          label="Lead Quality (AI Recommended)"
+          label="Buyer Purchase Potential (AI Recommended)"
           dot="#E11D48"
           value={filters.classification}
           options={options.classifications}
