@@ -337,6 +337,10 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                   </div>
                 )}
 
+                {/* Wide panels split into visuals (left) + brand
+                    intelligence (right); narrow panels stack. */}
+                <div className="grid gap-4 min-[1500px]:grid-cols-[3fr_2fr] min-[1500px]:items-start">
+                <div className="space-y-4 min-w-0">
                 {/* Hero image */}
                 {hero && (
                   <div className="relative rounded overflow-hidden border border-zinc-200">
@@ -403,7 +407,9 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                     </p>
                   </div>
                 )}
+                </div>
 
+                <div className="space-y-4 min-w-0">
                 {/* Brand quote panel — REAL brand words only (MOODBOARD.md §3) */}
                 {quote && (
                   <div
@@ -556,6 +562,8 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                     </p>
                   </div>
                 )}
+                </div>
+                </div>
 
                 <p className="text-[10px] font-code text-editorial-muted border-t border-zinc-300 pt-3">
                   Source: {website.replace(/^https?:\/\/(www\.)?/i, "")}

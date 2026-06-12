@@ -30,7 +30,12 @@ export default async function LobbyPage({
   let stats: Stats = { total: 0, verified: 0, highConfidence: 0 };
   let lastSynced: string | null = null;
   try {
-    const [s, synced] = await Promise.all([getLeadStats(), getLastSynced()]);
+    // Scope to the engagement directory so the lobby figure matches the
+    // dashboard inside (an unscoped count also includes Discovery saves).
+    const [s, synced] = await Promise.all([
+      getLeadStats("engagement"),
+      getLastSynced("engagement"),
+    ]);
     stats = {
       total: s.total,
       verified: s.verified,

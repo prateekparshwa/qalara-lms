@@ -325,7 +325,9 @@ body {
   top: 0;
   left: 0;
   height: 100vh;
-  width: 640px;
+  /* Fill ALL the space left of the 600px dossier drawer — no dead gap. */
+  width: calc(100vw - 600px);
+  min-width: 520px;
   max-width: 100vw;
   background: #fff;
   z-index: 52; /* above the dossier drawer + its amber ring */
