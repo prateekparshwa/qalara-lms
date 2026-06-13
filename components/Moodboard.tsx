@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileDown, Loader2, Palette, RefreshCw, X } from "lucide-react";
+import { ChevronRight, FileDown, Loader2, Palette, RefreshCw, X } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import { downloadMoodboardPdf, MoodboardPdfData } from "@/lib/moodboardPdf";
 
@@ -198,14 +198,18 @@ export default function Moodboard({ lead }: { lead: Lead }) {
   const images = (data?.images ?? []).filter((i) => !failed.has(i.src));
   const hero = images[0] ?? null;
   const rest = images.slice(1);
+  // Quote panel sourcing (MOODBOARD.md §3): REAL words only — a verified
+  // verbatim quote, else the official slogan, else nothing. Never fabricated.
   const quote =
     data?.editorial?.quote ??
     (data?.brand?.slogan
       ? { text: data.brand.slogan, type: "slogan" as const }
       : null);
   const orgName = data?.brand?.title ?? lead.organization ?? "Buyer";
-  const imgLabel = (img: { alt: string | null; label?: string | null }) =>
-    img.label ?? img.alt;
+  const imgLabel = (img: { alt: string | null; label?: string | null }) => {
+    const l = img.label ?? img.alt;
+    return l && !/^https?:\/\//i.test(l) ? l : null; // hide raw URL labels
+  };
 
   return (
     <>
@@ -226,19 +230,52 @@ export default function Moodboard({ lead }: { lead: Lead }) {
           Moodboard
         </span>
         <span className="flex-1 border-t border-zinc-400" />
-        <button
-          onClick={openBoard}
-          className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-sans font-medium border border-editorial-black rounded hover:bg-editorial-black hover:text-white transition-colors duration-150 cursor-pointer"
-        >
-          <Palette size={10} />
-          {data ? "Open Moodboard" : "Generate Moodboard"}
-        </button>
       </div>
-      <p className="text-[11px] font-sans text-editorial-muted">
-        An editorial board of the buyer&apos;s visual identity — imagery, brand
-        colors, voice and programs from their website. Opens alongside the
-        dossier; exportable as PDF.
-      </p>
+
+      {/* Editorial CTA card — modern launcher. Hover lifts tone only (no
+          layout-shifting scale); the chevron is the only moving part. */}
+      <button
+        onClick={openBoard}
+        aria-label={`${data ? "Open" : "Generate"} brand moodboard for ${orgName}`}
+        className="group relative w-full overflow-hidden rounded-lg border border-editorial-black/15 bg-white text-left transition-colors duration-200 hover:border-editorial-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 cursor-pointer"
+      >
+        {/* 5-accent spectrum hairline — the dossier's signature motif */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-[3px]"
+          style={{
+            background:
+              "linear-gradient(90deg,#4F46E5 0%,#7C3AED 28%,#0D9488 55%,#F59E0B 80%,#E11D48 100%)",
+          }}
+        />
+        <div className="flex items-center gap-4 px-4 py-3.5 pt-4">
+          {/* Amber emblem tile */}
+          <span
+            aria-hidden="true"
+            className="flex-shrink-0 grid place-items-center w-11 h-11 rounded-md transition-colors duration-200"
+            style={{ backgroundColor: "#FBF1DC", color: "#B45309" }}
+          >
+            <Palette size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[9px] font-code font-semibold uppercase tracking-[0.3em] text-amber-700/80">
+              {data ? "View · Visual identity" : "Generate · Visual identity"}
+            </div>
+            <div className="font-sans font-semibold text-[15px] text-editorial-black leading-tight">
+              {data ? "Open Brand Moodboard" : "Generate Brand Moodboard"}
+            </div>
+            <p className="text-[11px] font-sans text-editorial-muted leading-snug mt-0.5 line-clamp-2">
+              Imagery, colour palette, typography, voice &amp; programmes pulled
+              from the buyer&apos;s own site — exportable as PDF.
+            </p>
+          </div>
+          <ChevronRight
+            size={18}
+            aria-hidden="true"
+            className="flex-shrink-0 text-editorial-muted transition-transform duration-200 group-hover:translate-x-1 group-hover:text-editorial-black"
+          />
+        </div>
+      </button>
 
       {/* ── Left panel ───────────────────────────────────────────────── */}
       {open && (
@@ -496,7 +533,9 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                           className="text-sm mt-1.5 text-editorial-secondary"
                           style={{ fontFamily: faceStack(data.typography?.display) }}
                         >
-                          {data.editorial?.displaySample ?? orgName}
+                          {/* Specimen line — real words only: slogan, else
+                              the brand name. No fabricated copy. */}
+                          {quote?.text ?? orgName}
                         </div>
                       </div>
                       <div className="rounded border border-zinc-200 bg-white p-4">

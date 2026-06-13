@@ -41,8 +41,11 @@ user action. Regenerate = `force: true`.
 - The tagline panel shows the brand's **own words**: the official slogan, or a
   verbatim brand-essence line found in the scraped site content (homepage
   hero copy, about/brand page line).
-- The LLM is forbidden from inventing a generic tagline. If no real line
-  exists in the content, it returns null and the panel is omitted.
+- The LLM is forbidden from inventing a generic tagline. NO FABRICATION:
+  every word shown must be the brand's own.
+- Panel sourcing order: verified verbatim quote → official slogan → nothing.
+  If no real line exists the panel is omitted — never filled with adapted or
+  invented copy.
 - Label the panel by what it is: "Brand essence" (verbatim) vs "Slogan".
 
 ## 4. Commercial programs (sourcing intel)
@@ -68,8 +71,8 @@ user action. Regenerate = `force: true`.
 - Use the **real typefaces** from the styleguide endpoint, loaded via
   @font-face from the brand's own font files. Name them ("Display ·
   Beausite Slick").
-- The display sample is a short sentence **in the brand's voice** (taken or
-  adapted from site copy), not just "Aa Bb Cc".
+- The type specimen secondary line shows **real words only** — the brand's
+  slogan/verified quote, else the brand name. Never a fabricated sentence.
 - Voice = exactly 5 single-word adjectives that fit how the brand actually
   writes.
 - PDF fallback: serif/sans stand-in matching each face's category, labeled

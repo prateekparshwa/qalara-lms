@@ -135,8 +135,10 @@ export async function downloadMoodboardPdf(
     return 0.299 * r + 0.587 * g + 0.114 * b;
   };
   const accent = palette.filter((c) => lum(c.hex) <= 215)[0]?.hex ?? "#18181b";
-  const label = (img: { alt: string | null; label?: string | null }) =>
-    img.label ?? img.alt;
+  const label = (img: { alt: string | null; label?: string | null }) => {
+    const l = img.label ?? img.alt;
+    return l && !/^https?:\/\//i.test(l) ? l : null; // hide raw URL labels
+  };
 
   // ── Masthead ────────────────────────────────────────────────────────────
   doc.setFont("times", "normal");
@@ -161,6 +163,15 @@ export async function downloadMoodboardPdf(
   doc.setLineWidth(1.5);
   doc.line(margin, y, margin + width, y);
   y += 14;
+
+  // Aesthetic line (matches the on-screen line under the masthead).
+  if (data.editorial?.aesthetic) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(data.editorial.aesthetic.toUpperCase(), margin, y + 4);
+    y += 16;
+  }
 
   // ── Images: hero + grid (or screenshot fallback) ───────────────────────
   const imgs = data.images.slice(0, 10);
@@ -281,7 +292,13 @@ export async function downloadMoodboardPdf(
   // ── Typography & voice ─────────────────────────────────────────────────
   // jsPDF can't embed the buyer's woff2 files, so samples render in a serif/
   // sans stand-in matching each face's category, labeled with the real name.
-  if (data.typography?.display.name || data.typography?.text.name) {
+  // Render under the SAME condition as the on-screen board: a resolved font
+  // name OR a display sample OR voice keywords (matching the dossier panel).
+  if (
+    data.typography?.display.name ||
+    data.typography?.text.name ||
+    data.editorial?.voiceKeywords?.length
+  ) {
     ensure(110);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
@@ -313,12 +330,13 @@ export async function downloadMoodboardPdf(
       doc.setFontSize(label === "Display" ? 24 : 17);
       doc.setTextColor(24);
       doc.text(label === "Display" ? "Aa Bb Cc" : "Aa Bb Cc 0123456789", x + 12, y + 46);
-      if (label === "Display" && data.editorial?.displaySample) {
+      // Specimen line — real words only (slogan/quote, else brand name).
+      if (label === "Display") {
         doc.setFont(serif ? "times" : "helvetica", "normal");
         doc.setFontSize(9);
         doc.setTextColor(90);
         doc.text(
-          doc.splitTextToSize(data.editorial.displaySample, colW - 24).slice(0, 2),
+          doc.splitTextToSize(quote?.text ?? org, colW - 24).slice(0, 2),
           x + 12,
           y + 62
         );
