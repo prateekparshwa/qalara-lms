@@ -16,7 +16,7 @@ import { downloadMoodboardPdf, MoodboardPdfData } from "@/lib/moodboardPdf";
  * board; afterwards it's served from a 7-day server-side cache.
  */
 
-const BOARD_VERSION = 4; // must match app/api/enrich/moodboard/route.ts
+const BOARD_VERSION = 6; // must match app/api/enrich/moodboard/route.ts
 
 interface TypographyFace {
   name: string | null;
@@ -200,13 +200,9 @@ export default function Moodboard({ lead }: { lead: Lead }) {
   const rest = images.slice(1);
   // CTA emblem: the brand's own hero photo (a built board), else null → icon.
   const ctaThumb = hero?.src ?? null;
-  // Quote panel sourcing (MOODBOARD.md §3): REAL words only — a verified
-  // verbatim quote, else the official slogan, else nothing. Never fabricated.
-  const quote =
-    data?.editorial?.quote ??
-    (data?.brand?.slogan
-      ? { text: data.brand.slogan, type: "slogan" as const }
-      : null);
+  // Quote panel (MOODBOARD.md §3): the LLM-derived brand essence, grounded
+  // in the website content. Shown when derivable, otherwise omitted.
+  const quote = data?.editorial?.quote ?? null;
   const orgName = data?.brand?.title ?? lead.organization ?? "Buyer";
   const imgLabel = (img: { alt: string | null; label?: string | null }) => {
     const l = img.label ?? img.alt;

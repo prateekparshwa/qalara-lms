@@ -233,12 +233,8 @@ export async function downloadMoodboardPdf(
     }
   }
 
-  // ── Quote panel — REAL brand words only (MOODBOARD.md §3) ───────────────
-  const quote =
-    data.editorial?.quote ??
-    (data.brand?.slogan
-      ? { text: data.brand.slogan, type: "slogan" as const }
-      : null);
+  // ── Brand essence panel — LLM-derived from the site (MOODBOARD.md §3) ───
+  const quote = data.editorial?.quote ?? null;
   if (quote) {
     const lines = doc.splitTextToSize(`“${quote.text}”`, width - 64);
     const boxH = 46 + lines.length * 18;
@@ -376,16 +372,18 @@ export async function downloadMoodboardPdf(
 
   // ── About — full text, wrapped; never truncated ────────────────────────
   if (data.brand?.description) {
-    const lines = doc.splitTextToSize(data.brand.description, width);
     ensure(24);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(120);
     doc.text("A B O U T", margin, y + 6);
     y += 16;
+    // Set the body font BEFORE measuring so wrap width matches the drawn
+    // size (otherwise lines computed at a smaller size overshoot the margin).
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(60);
+    const lines = doc.splitTextToSize(data.brand.description, width);
     const lineH = 12;
     // Draw line by line so a long blurb flows onto a new page instead of
     // being clipped at the bottom margin.

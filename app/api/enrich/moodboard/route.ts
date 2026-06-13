@@ -35,7 +35,7 @@ const MAX_IMAGES = 12;
 const MIN_IMAGES_BEFORE_SCREENSHOT = 4;
 
 /** Bump when the board contract changes — older cache entries rebuild. */
-const BOARD_VERSION = 4;
+const BOARD_VERSION = 6;
 
 interface EditorialLayer {
   /** Verbatim brand line from the site (never invented); null when none found. */
@@ -287,11 +287,11 @@ async function buildEditorialLayer(input: {
     "",
     "Return JSON with exactly these keys:",
     `{
-  "quote": {"text": "a brand line copied VERBATIM from the 'Website content' excerpt below — hero copy or a brand-essence line written by the brand itself", "type": "slogan or essence"} — null if no such line exists in the excerpt; NEVER compose one yourself and NEVER take it from the About paragraph (that text is third-party),
+  "essence": "ONE short, evocative sentence (max 12 words) capturing this brand's essence and emotional promise, written IN THE BRAND'S OWN WARM VOICE like a tagline — e.g. 'Welcome home — comfort, luxury and the sheer joy of home living.' Derive the THEME from the website content; do NOT invent facts, numbers or awards, do NOT write a dry corporate descriptor, and do NOT copy a slogan verbatim. Return null if the content is too thin.",
   "dateline": "market/origin · current campaign or season named in the content · the current year given above — e.g. 'Australian home · High winter · ${new Date().getFullYear()}'; omit parts you cannot ground",
   "aesthetic": "3-5 word phrase describing the visual aesthetic",
   "voice_keywords": ["exactly 5 evocative, brand-SPECIFIC single-word adjectives drawn from how this brand actually writes — avoid generic retail words like 'accessible', 'functional', 'quality', 'stylish'; prefer distinctive ones e.g. 'sanctuary', 'curated', 'cosy', 'considered'"],
-  "programs": ["up to 6 of the brand's OWN sub-brands, lines or membership/loyalty programs named in the content (e.g. 'Linen Lovers — 40% off, early access'); EXCLUDE licensed third-party names like NBA or Disney; [] if none"],
+  "programs": ["up to 6 of the brand's OWN sub-brands, ranges or membership programs as SHORT names only (2-4 words, e.g. 'Linen Lovers', 'Adairs Kids', 'Adairs Insider'); do NOT append descriptions and do NOT name licensed third-party brands (NBA, Disney, etc.); [] if none"],
   "palette": [{"hex": "#RRGGBB", "name": "evocative color name"} — exactly 6 colors capturing the brand's VISUAL MOOD. Derive them from the imagery, product types and seasonal campaign (e.g. a warm home brand → linen, ecru, clay, sage, terracotta, charcoal). Do NOT fill the palette with the interface colors above — include AT MOST 2 neutrals (black/white/grey); the other 4+ must be warm or chromatic tones true to the brand],
   "display_sample": "a short on-brand line for a type specimen — a welcome/essence/lifestyle line in the brand's own voice (e.g. 'Welcome home'); do NOT use a sale, discount or loyalty-promo line",
   "image_labels": {"<index>": "curated editorial tag, max 5 words, title case — e.g. 'High Winter Campaign'"} — only for indexes where the caption or filename gives you something SPECIFIC to say about that image; every label must be distinct; omit an index rather than repeat a label or write a generic one,
@@ -318,20 +318,13 @@ async function buildEditorialLayer(input: {
         .filter((p) => HEX_RE.test(p.hex))
     );
 
-    // MOODBOARD.md §3: the quote must be REAL. Models invent plausible
-    // taglines despite instructions, so verify deterministically — keep it
-    // only if it appears in the scraped content or equals the slogan.
-    const qo = j.quote as Record<string, unknown> | null | undefined;
-    const quoteText = String(qo?.text ?? "").trim();
-    const corpus = normForMatch(
-      `${input.slogan ?? ""}\n${input.markdown ?? ""}`
-    );
+    // MOODBOARD.md §3: a brand ESSENCE the LLM derives from the website
+    // content (grounded synthesis — not a copied slogan, not invented).
+    // Shown when derivable, omitted otherwise.
+    const essenceText = String(j.essence ?? "").trim();
     const quote =
-      quoteText && corpus.includes(normForMatch(quoteText))
-        ? {
-            text: quoteText,
-            type: String(qo?.type ?? "") === "slogan" ? ("slogan" as const) : ("essence" as const),
-          }
+      essenceText && essenceText.toLowerCase() !== "null"
+        ? { text: essenceText, type: "essence" as const }
         : null;
 
     // §2/§9: labels must be specific and distinct — drop duplicates and

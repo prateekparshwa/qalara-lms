@@ -36,17 +36,16 @@ user action. Regenerate = `force: true`.
 - If image scraping fails or yields < 4 usable images, show the full-page
   screenshot with an explanatory caption — never an empty board.
 
-## 3. The quote must be REAL
+## 3. Brand essence (grounded, never fabricated)
 
-- The tagline panel shows the brand's **own words**: the official slogan, or a
-  verbatim brand-essence line found in the scraped site content (homepage
-  hero copy, about/brand page line).
-- The LLM is forbidden from inventing a generic tagline. NO FABRICATION:
-  every word shown must be the brand's own.
-- Panel sourcing order: verified verbatim quote → official slogan → nothing.
-  If no real line exists the panel is omitted — never filled with adapted or
-  invented copy.
-- Label the panel by what it is: "Brand essence" (verbatim) vs "Slogan".
+- The panel shows a **brand essence**: ONE short, evocative sentence the LLM
+  DERIVES from the scraped website content, written in the brand's own warm
+  voice (like a tagline) — grounded synthesis, NOT a copied marketing slogan
+  and NOT invented claims, numbers or awards.
+- It must stay faithful to the site. If the content is too thin to derive a
+  faithful essence, the LLM returns null and the panel is omitted
+  ("if a brand essence is present, show it").
+- Labelled "Brand essence".
 
 ## 4. Commercial programs (sourcing intel)
 
@@ -71,8 +70,8 @@ user action. Regenerate = `force: true`.
 - Use the **real typefaces** from the styleguide endpoint, loaded via
   @font-face from the brand's own font files. Name them ("Display ·
   Beausite Slick").
-- The type specimen secondary line shows **real words only** — the brand's
-  slogan/verified quote, else the brand name. Never a fabricated sentence.
+- The type specimen secondary line shows **real words only** — the derived
+  brand essence, else the brand name. Never a fabricated sentence.
 - Voice = exactly 5 single-word adjectives that fit how the brand actually
   writes.
 - PDF fallback: serif/sans stand-in matching each face's category, labeled
@@ -102,5 +101,6 @@ A board is below standard if any of these are true:
 
 ## 10. Cost discipline
 
-~21 context.dev credits + 1 Firecrawl scrape + 1 small LLM call per build.
-On-demand only, 7-day cache, force-rebuild only from the Regenerate button.
+~25 context.dev credits per build (images 5 + brand 10 + styleguide 10),
+plus 1 Firecrawl scrape and 1 small LLM call. On-demand only, 7-day cache,
+force-rebuild only from the Regenerate button.
