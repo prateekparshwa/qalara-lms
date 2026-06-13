@@ -443,7 +443,7 @@ export async function downloadMoodboardPdf(
   doc.setFontSize(7);
   doc.setTextColor(150);
   doc.text(
-    `Source: ${data.website ?? "buyer website"} · Imagery and colors extracted from the official site · Built ${built} · Qalara Buyer Intelligence`,
+    `Source: ${data.website ?? "buyer website"} · Imagery and colors extracted from the official site · Built ${built} · Qalara Buyer Intelligence · PDF build v7`,
     margin,
     pageH - 22
   );
