@@ -104,6 +104,28 @@ function contrastText(hex: string): [number, number, number] {
   return lum > 150 ? [24, 24, 27] : [250, 250, 249];
 }
 
+/**
+ * Coerce text to characters the PDF base fonts (WinAnsi Helvetica/Times) can
+ * encode in a single byte. A character outside WinAnsi (e.g. a non-breaking
+ * hyphen U+2011, or other typographic punctuation) makes jsPDF silently switch
+ * the WHOLE string to 2-byte UTF-16, which a standard-font viewer renders with
+ * a null byte before every glyph — text spreads out and overflows the line.
+ * Map the common typographic forms to ASCII and drop anything still unsafe.
+ */
+function pdfText(s: string | null | undefined): string {
+  if (!s) return "";
+  return s
+    .replace(/[‐-―−]/g, "-") // hyphens, dashes, minus → "-"
+    .replace(/[‘’‚‛]/g, "'") // curly single quotes → '
+    .replace(/[“”„‟]/g, '"') // curly double quotes → "
+    .replace(/…/g, "...") // ellipsis
+    .replace(/[   ]/g, " ") // non-breaking spaces → space
+    .replace(/[•‧]/g, "·") // bullets → middot (in WinAnsi)
+    // Keep ASCII printable + Latin-1 accented range; drop everything else so
+    // jsPDF never falls back to UTF-16.
+    .replace(/[^\x20-\x7E¡-ÿ]/g, "");
+}
+
 export async function downloadMoodboardPdf(
   data: MoodboardPdfData
 ): Promise<void> {
@@ -114,6 +136,18 @@ export async function downloadMoodboardPdf(
   const margin = 40;
   const width = pageW - margin * 2;
   let y = margin;
+
+  // Sanitize EVERY drawn string so a stray Unicode char can never trigger the
+  // jsPDF UTF-16 fallback (see pdfText). Measurement paths (splitTextToSize /
+  // getTextWidth) sanitize their inputs explicitly below so wrapping matches.
+  const rawText = doc.text.bind(doc);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (doc as any).text = (t: string | string[], ...rest: unknown[]) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (rawText as any)(
+      Array.isArray(t) ? t.map(pdfText) : pdfText(t),
+      ...rest
+    );
 
   const ensure = (h: number) => {
     if (y + h > pageH - margin) {
@@ -141,7 +175,7 @@ export async function downloadMoodboardPdf(
     const l = img.label;
     if (!l || /^https?:\/\//i.test(l)) return null;
     // eslint-disable-next-line no-control-regex
-    return /^[\x00-\x7F]+$/.test(l) ? l : null;
+    return /^[\x00-\x7F]+$/.test(l) ? pdfText(l) : null;
   };
 
   // Truncate a string with an ellipsis so it fits within maxW at the current
@@ -157,7 +191,7 @@ export async function downloadMoodboardPdf(
   doc.setFont("times", "normal");
   doc.setFontSize(34);
   doc.setTextColor(24);
-  doc.text(doc.splitTextToSize(org.toUpperCase(), width), margin, y + 26);
+  doc.text(doc.splitTextToSize(pdfText(org.toUpperCase()), width), margin, y + 26);
   y += 38;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
@@ -251,7 +285,7 @@ export async function downloadMoodboardPdf(
   // ── Brand essence panel — LLM-derived from the site (MOODBOARD.md §3) ───
   const quote = data.editorial?.quote ?? null;
   if (quote) {
-    const lines = doc.splitTextToSize(`“${quote.text}”`, width - 64);
+    const lines = doc.splitTextToSize(pdfText(`"${quote.text}"`), width - 64);
     const boxH = 46 + lines.length * 18;
     ensure(boxH + 8);
     const [r, g, b] = hexToRgb(accent);
@@ -347,7 +381,7 @@ export async function downloadMoodboardPdf(
         doc.setFontSize(9);
         doc.setTextColor(90);
         doc.text(
-          doc.splitTextToSize(quote?.text ?? org, colW - 24).slice(0, 2),
+          doc.splitTextToSize(pdfText(quote?.text ?? org), colW - 24).slice(0, 2),
           x + 12,
           y + 62
         );
@@ -378,7 +412,7 @@ export async function downloadMoodboardPdf(
     doc.setFontSize(9);
     doc.setTextColor(40);
     const progLines = doc.splitTextToSize(
-      data.editorial.programs.join("   ·   "),
+      pdfText(data.editorial.programs.join("   ·   ")),
       width
     );
     doc.text(progLines, margin, y + 4);
@@ -402,7 +436,7 @@ export async function downloadMoodboardPdf(
     // wider than the column (guards against font-metric quirks). Drawn strictly
     // left-aligned — never justified — so a near-full line can't stretch/spill.
     const lines: string[] = [];
-    for (const wrapped of doc.splitTextToSize(data.brand.description, width)) {
+    for (const wrapped of doc.splitTextToSize(pdfText(data.brand.description), width)) {
       if (doc.getTextWidth(wrapped) <= width) {
         lines.push(wrapped);
         continue;
@@ -443,7 +477,7 @@ export async function downloadMoodboardPdf(
   doc.setFontSize(7);
   doc.setTextColor(150);
   doc.text(
-    `Source: ${data.website ?? "buyer website"} · Imagery and colors extracted from the official site · Built ${built} · Qalara Buyer Intelligence · PDF build v7`,
+    `Source: ${data.website ?? "buyer website"} · Imagery and colors extracted from the official site · Built ${built} · Qalara Buyer Intelligence · PDF build v8`,
     margin,
     pageH - 22
   );
