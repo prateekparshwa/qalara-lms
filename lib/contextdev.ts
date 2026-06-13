@@ -139,10 +139,22 @@ export interface CtxFontLink {
 
 export interface CtxTypography {
   /** Heading/display face (from the site's h1). */
-  display: { family: string | null; weight: number | null };
+  display: { family: string | null; weight: number | null; generic: string | null };
   /** Body face (from the site's p). */
-  text: { family: string | null; weight: number | null };
+  text: { family: string | null; weight: number | null; generic: string | null };
   fontLinks: Record<string, CtxFontLink>;
+}
+
+/** Pull the generic family (serif / sans-serif / …) from a CSS fallback list. */
+function genericFromFallbacks(fallbacks: unknown): string | null {
+  if (!Array.isArray(fallbacks)) return null;
+  for (let i = fallbacks.length - 1; i >= 0; i--) {
+    const f = String(fallbacks[i] ?? "").trim().toLowerCase();
+    if (/^(serif|sans-serif|monospace|cursive|fantasy|system-ui)$/.test(f)) {
+      return f;
+    }
+  }
+  return null;
 }
 
 export interface CtxStyleguide {
@@ -174,10 +186,12 @@ export async function scrapeStyleguide(
       display: {
         family: (h1?.fontFamily as string) ?? null,
         weight: (h1?.fontWeight as number) ?? null,
+        generic: genericFromFallbacks(h1?.fontFallbacks),
       },
       text: {
         family: (p?.fontFamily as string) ?? null,
         weight: (p?.fontWeight as number) ?? null,
+        generic: genericFromFallbacks(p?.fontFallbacks),
       },
       fontLinks: (sg.fontLinks ?? {}) as Record<string, CtxFontLink>,
     },

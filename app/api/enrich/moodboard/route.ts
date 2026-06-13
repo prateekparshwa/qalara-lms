@@ -35,7 +35,7 @@ const MAX_IMAGES = 12;
 const MIN_IMAGES_BEFORE_SCREENSHOT = 4;
 
 /** Bump when the board contract changes — older cache entries rebuild. */
-const BOARD_VERSION = 3;
+const BOARD_VERSION = 4;
 
 interface EditorialLayer {
   /** Verbatim brand line from the site (never invented); null when none found. */
@@ -66,17 +66,22 @@ function typographyFromStyleguide(
   sg: CtxStyleguide | null
 ): { display: TypographyFace; text: TypographyFace } | null {
   if (!sg) return null;
-  const face = (family: string | null): TypographyFace => {
-    if (!family) return { name: null, category: null, files: {} };
-    const link = sg.typography.fontLinks[family];
+  // Category from fontLinks if present, else the CSS generic fallback
+  // (custom-hosted fonts have no category but the stack ends in serif/sans).
+  const face = (slot: {
+    family: string | null;
+    generic: string | null;
+  }): TypographyFace => {
+    if (!slot.family) return { name: null, category: null, files: {} };
+    const link = sg.typography.fontLinks[slot.family];
     return {
-      name: link?.displayName ?? family.replace(/[-_]+/g, " "),
-      category: link?.category ?? null,
+      name: link?.displayName ?? slot.family.replace(/[-_]+/g, " "),
+      category: link?.category ?? slot.generic ?? null,
       files: link?.files ?? {},
     };
   };
-  const display = face(sg.typography.display.family);
-  const text = face(sg.typography.text.family);
+  const display = face(sg.typography.display);
+  const text = face(sg.typography.text);
   if (!display.name && !text.name) return null;
   return { display, text };
 }
@@ -170,6 +175,42 @@ async function firecrawlScreenshot(url: string): Promise<string | null> {
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 
+/** HSL saturation (0–1). Near 0 = a neutral (black / white / grey). */
+function saturation(hex: string): number {
+  const m = hex.replace("#", "");
+  const r = parseInt(m.slice(0, 2), 16) / 255;
+  const g = parseInt(m.slice(2, 4), 16) / 255;
+  const b = parseInt(m.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === min) return 0;
+  const l = (max + min) / 2;
+  return l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min);
+}
+
+const isNeutral = (hex: string): boolean => saturation(hex) < 0.14;
+
+/**
+ * MOODBOARD.md §5: a warm brand must not read greyscale. Keep all chromatic
+ * swatches in order; allow at most 2 neutrals (UI chrome tends to be grey),
+ * cap at 6.
+ */
+function capNeutrals(
+  palette: { hex: string; name: string }[]
+): { hex: string; name: string }[] {
+  const out: { hex: string; name: string }[] = [];
+  let neutrals = 0;
+  for (const c of palette) {
+    if (isNeutral(c.hex)) {
+      if (neutrals >= 2) continue;
+      neutrals++;
+    }
+    out.push(c);
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
 /** Loose text normalization for verbatim-quote verification: case, quotes,
  * dashes and whitespace variations must not break a genuine match. */
 function normForMatch(s: string): string {
@@ -234,7 +275,9 @@ async function buildEditorialLayer(input: {
     input.leadContext.country
       ? `Buyer country: ${input.leadContext.country}`
       : null,
-    known ? `Known official brand colors: ${known}` : null,
+    known
+      ? `Site interface / logo colors (often neutral UI chrome — do NOT just copy these into the palette): ${known}`
+      : null,
     input.images.length
       ? `Images on the board (index: caption):\n${imageList}`
       : null,
@@ -247,10 +290,10 @@ async function buildEditorialLayer(input: {
   "quote": {"text": "a brand line copied VERBATIM from the 'Website content' excerpt below — hero copy or a brand-essence line written by the brand itself", "type": "slogan or essence"} — null if no such line exists in the excerpt; NEVER compose one yourself and NEVER take it from the About paragraph (that text is third-party),
   "dateline": "market/origin · current campaign or season named in the content · the current year given above — e.g. 'Australian home · High winter · ${new Date().getFullYear()}'; omit parts you cannot ground",
   "aesthetic": "3-5 word phrase describing the visual aesthetic",
-  "voice_keywords": ["exactly 5 single-word adjectives matching how the brand actually writes"],
+  "voice_keywords": ["exactly 5 evocative, brand-SPECIFIC single-word adjectives drawn from how this brand actually writes — avoid generic retail words like 'accessible', 'functional', 'quality', 'stylish'; prefer distinctive ones e.g. 'sanctuary', 'curated', 'cosy', 'considered'"],
   "programs": ["up to 6 of the brand's OWN sub-brands, lines or membership/loyalty programs named in the content (e.g. 'Linen Lovers — 40% off, early access'); EXCLUDE licensed third-party names like NBA or Disney; [] if none"],
-  "palette": [{"hex": "#RRGGBB", "name": "evocative color name"} — exactly 6 colors: official brand colors first, then colors evident in the imagery and current campaign; at most 2 plain neutrals (black/white/grey)],
-  "display_sample": "a short sentence in the brand's own voice for a type specimen, taken or adapted from site copy",
+  "palette": [{"hex": "#RRGGBB", "name": "evocative color name"} — exactly 6 colors capturing the brand's VISUAL MOOD. Derive them from the imagery, product types and seasonal campaign (e.g. a warm home brand → linen, ecru, clay, sage, terracotta, charcoal). Do NOT fill the palette with the interface colors above — include AT MOST 2 neutrals (black/white/grey); the other 4+ must be warm or chromatic tones true to the brand],
+  "display_sample": "a short on-brand line for a type specimen — a welcome/essence/lifestyle line in the brand's own voice (e.g. 'Welcome home'); do NOT use a sale, discount or loyalty-promo line",
   "image_labels": {"<index>": "curated editorial tag, max 5 words, title case — e.g. 'High Winter Campaign'"} — only for indexes where the caption or filename gives you something SPECIFIC to say about that image; every label must be distinct; omit an index rather than repeat a label or write a generic one,
   "hero_index": <index of the best LEAD image for the board — an evocative lifestyle/campaign photo, judged from captions and filenames; avoid promo strips, sale banners and logos>
 }`,
@@ -266,13 +309,14 @@ async function buildEditorialLayer(input: {
     });
     const j = parseJsonLoose(raw);
 
-    const palette = (Array.isArray(j.palette) ? j.palette : [])
-      .map((p) => ({
-        hex: String((p as Record<string, unknown>)?.hex ?? "").trim(),
-        name: String((p as Record<string, unknown>)?.name ?? "").trim(),
-      }))
-      .filter((p) => HEX_RE.test(p.hex))
-      .slice(0, 6);
+    const palette = capNeutrals(
+      (Array.isArray(j.palette) ? j.palette : [])
+        .map((p) => ({
+          hex: String((p as Record<string, unknown>)?.hex ?? "").trim(),
+          name: String((p as Record<string, unknown>)?.name ?? "").trim(),
+        }))
+        .filter((p) => HEX_RE.test(p.hex))
+    );
 
     // MOODBOARD.md §3: the quote must be REAL. Models invent plausible
     // taglines despite instructions, so verify deterministically — keep it

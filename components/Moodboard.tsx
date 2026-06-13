@@ -16,7 +16,7 @@ import { downloadMoodboardPdf, MoodboardPdfData } from "@/lib/moodboardPdf";
  * board; afterwards it's served from a 7-day server-side cache.
  */
 
-const BOARD_VERSION = 3; // must match app/api/enrich/moodboard/route.ts
+const BOARD_VERSION = 4; // must match app/api/enrich/moodboard/route.ts
 
 interface TypographyFace {
   name: string | null;
