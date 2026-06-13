@@ -133,7 +133,7 @@
 .rotating-word {
   display: inline-block;
   color: var(--accent-teal);
-  transition: opacity 280ms ease, transform 280ms ease;
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 .rotating-word.rw-in {
   opacity: 1;
@@ -141,7 +141,7 @@
 }
 .rotating-word.rw-out {
   opacity: 0;
-  transform: translateY(0.28em);
+  transform: translateY(0.16em);
 }
 @media (prefers-reduced-motion: reduce) {
   .rotating-word {

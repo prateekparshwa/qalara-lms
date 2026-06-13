@@ -36,7 +36,7 @@ export default function RotatingWord({
       window.setTimeout(() => {
         setIndex((i) => (i + 1) % words.length);
         setShown(true); // fade next word in
-      }, 300);
+      }, 180);
     }, intervalMs);
 
     return () => clearInterval(id);
