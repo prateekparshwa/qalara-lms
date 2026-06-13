@@ -20,6 +20,9 @@
   --accent-amber: #F59E0B;
   --accent-rose: #E11D48;
   --accent-violet: #7C3AED;
+  /* Atlas lobby — warm paper backdrop + grid */
+  --atlas-bg: #F5F4EF;
+  --atlas-grid: #E7E5DC;
 }
 
 * {
@@ -704,10 +707,10 @@ body {
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  background-color: var(--editorial-bg);
+  background-color: var(--atlas-bg);
   background-image:
-    linear-gradient(#e4e6f1 0.5px, transparent 0.5px),
-    linear-gradient(90deg, #e4e6f1 0.5px, transparent 0.5px);
+    linear-gradient(var(--atlas-grid) 0.5px, transparent 0.5px),
+    linear-gradient(90deg, var(--atlas-grid) 0.5px, transparent 0.5px);
   background-size: 30px 30px;
 }
 /* Fade the grid out toward the bottom so content below reads cleanly. */
@@ -715,7 +718,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 38%, var(--editorial-bg) 90%);
+  background: linear-gradient(180deg, transparent 38%, var(--atlas-bg) 90%);
 }
 .atlas-pin {
   position: absolute;
@@ -752,17 +755,19 @@ body {
 .atlas-card {
   position: relative;
   display: block;
-  border: 1px solid #d8dae6;
+  border: 1.5px solid rgba(79, 70, 229, 0.35);
   border-radius: 14px;
   padding: 22px;
-  background: rgba(255, 255, 255, 0.88);
+  /* Faint indigo wash over the warm paper. */
+  background: rgba(238, 237, 252, 0.7);
   transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 180ms ease, border-color 180ms ease;
+    box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
 }
 .atlas-card:hover {
   transform: translateY(-2px);
-  border-color: #b9bcd0;
-  box-shadow: 0 14px 34px rgba(79, 70, 229, 0.1);
+  border-color: var(--accent-indigo);
+  background: rgba(238, 237, 252, 0.92);
+  box-shadow: 0 14px 34px rgba(79, 70, 229, 0.16);
 }
 .atlas-card:focus-visible {
   outline: none;
@@ -770,12 +775,13 @@ body {
 }
 .atlas-card--discover {
   border-style: dashed;
-  border-color: #c7c3b4;
-  background: rgba(255, 255, 255, 0.62);
+  border-color: rgba(13, 148, 136, 0.45);
+  background: rgba(228, 248, 242, 0.7);
 }
 .atlas-card--discover:hover {
   border-color: var(--accent-teal);
-  box-shadow: 0 14px 34px rgba(13, 148, 136, 0.12);
+  background: rgba(228, 248, 242, 0.92);
+  box-shadow: 0 14px 34px rgba(13, 148, 136, 0.16);
 }
 .atlas-card--discover:focus-visible {
   box-shadow: 0 0 0 2px var(--accent-teal);

@@ -52,7 +52,7 @@ export default async function LobbyPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-editorial-bg disp-grotesk">
+    <div className="min-h-screen flex flex-col bg-[#F5F4EF] disp-grotesk">
       <Masthead />
 
       <main className="flex-1 relative overflow-hidden">
