@@ -98,7 +98,7 @@ export default async function LobbyPage() {
             Map every{" "}
             <RotatingWord
               words={["prospect", "lead", "customer"]}
-              colors={["#185FA5", "#3B6D11", "#185FA5"]}
+              colors={["#185FA5", "#3B6D11", "#D97706"]}
               className="inline-block align-bottom"
               style={{ minWidth: "5.6ch", textAlign: "left" }}
             />
