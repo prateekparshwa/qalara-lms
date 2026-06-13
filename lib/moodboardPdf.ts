@@ -433,8 +433,7 @@ export async function downloadMoodboardPdf(
     doc.setFontSize(8.5);
     doc.setTextColor(60);
     // Belt-and-suspenders: split, then hard-wrap any line that still measures
-    // wider than the column (guards against font-metric quirks). Drawn strictly
-    // left-aligned — never justified — so a near-full line can't stretch/spill.
+    // wider than the column (guards against font-metric quirks).
     const lines: string[] = [];
     for (const wrapped of doc.splitTextToSize(pdfText(data.brand.description), width)) {
       if (doc.getTextWidth(wrapped) <= width) {
@@ -454,13 +453,27 @@ export async function downloadMoodboardPdf(
       if (cur) lines.push(cur);
     }
     const lineH = 12;
-    // Draw line by line so a long blurb flows onto a new page instead of
-    // being clipped at the bottom margin.
-    for (const ln of lines) {
+    // Justify every line to the column width except the last (manual word-space
+    // distribution — jsPDF only justifies multi-line arrays, which would lose
+    // our per-line page-break control). The last line stays left-aligned.
+    const spaceW = doc.getTextWidth(" ");
+    const lastIdx = lines.length - 1;
+    lines.forEach((ln, i) => {
       ensure(lineH);
-      doc.text(ln, margin, y);
+      const words = ln.split(" ").filter(Boolean);
+      const extra = width - doc.getTextWidth(ln);
+      if (i === lastIdx || words.length < 2 || extra <= 0) {
+        doc.text(ln, margin, y); // last/short/over-full line: natural spacing
+      } else {
+        const gap = extra / (words.length - 1);
+        let cx = margin;
+        for (const w of words) {
+          doc.text(w, cx, y);
+          cx += doc.getTextWidth(w) + spaceW + gap;
+        }
+      }
       y += lineH;
-    }
+    });
     y += 8;
   }
 
@@ -477,7 +490,7 @@ export async function downloadMoodboardPdf(
   doc.setFontSize(7);
   doc.setTextColor(150);
   doc.text(
-    `Source: ${data.website ?? "buyer website"} · Imagery and colors extracted from the official site · Built ${built} · Qalara Buyer Intelligence · PDF build v8`,
+    `Source: ${data.website ?? "buyer website"} · Imagery and colors extracted from the official site · Built ${built} · Qalara Buyer Intelligence · PDF build v9`,
     margin,
     pageH - 22
   );

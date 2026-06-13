@@ -604,7 +604,7 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                     <div className="text-[10px] font-code font-semibold uppercase tracking-[0.25em] text-editorial-muted mb-1.5">
                       About
                     </div>
-                    <p className="text-xs font-sans text-editorial-secondary leading-relaxed break-words">
+                    <p className="text-xs font-sans text-editorial-secondary leading-relaxed break-words text-justify">
                       {data.brand.description}
                     </p>
                   </div>
