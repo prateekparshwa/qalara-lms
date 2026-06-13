@@ -136,8 +136,21 @@ export async function downloadMoodboardPdf(
   };
   const accent = palette.filter((c) => lum(c.hex) <= 215)[0]?.hex ?? "#18181b";
   const label = (img: { alt: string | null; label?: string | null }) => {
-    const l = img.label ?? img.alt;
-    return l && !/^https?:\/\//i.test(l) ? l : null; // hide raw URL labels
+    // Route-resolved (English) label only; drop URLs and any residual non-ASCII
+    // glyphs the PDF base font can't render (e.g. Turkish ş/ç → mojibake).
+    const l = img.label;
+    if (!l || /^https?:\/\//i.test(l)) return null;
+    // eslint-disable-next-line no-control-regex
+    return /^[\x00-\x7F]+$/.test(l) ? l : null;
+  };
+
+  // Truncate a string with an ellipsis so it fits within maxW at the current
+  // font size — keeps image captions from spilling past their tile.
+  const fitText = (text: string, maxW: number): string => {
+    if (doc.getTextWidth(text) <= maxW) return text;
+    let s = text;
+    while (s.length > 1 && doc.getTextWidth(s + "…") > maxW) s = s.slice(0, -1);
+    return s.trimEnd() + "…";
   };
 
   // ── Masthead ────────────────────────────────────────────────────────────
@@ -183,11 +196,12 @@ export async function downloadMoodboardPdf(
       doc.addImage(hero, "JPEG", margin, y, width, heroH);
       const heroLabel = label(imgs[0]);
       if (heroLabel) {
-        doc.setFillColor(24, 24, 27);
-        doc.rect(margin + 8, y + heroH - 22, Math.min(heroLabel.length * 4.4 + 12, width - 16), 14, "F");
-        doc.setTextColor(245);
         doc.setFontSize(7);
-        doc.text(heroLabel.toUpperCase().slice(0, 60), margin + 14, y + heroH - 12.5);
+        const txt = fitText(heroLabel.toUpperCase(), width - 28);
+        doc.setFillColor(24, 24, 27);
+        doc.rect(margin + 8, y + heroH - 22, doc.getTextWidth(txt) + 12, 14, "F");
+        doc.setTextColor(245);
+        doc.text(txt, margin + 14, y + heroH - 12.5);
       }
       y += heroH + 10;
     }
@@ -209,11 +223,12 @@ export async function downloadMoodboardPdf(
       doc.addImage(dataUrl, "JPEG", x, y, cellW, cellH);
       const cellLabel = label(rest[i]);
       if (cellLabel) {
-        doc.setFillColor(24, 24, 27);
-        doc.rect(x + 5, y + cellH - 17, Math.min(cellLabel.length * 3.6 + 10, cellW - 10), 11, "F");
-        doc.setTextColor(245);
         doc.setFontSize(6);
-        doc.text(cellLabel.toUpperCase().slice(0, 38), x + 10, y + cellH - 9.5);
+        const txt = fitText(cellLabel.toUpperCase(), cellW - 20);
+        doc.setFillColor(24, 24, 27);
+        doc.rect(x + 5, y + cellH - 17, doc.getTextWidth(txt) + 10, 11, "F");
+        doc.setTextColor(245);
+        doc.text(txt, x + 10, y + cellH - 9.5);
       }
       col++;
       if (col === cols) {

@@ -31,8 +31,15 @@ user action. Regenerate = `force: true`.
   icons, logos, sprites, trackers, flags, placeholders, SVG/ICO/GIF.
 - **Hero**: one wide image leads the board. Grid follows.
 - **Labels**: every image that has alt text shows it as an editorial tag.
-  The LLM may rewrite raw alt text into short curated tags (≤ 5 words,
+  The LLM rewrites raw alt text into short curated tags (≤ 4 words,
   e.g. "High winter campaign", not "mss-2_tile---bedlinen_dt").
+- **English only**: ALL board text — labels, essence, programs, voice,
+  specimen — must be in English. The LLM translates non-English source
+  content (e.g. Turkish captions "Yorgan ve Yastık" → "Quilts & Pillows").
+  Raw alt text is only accepted as a fallback when it is plain ASCII; the PDF
+  drops any residual non-ASCII so the base font never renders mojibake.
+- PDF captions are clamped to their tile width (ellipsis), never sliced to a
+  fixed character count, so a long tag never spills past its image.
 - If image scraping fails or yields < 4 usable images, show the full-page
   screenshot with an explanatory caption — never an empty board.
 

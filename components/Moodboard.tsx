@@ -16,7 +16,7 @@ import { downloadMoodboardPdf, MoodboardPdfData } from "@/lib/moodboardPdf";
  * board; afterwards it's served from a 7-day server-side cache.
  */
 
-const BOARD_VERSION = 6; // must match app/api/enrich/moodboard/route.ts
+const BOARD_VERSION = 7; // must match app/api/enrich/moodboard/route.ts
 
 interface TypographyFace {
   name: string | null;
@@ -205,8 +205,10 @@ export default function Moodboard({ lead }: { lead: Lead }) {
   const quote = data?.editorial?.quote ?? null;
   const orgName = data?.brand?.title ?? lead.organization ?? "Buyer";
   const imgLabel = (img: { alt: string | null; label?: string | null }) => {
-    const l = img.label ?? img.alt;
-    return l && !/^https?:\/\//i.test(l) ? l : null; // hide raw URL labels
+    // Use only the route-resolved (English) label — never the raw alt, which
+    // may be non-English or a URL.
+    const l = img.label;
+    return l && !/^https?:\/\//i.test(l) ? l : null;
   };
 
   return (

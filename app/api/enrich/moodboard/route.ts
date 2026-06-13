@@ -35,7 +35,7 @@ const MAX_IMAGES = 12;
 const MIN_IMAGES_BEFORE_SCREENSHOT = 4;
 
 /** Bump when the board contract changes — older cache entries rebuild. */
-const BOARD_VERSION = 6;
+const BOARD_VERSION = 7;
 
 interface EditorialLayer {
   /** Verbatim brand line from the site (never invented); null when none found. */
@@ -250,7 +250,10 @@ async function buildEditorialLayer(input: {
   const system =
     "You are a brand analyst preparing an editorial moodboard for a wholesale " +
     "sourcing team. Ground every answer in the provided content — never invent " +
-    "facts or quotes. Respond with a single JSON object only — no prose, no code fences.";
+    "facts or quotes. WRITE EVERY VALUE IN ENGLISH: if the brand's content, " +
+    "captions, slogans or product names are in another language (Turkish, " +
+    "Spanish, etc.), translate them into natural English — never return " +
+    "non-English text. Respond with a single JSON object only — no prose, no code fences.";
 
   const known = input.knownColors
     .map((c) => (c.name ? `${c.hex} (${c.name})` : c.hex))
@@ -294,7 +297,7 @@ async function buildEditorialLayer(input: {
   "programs": ["up to 6 of the brand's OWN sub-brands, ranges or membership programs as SHORT names only (2-4 words, e.g. 'Linen Lovers', 'Adairs Kids', 'Adairs Insider'); do NOT append descriptions and do NOT name licensed third-party brands (NBA, Disney, etc.); [] if none"],
   "palette": [{"hex": "#RRGGBB", "name": "evocative color name"} — exactly 6 colors capturing the brand's VISUAL MOOD. Derive them from the imagery, product types and seasonal campaign (e.g. a warm home brand → linen, ecru, clay, sage, terracotta, charcoal). Do NOT fill the palette with the interface colors above — include AT MOST 2 neutrals (black/white/grey); the other 4+ must be warm or chromatic tones true to the brand],
   "display_sample": "a short on-brand line for a type specimen — a welcome/essence/lifestyle line in the brand's own voice (e.g. 'Welcome home'); do NOT use a sale, discount or loyalty-promo line",
-  "image_labels": {"<index>": "curated editorial tag, max 5 words, title case — e.g. 'High Winter Campaign'"} — only for indexes where the caption or filename gives you something SPECIFIC to say about that image; every label must be distinct; omit an index rather than repeat a label or write a generic one,
+  "image_labels": {"<index>": "curated editorial tag IN ENGLISH, max 4 words, title case — e.g. 'High Winter Campaign', 'Quilts & Pillows', 'Bed Linen Sets'. TRANSLATE non-English captions into English (e.g. 'Yorgan ve Yastık' → 'Quilts & Pillows'). Provide a label for EVERY image index you can describe; every label must be distinct; omit an index only if you genuinely cannot tell what it shows — never echo a non-English caption verbatim and never write a generic filler"},
   "hero_index": <index of the best LEAD image for the board — an evocative lifestyle/campaign photo, judged from captions and filenames; avoid promo strips, sale banners and logos>
 }`,
   ]
@@ -460,19 +463,23 @@ export async function POST(req: NextRequest) {
       if (orgNorm && normForMatch(words) === orgNorm) return null;
       return words.replace(/\b[a-z]/g, (c) => c.toUpperCase());
     };
-    const labeledImages = images.map((img, i) => {
-      const altFallback =
-        img.alt && orgNorm && normForMatch(img.alt) === orgNorm
-          ? null
-          : img.alt;
-      return {
-        ...img,
-        label:
-          editorial?.imageLabels?.[String(i)] ??
-          altFallback ??
-          fromFilename(img.src),
-      };
-    });
+    // Only accept raw alt text as a fallback when it is plain ASCII (English-
+    // ish) — non-Latin captions (e.g. Turkish "Çarşaf") must never leak to the
+    // board, both for the English mandate and because the PDF font can't render
+    // them. The LLM label (now translated to English) is the primary source.
+    const asciiAlt = (alt: string | null): string | null => {
+      if (!alt) return null;
+      if (orgNorm && normForMatch(alt) === orgNorm) return null;
+      // eslint-disable-next-line no-control-regex
+      return /^[\x00-\x7F]+$/.test(alt) ? alt : null;
+    };
+    const labeledImages = images.map((img, i) => ({
+      ...img,
+      label:
+        editorial?.imageLabels?.[String(i)] ??
+        asciiAlt(img.alt) ??
+        fromFilename(img.src),
+    }));
     // The LLM-chosen hero leads the board (promo strips stay in the grid).
     if (editorial?.heroIndex != null && editorial.heroIndex > 0) {
       const [heroImg] = labeledImages.splice(editorial.heroIndex, 1);
