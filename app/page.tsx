@@ -121,7 +121,7 @@ export default async function LobbyPage() {
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2.5">
-                  <MapPin size={18} className="text-editorial-accent" />
+                  <MapPin size={18} style={{ color: "#185FA5" }} />
                   <span className="font-code text-xs font-bold uppercase tracking-widest text-editorial-secondary">
                     Directory
                   </span>
@@ -142,7 +142,7 @@ export default async function LobbyPage() {
 
               {/* Faux search bar — signals "this is an index you search" */}
               <div className="deck-searchbar mt-6 font-sans">
-                <Search size={15} className="text-editorial-accent shrink-0" />
+                <Search size={15} className="shrink-0" style={{ color: "#185FA5" }} />
                 <span>Search {stats.total.toLocaleString()} buyers…</span>
               </div>
 
@@ -166,7 +166,7 @@ export default async function LobbyPage() {
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2.5">
-                  <Compass size={18} style={{ color: "var(--accent-teal)" }} />
+                  <Compass size={18} style={{ color: "#3B6D11" }} />
                   <span className="font-code text-xs font-bold uppercase tracking-widest text-editorial-secondary">
                     Discovery
                   </span>
@@ -187,7 +187,7 @@ export default async function LobbyPage() {
 
               {/* Terminal prompt + live scan bar */}
               <div className="mt-6 font-code text-xs text-editorial-secondary">
-                <span style={{ color: "#0F766E" }}>$</span> analyzing{" "}
+                <span style={{ color: "#3B6D11" }}>$</span> analyzing{" "}
                 <span className="text-editorial-black font-medium">
                   any-company.com
                 </span>
