@@ -398,7 +398,27 @@ export async function downloadMoodboardPdf(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(60);
-    const lines = doc.splitTextToSize(data.brand.description, width);
+    // Belt-and-suspenders: split, then hard-wrap any line that still measures
+    // wider than the column (guards against font-metric quirks). Drawn strictly
+    // left-aligned — never justified — so a near-full line can't stretch/spill.
+    const lines: string[] = [];
+    for (const wrapped of doc.splitTextToSize(data.brand.description, width)) {
+      if (doc.getTextWidth(wrapped) <= width) {
+        lines.push(wrapped);
+        continue;
+      }
+      let cur = "";
+      for (const word of wrapped.split(" ")) {
+        const test = cur ? `${cur} ${word}` : word;
+        if (cur && doc.getTextWidth(test) > width) {
+          lines.push(cur);
+          cur = word;
+        } else {
+          cur = test;
+        }
+      }
+      if (cur) lines.push(cur);
+    }
     const lineH = 12;
     // Draw line by line so a long blurb flows onto a new page instead of
     // being clipped at the bottom margin.
