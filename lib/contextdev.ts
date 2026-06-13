@@ -44,11 +44,19 @@ export interface CtxBrand {
   socials: { type: string; url: string }[];
 }
 
+/**
+ * All configured context.dev keys, primary first, then every backup
+ * (CONTEXT_DEV_API_KEY_BACKUP, _BACKUP_1, _BACKUP_2, … in name order).
+ * withKeyFallback walks this list so a depleted key rolls to the next.
+ */
 function apiKeys(): string[] {
-  return [
-    process.env.CONTEXT_DEV_API_KEY,
-    process.env.CONTEXT_DEV_API_KEY_BACKUP,
-  ].filter((k): k is string => Boolean(k));
+  const backups = Object.keys(process.env)
+    .filter((name) => /^CONTEXT_DEV_API_KEY_BACKUP(_\d+)?$/.test(name))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .map((name) => process.env[name]);
+  return [process.env.CONTEXT_DEV_API_KEY, ...backups]
+    .map((k) => (k ?? "").trim())
+    .filter((k, i, arr) => k && arr.indexOf(k) === i);
 }
 
 async function ctxGet(
