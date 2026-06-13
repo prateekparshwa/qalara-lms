@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowLeft } from "lucide-react";
 import Masthead from "@/components/Masthead";
-import Aurora from "@/components/Aurora";
 import { SEGMENTS, segmentSpreadsheetId } from "@/lib/segments";
 import { getLeadStats } from "@/lib/leads";
 
@@ -43,16 +42,29 @@ export default async function DirectoryPage() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-editorial-bg">
+    <div className="min-h-screen flex flex-col bg-editorial-bg disp-grotesk">
       <Masthead subtitle="Qalara Buyer Directory" />
 
-      <main className="flex-1 relative">
-        <Aurora />
+      <main className="flex-1 relative overflow-hidden">
+        <div className="atlas-bg" aria-hidden="true" />
+
         <div className="relative z-10 max-w-3xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
-          <h1 className="font-sans font-semibold text-2xl text-editorial-black">
+          {/* Breadcrumb back to the lobby */}
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-code text-editorial-secondary hover:text-editorial-black transition-colors group"
+          >
+            <ArrowLeft
+              size={13}
+              className="transition-transform duration-200 group-hover:-translate-x-0.5"
+            />
+            Lobby
+          </Link>
+
+          <h1 className="mt-5 font-display font-bold text-3xl text-editorial-black">
             Choose a segment
           </h1>
-          <p className="mt-2 text-sm text-editorial-secondary">
+          <p className="mt-2 text-sm text-editorial-secondary font-sans max-w-xl">
             Each segment is its own list of buyers. Engagement is live now; the
             rest light up as their sheets are linked.
           </p>
@@ -63,14 +75,9 @@ export default async function DirectoryPage() {
                 <div className="flex items-center gap-4 py-5">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2.5">
-                      <span className="font-sans font-semibold text-lg text-editorial-black">
+                      <span className="font-display font-semibold text-lg text-editorial-black">
                         {r.label}
                       </span>
-                      {r.status === "active" && r.count !== null && (
-                        <span className="font-code text-xs text-editorial-muted">
-                          {r.count.toLocaleString()}
-                        </span>
-                      )}
                       {r.status === "coming" && (
                         <span className="seg-status">Coming soon</span>
                       )}
@@ -78,15 +85,24 @@ export default async function DirectoryPage() {
                         <span className="seg-status">Deferred</span>
                       )}
                     </div>
-                    <p className="mt-1 text-sm text-editorial-muted">
+                    <p className="mt-1 text-sm text-editorial-muted font-sans">
                       {r.definition}
                     </p>
                   </div>
+
+                  {/* Right cluster: ledger count + chevron for live segments */}
                   {r.status === "active" && (
-                    <ArrowRight
-                      size={18}
-                      className="flex-shrink-0 text-editorial-muted transition-transform duration-200 group-hover:translate-x-1 group-hover:text-editorial-black"
-                    />
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      {r.count !== null && (
+                        <span className="font-code text-sm font-semibold text-editorial-black tabular-nums">
+                          {r.count.toLocaleString()}
+                        </span>
+                      )}
+                      <ArrowRight
+                        size={18}
+                        className="text-editorial-muted transition-transform duration-200 group-hover:translate-x-1 group-hover:text-editorial-black"
+                      />
+                    </div>
                   )}
                 </div>
               );
@@ -96,13 +112,13 @@ export default async function DirectoryPage() {
                   {r.status === "active" ? (
                     <Link
                       href={`/directory/${r.key}`}
-                      className="group block px-1 hover:bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent rounded-sm"
+                      className="group block px-2 -mx-2 rounded-md hover:bg-white/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent"
                     >
                       {inner}
                     </Link>
                   ) : (
                     <div
-                      className="px-1 opacity-60 cursor-not-allowed"
+                      className="px-2 -mx-2 opacity-55 cursor-not-allowed"
                       title={
                         r.status === "deferred"
                           ? "Planned for a later phase."

@@ -8,11 +8,14 @@ import { useEffect, useState } from "react";
  */
 export default function RotatingWord({
   words,
+  colors,
   intervalMs = 2200,
   className,
   style,
 }: {
   words: string[];
+  /** Optional per-word color, indexed alongside `words`. */
+  colors?: string[];
   intervalMs?: number;
   className?: string;
   style?: React.CSSProperties;
@@ -39,10 +42,11 @@ export default function RotatingWord({
     return () => clearInterval(id);
   }, [words.length, intervalMs]);
 
+  const color = colors?.[index];
   return (
     <span
       className={`rotating-word ${shown ? "rw-in" : "rw-out"} ${className ?? ""}`}
-      style={style}
+      style={color ? { ...style, color } : style}
     >
       {words[index]}
     </span>

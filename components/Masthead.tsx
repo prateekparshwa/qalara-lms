@@ -31,15 +31,20 @@ export default function Masthead({
         <div>
           <Link
             href={href}
-            className="inline-flex items-baseline gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent rounded-sm"
+            className="inline-flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent rounded-sm"
           >
-            <span className="font-code font-bold text-xl tracking-tight text-editorial-black">
-              QALARA
-            </span>
-            <span className="text-editorial-accent font-code font-bold text-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/qalara-logo.svg"
+              alt="Qalara"
+              className="h-7 w-auto"
+              width={108}
+              height={28}
+            />
+            <span className="text-editorial-accent font-code font-bold text-xl" aria-hidden="true">
               ·
             </span>
-            <span className="font-code font-bold text-xl tracking-[0.13em] text-editorial-black uppercase">
+            <span className="font-code font-bold text-lg tracking-[0.04em] text-editorial-black">
               Lead Management System
             </span>
           </Link>
