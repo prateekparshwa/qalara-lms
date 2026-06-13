@@ -285,6 +285,11 @@ export async function downloadMoodboardPdf(
   // ── Brand essence panel — LLM-derived from the site (MOODBOARD.md §3) ───
   const quote = data.editorial?.quote ?? null;
   if (quote) {
+    // Set the quote font BEFORE measuring so splitTextToSize wraps at the drawn
+    // size — otherwise it measures at the previous (smaller) font, decides the
+    // line fits, and the 15pt draw overflows the box and clips on the right.
+    doc.setFont("times", "italic");
+    doc.setFontSize(15);
     const lines = doc.splitTextToSize(pdfText(`"${quote.text}"`), width - 64);
     const boxH = 46 + lines.length * 18;
     ensure(boxH + 8);
@@ -293,8 +298,6 @@ export async function downloadMoodboardPdf(
     doc.rect(margin, y, width, boxH, "F");
     const [tr, tg, tb] = contrastText(accent);
     doc.setTextColor(tr, tg, tb);
-    doc.setFont("times", "italic");
-    doc.setFontSize(15);
     doc.text(lines, margin + 32, y + 30);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
@@ -490,7 +493,7 @@ export async function downloadMoodboardPdf(
   doc.setFontSize(7);
   doc.setTextColor(150);
   doc.text(
-    `Source: ${data.website ?? "buyer website"} · Imagery and colors extracted from the official site · Built ${built} · Qalara Buyer Intelligence · PDF build v9`,
+    `Source: ${data.website ?? "buyer website"} · Imagery and colors extracted from the official site · Built ${built} · Qalara Buyer Intelligence · PDF build v10`,
     margin,
     pageH - 22
   );
