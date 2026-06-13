@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import Masthead from "@/components/Masthead";
+import AtlasBackdrop from "@/components/AtlasBackdrop";
 import { SEGMENTS, segmentSpreadsheetId } from "@/lib/segments";
 import { getLeadStats } from "@/lib/leads";
 
@@ -46,16 +47,16 @@ export default async function DirectoryPage() {
       <Masthead subtitle="Qalara Buyer Directory" />
 
       <main className="flex-1 relative overflow-hidden">
-        <div className="atlas-bg" aria-hidden="true" />
+        <AtlasBackdrop />
 
         <div className="relative z-10 max-w-3xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
           {/* Breadcrumb back to the lobby */}
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-code text-editorial-secondary hover:text-editorial-black transition-colors group"
+            className="group inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white/70 px-3 py-1.5 text-xs font-code font-bold text-editorial-black hover:border-editorial-black hover:bg-white transition-colors"
           >
             <ArrowLeft
-              size={13}
+              size={14}
               className="transition-transform duration-200 group-hover:-translate-x-0.5"
             />
             Lobby

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Search, MapPin, Compass } from "lucide-react";
 import Masthead from "@/components/Masthead";
+import AtlasBackdrop from "@/components/AtlasBackdrop";
 import RotatingWord from "@/components/RotatingWord";
 import { getLeadStats, getLastSynced } from "@/lib/leads";
 import { SEGMENTS } from "@/lib/segments";
@@ -20,16 +21,6 @@ interface Stats {
   verified: number;
   highConfidence: number;
 }
-
-// Decorative map pins for the hero backdrop (right side); colors cycle the
-// 5-accent system, delays stagger the pulse.
-const PINS = [
-  { top: "14%", left: "80%", color: "#4F46E5", d: "0s" },
-  { top: "30%", left: "92%", color: "#0D9488", d: "0.6s" },
-  { top: "52%", left: "74%", color: "#F59E0B", d: "1.1s" },
-  { top: "64%", left: "88%", color: "#E11D48", d: "1.6s" },
-  { top: "40%", left: "63%", color: "#7C3AED", d: "0.9s" },
-];
 
 export default async function LobbyPage() {
   let stats: Stats = { total: 0, verified: 0, highConfidence: 0 };
@@ -57,28 +48,7 @@ export default async function LobbyPage() {
 
       <main className="flex-1 relative overflow-hidden">
         {/* Atlas backdrop: faint map grid + radar sweep + pulsing pins */}
-        <div className="atlas-bg" aria-hidden="true" />
-        <div
-          className="absolute inset-0 z-[1] pointer-events-none hidden sm:block"
-          aria-hidden="true"
-        >
-          <div
-            className="atlas-sweep"
-            style={{ top: "-70px", right: "-90px", width: "300px", height: "300px" }}
-          />
-          {PINS.map((p, i) => (
-            <span
-              key={i}
-              className="atlas-pin"
-              style={{
-                top: p.top,
-                left: p.left,
-                background: p.color,
-                ["--d" as string]: p.d,
-              }}
-            />
-          ))}
-        </div>
+        <AtlasBackdrop />
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 lg:px-10 pt-12 lg:pt-16 pb-16">
           {/* Dateline / live signal */}
