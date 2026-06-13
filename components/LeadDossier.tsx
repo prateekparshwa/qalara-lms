@@ -330,6 +330,24 @@ export function dossierSections(
       color: "#4F46E5",
     });
   }
+  // Social sits directly below Basic Details.
+  if (
+    showAll ||
+    any(
+      lead.linkedin_url,
+      lead.linkedin_followers,
+      lead.instagram_handle,
+      lead.instagram_followers,
+      lead.social_media_activity
+    )
+  ) {
+    out.push({
+      id: "dossier-social",
+      title: "Social Media",
+      short: "Social",
+      color: "#7C3AED",
+    });
+  }
   if (
     showAll ||
     any(
@@ -355,23 +373,6 @@ export function dossierSections(
       title: "Buyer Brand / Business Intelligence",
       short: "Business",
       color: "#0D9488",
-    });
-  }
-  if (
-    showAll ||
-    any(
-      lead.linkedin_url,
-      lead.linkedin_followers,
-      lead.instagram_handle,
-      lead.instagram_followers,
-      lead.social_media_activity
-    )
-  ) {
-    out.push({
-      id: "dossier-social",
-      title: "Social Media",
-      short: "Social",
-      color: "#7C3AED",
     });
   }
   if (
@@ -469,38 +470,6 @@ export default function LeadDossier({
         </>
       )}
 
-      {has("dossier-business") && (
-        <>
-          <SectionHeader
-            id="dossier-business"
-            scrollMtClass={scrollMtClass}
-            title="Buyer Brand / Business Intelligence"
-            color="#0D9488"
-          />
-          <div className={cols}>
-            <Field showAll={showAll} label="Buyer Full Address" value={lead.address} />
-            <Field showAll={showAll} label="Buyer Business Type" value={lead.buyer_type} />
-            <Field showAll={showAll} label="Categories Buyer Deals In" value={lead.categories} />
-            <Field showAll={showAll} label="No. of Employees in Buyer's Org" value={lead.employee_size} />
-            <Field showAll={showAll} label="Buyer Org Size Tier" value={lead.org_scale} />
-            <Field showAll={showAll} label="Retail Price Points" value={lead.price_points} />
-            <Field showAll={showAll} label="No. of Stores of the Buyer" value={lead.store_count} />
-            <Field showAll={showAll} label="Materials Dealt In" value={lead.materials_dealt} />
-            <Field showAll={showAll} label="Customers & Markets Buyer Is Present In" value={lead.customers_and_markets} />
-            <Field showAll={showAll} label="Potential Revenue / Turnover" value={lead.revenue_turnover} />
-            <Field showAll={showAll} label="Competitors of the Buyer" value={lead.competitors} />
-            <Field showAll={showAll} label="Target Audience of the Buyer" value={lead.target_audience} />
-            <Field showAll={showAll} label="Sourcing Countries of the Buyer" value={lead.import_countries} />
-            <Field showAll={showAll} label="Sources From India?" value={lead.imports_from_india} />
-            <Field
-              showAll={showAll}
-              label="Website Confidence (AI-Verified)"
-              value={lead.website_confidence}
-            />
-          </div>
-        </>
-      )}
-
       {has("dossier-social") && (
         <>
           <SectionHeader
@@ -544,6 +513,38 @@ export default function LeadDossier({
               mono
             />
             <Field showAll={showAll} label="Social Media Activity of the Buyer" value={lead.social_media_activity} />
+          </div>
+        </>
+      )}
+
+      {has("dossier-business") && (
+        <>
+          <SectionHeader
+            id="dossier-business"
+            scrollMtClass={scrollMtClass}
+            title="Buyer Brand / Business Intelligence"
+            color="#0D9488"
+          />
+          <div className={cols}>
+            <Field showAll={showAll} label="Buyer Full Address" value={lead.address} />
+            <Field showAll={showAll} label="Buyer Business Type" value={lead.buyer_type} />
+            <Field showAll={showAll} label="Categories Buyer Deals In" value={lead.categories} />
+            <Field showAll={showAll} label="No. of Employees in Buyer's Org" value={lead.employee_size} />
+            <Field showAll={showAll} label="Buyer Org Size Tier" value={lead.org_scale} />
+            <Field showAll={showAll} label="Retail Price Points" value={lead.price_points} />
+            <Field showAll={showAll} label="No. of Stores of the Buyer" value={lead.store_count} />
+            <Field showAll={showAll} label="Materials Dealt In" value={lead.materials_dealt} />
+            <Field showAll={showAll} label="Customers & Markets Buyer Is Present In" value={lead.customers_and_markets} />
+            <Field showAll={showAll} label="Potential Revenue / Turnover" value={lead.revenue_turnover} />
+            <Field showAll={showAll} label="Competitors of the Buyer" value={lead.competitors} />
+            <Field showAll={showAll} label="Target Audience of the Buyer" value={lead.target_audience} />
+            <Field showAll={showAll} label="Sourcing Countries of the Buyer" value={lead.import_countries} />
+            <Field showAll={showAll} label="Sources From India?" value={lead.imports_from_india} />
+            <Field
+              showAll={showAll}
+              label="Website Confidence (AI-Verified)"
+              value={lead.website_confidence}
+            />
           </div>
         </>
       )}

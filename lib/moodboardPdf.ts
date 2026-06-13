@@ -374,10 +374,10 @@ export async function downloadMoodboardPdf(
     y += progLines.length * 12 + 12;
   }
 
-  // ── About ──────────────────────────────────────────────────────────────
+  // ── About — full text, wrapped; never truncated ────────────────────────
   if (data.brand?.description) {
-    const lines = doc.splitTextToSize(data.brand.description, width).slice(0, 6);
-    ensure(lines.length * 11 + 24);
+    const lines = doc.splitTextToSize(data.brand.description, width);
+    ensure(24);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(120);
@@ -386,8 +386,15 @@ export async function downloadMoodboardPdf(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(60);
-    doc.text(lines, margin, y + 4);
-    y += lines.length * 11 + 10;
+    const lineH = 12;
+    // Draw line by line so a long blurb flows onto a new page instead of
+    // being clipped at the bottom margin.
+    for (const ln of lines) {
+      ensure(lineH);
+      doc.text(ln, margin, y);
+      y += lineH;
+    }
+    y += 8;
   }
 
   // ── Footer ─────────────────────────────────────────────────────────────

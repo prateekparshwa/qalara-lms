@@ -198,6 +198,8 @@ export default function Moodboard({ lead }: { lead: Lead }) {
   const images = (data?.images ?? []).filter((i) => !failed.has(i.src));
   const hero = images[0] ?? null;
   const rest = images.slice(1);
+  // CTA emblem: the brand's own hero photo (a built board), else null → icon.
+  const ctaThumb = hero?.src ?? null;
   // Quote panel sourcing (MOODBOARD.md §3): REAL words only — a verified
   // verbatim quote, else the official slogan, else nothing. Never fabricated.
   const quote =
@@ -236,7 +238,7 @@ export default function Moodboard({ lead }: { lead: Lead }) {
           layout-shifting scale); the chevron is the only moving part. */}
       <button
         onClick={openBoard}
-        aria-label={`${data ? "Open" : "Generate"} brand moodboard for ${orgName}`}
+        aria-label={`Generate brand moodboard for ${orgName}`}
         className="group relative w-full overflow-hidden rounded-lg border border-editorial-black/15 bg-white text-left transition-colors duration-200 hover:border-editorial-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 cursor-pointer"
       >
         {/* 5-accent spectrum hairline — the dossier's signature motif */}
@@ -249,20 +251,26 @@ export default function Moodboard({ lead }: { lead: Lead }) {
           }}
         />
         <div className="flex items-center gap-4 px-4 py-3.5 pt-4">
-          {/* Amber emblem tile */}
+          {/* Emblem — the brand's own hero photo when a board exists, else
+              the amber palette tile */}
           <span
             aria-hidden="true"
-            className="flex-shrink-0 grid place-items-center w-11 h-11 rounded-md transition-colors duration-200"
-            style={{ backgroundColor: "#FBF1DC", color: "#B45309" }}
+            className="flex-shrink-0 grid place-items-center w-11 h-11 rounded-md overflow-hidden transition-colors duration-200"
+            style={ctaThumb ? undefined : { backgroundColor: "#FBF1DC", color: "#B45309" }}
           >
-            <Palette size={18} />
+            {ctaThumb ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={ctaThumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+            ) : (
+              <Palette size={18} />
+            )}
           </span>
           <div className="min-w-0 flex-1">
             <div className="text-[9px] font-code font-semibold uppercase tracking-[0.3em] text-amber-700/80">
-              {data ? "View · Visual identity" : "Generate · Visual identity"}
+              Generate · Visual identity
             </div>
             <div className="font-sans font-semibold text-[15px] text-editorial-black leading-tight">
-              {data ? "Open Brand Moodboard" : "Generate Brand Moodboard"}
+              Generate Brand Moodboard
             </div>
             <p className="text-[11px] font-sans text-editorial-muted leading-snug mt-0.5 line-clamp-2">
               Imagery, colour palette, typography, voice &amp; programmes pulled
@@ -482,16 +490,16 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                       {palette.slice(0, 6).map((c) => (
                         <div
                           key={c.hex}
-                          className="h-16 rounded border border-zinc-200 flex flex-col justify-end p-1.5"
+                          className="h-16 rounded border border-zinc-200 flex flex-col justify-end p-1.5 overflow-hidden"
                           style={{
                             backgroundColor: c.hex,
                             color: contrastText(c.hex),
                           }}
                         >
-                          <span className="text-[9px] font-sans font-semibold leading-tight">
+                          <span className="text-[9px] font-sans font-semibold leading-tight break-words line-clamp-2">
                             {c.name}
                           </span>
-                          <span className="text-[8px] font-code opacity-75">
+                          <span className="text-[8px] font-code opacity-75 truncate">
                             {c.hex.toUpperCase()}
                           </span>
                         </div>
@@ -598,7 +606,7 @@ export default function Moodboard({ lead }: { lead: Lead }) {
                     <div className="text-[10px] font-code font-semibold uppercase tracking-[0.25em] text-editorial-muted mb-1.5">
                       About
                     </div>
-                    <p className="text-xs font-sans text-editorial-secondary leading-relaxed">
+                    <p className="text-xs font-sans text-editorial-secondary leading-relaxed break-words">
                       {data.brand.description}
                     </p>
                   </div>

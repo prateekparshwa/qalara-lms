@@ -250,6 +250,25 @@ export default function LeadDrawer({
                   {s.short}
                 </button>
               ))}
+              {/* Moodboard tab — sits at the end (next to Metrics); jumps to
+                  the Generate Brand Moodboard launcher. */}
+              {clean(lead.website) && (
+                <button
+                  onClick={() =>
+                    document
+                      .getElementById("dossier-moodboard")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  }
+                  className="px-2 py-0.5 text-[11px] font-sans rounded-full border border-zinc-200 text-editorial-secondary hover:border-editorial-black hover:text-editorial-black transition-colors cursor-pointer inline-flex items-center gap-1"
+                >
+                  <span
+                    className="inline-block w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: "#F59E0B" }}
+                    aria-hidden="true"
+                  />
+                  Moodboard
+                </button>
+              )}
             </nav>
           )}
         </div>
