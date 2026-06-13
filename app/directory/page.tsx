@@ -112,13 +112,13 @@ export default async function DirectoryPage() {
                   {r.status === "active" ? (
                     <Link
                       href={`/directory/${r.key}`}
-                      className="group block px-2 -mx-2 rounded-md hover:bg-white/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent"
+                      className="group block hover:bg-white/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-editorial-accent"
                     >
                       {inner}
                     </Link>
                   ) : (
                     <div
-                      className="px-2 -mx-2 opacity-55 cursor-not-allowed"
+                      className="opacity-55 cursor-not-allowed"
                       title={
                         r.status === "deferred"
                           ? "Planned for a later phase."
