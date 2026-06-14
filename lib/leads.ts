@@ -323,6 +323,33 @@ export function priorityRank(classification: unknown): number {
 const REPLACE_CHUNK = 500;
 
 /**
+ * Columns carried over from the existing DB rows when the sheet no longer
+ * provides them, so dropping a column from the sheet doesn't wipe its data on
+ * the next sync. Only applies when the column is ENTIRELY absent from the
+ * incoming rows (a blank cell in a present column is still respected).
+ */
+const PRESERVE_COLUMNS = ["website_confidence", "full_name_original"] as const;
+
+/** Stable identity for matching an old DB row to a new sheet row: normalized
+ * website first (the most reliable key), else organization + first email. */
+function identityKey(r: Record<string, unknown>): string {
+  const web = String(r.website ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/+$/, "");
+  if (web && web !== "null") return `w:${web}`;
+  const org = String(r.organization ?? "").trim().toLowerCase();
+  const email = String(r.email ?? "")
+    .trim()
+    .toLowerCase()
+    .split(/[;,\s/]+/)[0];
+  if (!org && !email) return "";
+  return `o:${org}|${email}`;
+}
+
+/**
  * Replace all rows of ONE segment with `rows`, safely.
  *
  * Strategy ("id watermark", scoped per segment): remember the current max id
@@ -354,13 +381,52 @@ export async function replaceSegmentLeads(
   if (maxErr) throw new Error(`Reading watermark failed: ${maxErr.message}`);
   const watermark: number = (maxRow?.id as number) ?? 0;
 
+  // Carry-over: if the sheet no longer carries a preserve-able column, pull the
+  // last-known value from the existing rows (matched by identity) so the sync
+  // doesn't blank it. A column counts as "absent" only when NO incoming row
+  // has the key — a present-but-empty cell is left as-is.
+  const absentPreserve = PRESERVE_COLUMNS.filter(
+    (col) => !rows.some((r) => col in r)
+  );
+  const carry = new Map<string, Record<string, unknown>>();
+  if (absentPreserve.length > 0 && watermark > 0) {
+    const cols = ["organization", "website", "email", ...absentPreserve].join(",");
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabaseAdmin
+        .from("leads")
+        .select(cols)
+        .eq("segment", segment)
+        .lte("id", watermark)
+        .range(from, from + pageSize - 1);
+      if (error) throw new Error(`Reading prior values failed: ${error.message}`);
+      if (!data || data.length === 0) break;
+      for (const row of data as unknown as Record<string, unknown>[]) {
+        const k = identityKey(row);
+        if (k) carry.set(k, row);
+      }
+      if (data.length < pageSize) break;
+    }
+  }
+
   const stamp = new Date().toISOString();
-  const toInsert = rows.map((r) => ({
-    ...r,
-    segment,
-    imported_at: stamp,
-    priority_rank: priorityRank(r.buyer_classification),
-  }));
+  const toInsert = rows.map((r) => {
+    const base: Record<string, unknown> = {
+      ...r,
+      segment,
+      imported_at: stamp,
+      priority_rank: priorityRank(r.buyer_classification),
+    };
+    if (absentPreserve.length > 0) {
+      const prior = carry.get(identityKey(r));
+      if (prior) {
+        for (const col of absentPreserve) {
+          if (base[col] == null && prior[col] != null) base[col] = prior[col];
+        }
+      }
+    }
+    return base;
+  });
 
   let inserted = 0;
   for (let i = 0; i < toInsert.length; i += REPLACE_CHUNK) {

@@ -76,6 +76,12 @@ export const SHEET_COLUMNS: SheetColumn[] = [
     header: "Last Email Summary from Qalara to Buyer",
     column: "email_contact_summary",
   },
+  // The sheet renamed this column (Jun 2026) to double as Sales POC Notes —
+  // accept both the old and the new header.
+  {
+    header: "Last Email Summary from Qalara to Buyer / Sales POC Notes",
+    column: "email_contact_summary",
+  },
   {
     header: "Emails received (2 or less) from buyer in sourcing@qalara",
     column: "sourcing_emails_low",
