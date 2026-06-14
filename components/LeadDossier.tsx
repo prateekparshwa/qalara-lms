@@ -561,6 +561,7 @@ export default function LeadDossier({
           <div className={cols}>
             <Field showAll={showAll} label="First Contact Date (By Buyer) · YYYY-MM-DD" value={lead.first_contact_date} mono relative />
             <Field showAll={showAll} label="Last Contact Date (By Buyer) · YYYY-MM-DD" value={lead.last_contact_date} mono relative />
+            <Field showAll={showAll} label="Last Email Received from Buyer (Snapshot)" value={lead.email_snapshot} />
             <Field showAll={showAll} label="Current AM (Account Manager)" value={lead.current_am} />
             <Field
               showAll={showAll}
@@ -569,7 +570,6 @@ export default function LeadDossier({
               mono
               relative
             />
-            <Field showAll={showAll} label="Last Email Received from Buyer (Snapshot)" value={lead.email_snapshot} />
             <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
             <Field showAll={showAll} label="Last Email Summary / Sales POC Notes" value={lead.email_contact_summary} />
           </div>
