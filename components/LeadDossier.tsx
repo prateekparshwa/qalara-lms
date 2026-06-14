@@ -382,7 +382,8 @@ export function dossierSections(
       lead.current_am,
       lead.last_qalara_contact,
       lead.last_email_subject,
-      lead.email_contact_summary
+      lead.email_contact_summary,
+      lead.email_snapshot
     )
   ) {
     out.push({
@@ -568,8 +569,9 @@ export default function LeadDossier({
               mono
               relative
             />
+            <Field showAll={showAll} label="Last Email Received from Buyer (Snapshot)" value={lead.email_snapshot} />
             <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
-            <Field showAll={showAll} label="Last Email Summary" value={lead.email_contact_summary} />
+            <Field showAll={showAll} label="Last Email Summary / Sales POC Notes" value={lead.email_contact_summary} />
           </div>
         </>
       )}
