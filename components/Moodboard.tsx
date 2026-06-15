@@ -140,21 +140,55 @@ export default function Moodboard({ lead }: { lead: Lead }) {
   const generate = async (force = false) => {
     setLoading(true);
     setError(null);
-    try {
+
+    // One request attempt. Throws on non-OK (with a .status) or on a network
+    // failure (TypeError), so the caller can decide whether to retry.
+    const attempt = async (): Promise<MoodboardData> => {
       const res = await fetch("/api/enrich/moodboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadId: lead.id, url: website, force }),
       });
-      const j = await res.json();
       if (!res.ok) {
-        setError(j.error ?? "Moodboard failed");
-      } else {
-        setData(j.result as MoodboardData);
-        setFailed(new Set());
+        let msg = `Moodboard failed (${res.status})`;
+        try {
+          const j = await res.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* non-JSON error body (e.g. a gateway timeout page) */
+        }
+        const e = new Error(msg) as Error & { status?: number };
+        e.status = res.status;
+        throw e;
       }
+      const j = await res.json();
+      return j.result as MoodboardData;
+    };
+
+    try {
+      let result: MoodboardData;
+      try {
+        result = await attempt();
+      } catch (e) {
+        // Retry once on a transient failure — a dropped connection
+        // (TypeError "Failed to fetch") or a 5xx/timeout, which happen on
+        // cold starts or right after a deploy. A 4xx is not retried.
+        const status = (e as { status?: number })?.status ?? 0;
+        const transient = e instanceof TypeError || status >= 500;
+        if (!transient) throw e;
+        await new Promise((r) => setTimeout(r, 1500));
+        result = await attempt();
+      }
+      setData(result);
+      setFailed(new Set());
     } catch (err) {
-      setError(String(err));
+      const msg =
+        err instanceof TypeError
+          ? "Couldn't reach the moodboard service — check your connection and try Regenerate."
+          : err instanceof Error
+          ? err.message
+          : String(err);
+      setError(msg);
     } finally {
       setLoading(false);
     }
