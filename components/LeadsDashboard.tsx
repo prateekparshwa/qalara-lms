@@ -99,6 +99,9 @@ export default function LeadsDashboard({
   const optimisticPick = useRef(false);
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  // True after the user picks a buyer from the search dropdown: the dossier
+  // opens and the table is hidden until they search again or browse the list.
+  const [pickedMode, setPickedMode] = useState(false);
 
   // Soft identity (shared Basic-Auth login carries no per-user identity, so the
   // user self-identifies; only the hard-coded AM editors get the assign control).
@@ -334,7 +337,11 @@ export default function LeadsDashboard({
         segmentLabel={segmentLabel}
         backHref="/directory"
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={(next) => {
+          // Typing or clearing returns to the normal list view.
+          setSearch(next);
+          setPickedMode(false);
+        }}
         onSync={handleSync}
         onExport={handleExport}
         totalLeads={stats.total}
@@ -343,12 +350,9 @@ export default function LeadsDashboard({
         segment={segment}
         suggest
         onPick={(lead) => {
-          // Render the picked row instantly; the search-driven refetch confirms it.
-          optimisticPick.current = true;
-          setLeadsData({ data: [lead], total: 1, page: 1, limit: 50 });
-          setLeadsError(null);
-          setIsLoading(false);
-          setPage(1);
+          // Open the buyer's dossier directly and hide the table behind it.
+          setSelectedLead(lead);
+          setPickedMode(true);
         }}
       />
 
@@ -371,7 +375,7 @@ export default function LeadsDashboard({
             <span className="text-sm font-sans font-semibold text-editorial-black">
               {segmentLabel}
             </span>
-            {!isLoading && (
+            {!isLoading && !pickedMode && (
               <span className="text-xs font-code text-editorial-muted">
                 {leadsData.total.toLocaleString()} results
               </span>
@@ -405,27 +409,45 @@ export default function LeadsDashboard({
             </div>
           </div>
 
-          <LeadsTable
-            data={leadsData.data}
-            total={leadsData.total}
-            page={page}
-            limit={50}
-            isLoading={isLoading}
-            error={leadsError}
-            onRetry={fetchLeads}
-            onClearAll={() => {
-              setSearch({ org: "", email: "", website: "" });
-              setFilters(DEFAULT_FILTERS);
-              setPage(1);
-            }}
-            onRowClick={setSelectedLead}
-            onPageChange={setPage}
-            onSortChange={(s, o) => {
-              setSort(s);
-              setOrder(o);
-              setPage(1);
-            }}
-          />
+          {pickedMode ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-16">
+              <p className="font-sans text-sm text-editorial-secondary max-w-sm">
+                Showing the buyer you selected. The list stays hidden while you
+                review this profile.
+              </p>
+              <button
+                onClick={() => {
+                  setSearch({ org: "", email: "", website: "" });
+                  setPickedMode(false);
+                }}
+                className="mt-4 inline-flex items-center px-4 py-2 text-xs font-sans font-bold rounded text-white bg-editorial-accent hover:bg-indigo-700 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent/50"
+              >
+                Browse the full list
+              </button>
+            </div>
+          ) : (
+            <LeadsTable
+              data={leadsData.data}
+              total={leadsData.total}
+              page={page}
+              limit={50}
+              isLoading={isLoading}
+              error={leadsError}
+              onRetry={fetchLeads}
+              onClearAll={() => {
+                setSearch({ org: "", email: "", website: "" });
+                setFilters(DEFAULT_FILTERS);
+                setPage(1);
+              }}
+              onRowClick={setSelectedLead}
+              onPageChange={setPage}
+              onSortChange={(s, o) => {
+                setSort(s);
+                setOrder(o);
+                setPage(1);
+              }}
+            />
+          )}
         </main>
       </div>
 
