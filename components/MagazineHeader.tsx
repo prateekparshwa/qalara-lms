@@ -403,9 +403,8 @@ export default function MagazineHeader({
           <button
             onClick={() => setQuery("")}
             aria-label="Clear search"
-            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-sans font-bold rounded text-white bg-[#E11D48] hover:bg-[#BE123C] transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E11D48]/50"
+            className="flex-shrink-0 inline-flex items-center px-4 py-2 text-xs font-sans font-bold rounded text-white bg-[#E11D48] hover:bg-[#BE123C] transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E11D48]/50"
           >
-            <X size={14} strokeWidth={2.5} />
             Clear
           </button>
         )}
