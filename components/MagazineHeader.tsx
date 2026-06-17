@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Search, RefreshCw, Download, X, ArrowLeft, Loader2 } from "lucide-react";
+import { Search, RefreshCw, Download, ArrowLeft, Loader2 } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import CountryFlag from "./CountryFlag";
 import { formatIst } from "@/lib/format";
@@ -336,19 +336,9 @@ export default function MagazineHeader({
             style={{ ["--ph" as string]: "#71717A" }}
             className="search-input w-full pl-9 pr-8 py-2 text-sm font-sans text-editorial-black border border-zinc-200 rounded focus:outline-none focus:border-editorial-black focus-visible:ring-2 focus-visible:ring-editorial-accent bg-white transition-colors"
           />
-          {(loadingSuggest || value) && (
+          {loadingSuggest && (
             <span className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center">
-              {loadingSuggest ? (
-                <Loader2 size={13} className="animate-spin text-editorial-muted" />
-              ) : (
-                <button
-                  onClick={() => setQuery("")}
-                  aria-label="Clear search"
-                  className="text-editorial-muted hover:text-editorial-black cursor-pointer"
-                >
-                  <X size={13} />
-                </button>
-              )}
+              <Loader2 size={13} className="animate-spin text-editorial-muted" />
             </span>
           )}
 
