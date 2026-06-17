@@ -123,9 +123,11 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
     );
   }
 
-  // Dedicated per-field search (combined with AND)
+  // Dedicated per-field search (combined with AND). Organization is a PREFIX
+  // match (starts-with) so "arredo" returns "arredo" but not "Trendarredo";
+  // email/website stay substring since the term is usually mid-string.
   if (org && org.trim())
-    query = query.ilike("organization", `%${org.trim()}%`);
+    query = query.ilike("organization", `${org.trim()}%`);
   if (email && email.trim())
     query = query.ilike("email", `%${email.trim()}%`);
   if (website && website.trim())
@@ -178,7 +180,7 @@ export async function suggestLeads(
   let query = supabase.from("leads").select("*");
   if (segment) query = query.eq("segment", segment);
   query = query
-    .or(`organization.ilike.%${term}%,email.ilike.%${term}%`)
+    .or(`organization.ilike.${term}%,email.ilike.%${term}%`)
     .order("organization", { ascending: true })
     .limit(limit);
 
