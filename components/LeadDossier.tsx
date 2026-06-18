@@ -263,11 +263,20 @@ function MetricRow({
   label: string;
   value: string | null | undefined;
 }) {
-  if (!clean(value)) return null;
-  // Quotations / Samples: keyword breakdowns stay quiet — no bolding at all.
+  const v = clean(value);
+  if (!v) return null;
+  // Quotations / Samples carry the keyword(s) the buyer used. Bold the keyword
+  // when it's a real signal (mirrors how EmailCountRow bolds a positive count);
+  // a zero/none value stays quiet.
+  const zeroish = /^(0|no|none|nil|n\/?a|-|false)$/i.test(v.trim());
   return (
     <div className="text-editorial-secondary">
-      {label}: {value}
+      {label}:{" "}
+      {zeroish ? (
+        v
+      ) : (
+        <span className="font-bold text-editorial-black">{v}</span>
+      )}
     </div>
   );
 }
