@@ -111,7 +111,14 @@ function paperTone(palette: { hex: string }[]): string {
   return light?.hex ?? AMBER_PAPER;
 }
 
-export default function Moodboard({ lead }: { lead: Lead }) {
+export default function Moodboard({
+  lead,
+  fullWidth = false,
+}: {
+  lead: Lead;
+  /** Span the whole viewport (Discovery has no dossier drawer beside it). */
+  fullWidth?: boolean;
+}) {
   const initial =
     (lead.enrichment_cache?.moodboard as MoodboardData | undefined) ?? null;
   // Boards from older contract versions rebuild on open.
@@ -320,7 +327,7 @@ export default function Moodboard({ lead }: { lead: Lead }) {
       {/* ── Left panel ───────────────────────────────────────────────── */}
       {open && (
         <div
-          className="moodboard-panel"
+          className={`moodboard-panel${fullWidth ? " moodboard-panel--full" : ""}`}
           role="dialog"
           aria-modal="false"
           aria-label={`${orgName} moodboard`}

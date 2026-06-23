@@ -342,6 +342,7 @@ export default function DiscoverPage() {
                       the saved lead id (for caching) + a website. */}
                   {result?.savedId && website2 && (
                     <Moodboard
+                      fullWidth
                       lead={
                         {
                           ...leadObj,
