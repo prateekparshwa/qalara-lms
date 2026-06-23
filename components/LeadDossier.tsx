@@ -1,6 +1,7 @@
 import { ExternalLink, Info } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import { relativeDate } from "@/lib/format";
+import Badge from "./Badge";
 
 /**
  * The shared "dossier" body — standfirst + all grouped field sections.
@@ -437,6 +438,12 @@ export default function LeadDossier({
   scrollMtClass?: string;
 }) {
   const standfirst = clean(lead.brand_description);
+  // Buyer Purchase Potential arrives as "HIGH — rationale…"; split the tier
+  // (shown as a badge) from the rationale text.
+  const potentialRaw = clean(lead.buyer_classification);
+  const potentialText = potentialRaw
+    ? potentialRaw.replace(/^\s*(HIGH|MEDIUM|MED|LOW)\b\s*[—:-]*\s*/i, "").trim()
+    : null;
   const sections = dossierSections(lead, showAll);
   const has = (id: string) => sections.some((s) => s.id === id);
   // Discovery renders the dossier full-width: two columns halve the scroll.
@@ -445,6 +452,28 @@ export default function LeadDossier({
 
   return (
     <div>
+      {(potentialRaw || showAll) && (
+        <div className="mt-5">
+          <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-1.5">
+            Buyer Purchase Potential
+          </div>
+          {potentialRaw ? (
+            <div className="flex items-start gap-2.5">
+              <Badge value={lead.buyer_classification ?? null} kind="priority" />
+              {potentialText && (
+                <p className="flex-1 text-sm leading-relaxed font-sans text-editorial-secondary">
+                  {potentialText}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-sm font-sans italic text-editorial-muted">
+              Not Available
+            </div>
+          )}
+        </div>
+      )}
+
       {(standfirst || showAll) && (
         <div className="mt-5">
           <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-1">
