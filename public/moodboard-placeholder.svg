@@ -1,0 +1,8 @@
+<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Moodboard preview">
+  <rect width="80" height="80" fill="#F3EEE4"/>
+  <rect x="8" y="8" width="30" height="30" rx="3" fill="#C8755A"/>
+  <rect x="42" y="8" width="30" height="20" rx="3" fill="#8FA68E"/>
+  <rect x="42" y="32" width="30" height="18" rx="3" fill="#D9C2A3"/>
+  <rect x="8" y="42" width="30" height="30" rx="3" fill="#6B7C93"/>
+  <rect x="42" y="54" width="30" height="18" rx="3" fill="#E4B7A0"/>
+</svg>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronRight, FileDown, Loader2, Palette, RefreshCw, X } from "lucide-react";
+import { ChevronRight, FileDown, Loader2, RefreshCw, X } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import { downloadMoodboardPdf, MoodboardPdfData } from "@/lib/moodboardPdf";
 
@@ -283,19 +283,19 @@ export default function Moodboard({ lead }: { lead: Lead }) {
           }}
         />
         <div className="flex items-center gap-4 px-4 py-3.5 pt-4">
-          {/* Emblem — the brand's own hero photo when a board exists, else
-              the amber palette tile */}
+          {/* Emblem — the brand's own hero photo when a board exists, else a
+              tasteful moodboard placeholder collage. */}
           <span
             aria-hidden="true"
             className="flex-shrink-0 grid place-items-center w-11 h-11 rounded-md overflow-hidden transition-colors duration-200"
-            style={ctaThumb ? undefined : { backgroundColor: "#FBF1DC", color: "#B45309" }}
           >
-            {ctaThumb ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={ctaThumb} alt="" className="w-full h-full object-cover" loading="lazy" />
-            ) : (
-              <Palette size={18} />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={ctaThumb ?? "/moodboard-placeholder.svg"}
+              alt=""
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
           </span>
           <div className="min-w-0 flex-1">
             <div className="text-[9px] font-code font-semibold uppercase tracking-[0.3em] text-amber-700/80">

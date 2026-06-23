@@ -7,6 +7,7 @@ import Masthead from "@/components/Masthead";
 import Aurora from "@/components/Aurora";
 import RotatingWord from "@/components/RotatingWord";
 import LeadDossier, { dossierSections } from "@/components/LeadDossier";
+import Moodboard from "@/components/Moodboard";
 import Badge from "@/components/Badge";
 import { downloadLeadPdf } from "@/lib/leadPdf";
 import type { Lead } from "@/lib/leads";
@@ -336,6 +337,21 @@ export default function DiscoverPage() {
                   )}
 
                   <LeadDossier lead={leadObj} showAll scrollMtClass="scroll-mt-6" />
+
+                  {/* Brand Moodboard — same launcher as a known buyer. Needs
+                      the saved lead id (for caching) + a website. */}
+                  {result?.savedId && website2 && (
+                    <Moodboard
+                      lead={
+                        {
+                          ...leadObj,
+                          id: result.savedId,
+                          website: website2,
+                          organization: orgName,
+                        } as Lead
+                      }
+                    />
+                  )}
                 </div>
               </div>
             </div>
