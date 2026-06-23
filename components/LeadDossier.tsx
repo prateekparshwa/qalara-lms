@@ -45,7 +45,7 @@ function Field({
       {v ? (
         <div
           className={`text-sm text-editorial-text leading-relaxed break-words ${
-            mono ? "font-code text-xs" : "font-sans"
+            mono ? "font-code text-xs" : "font-sans text-justify"
           }`}
         >
           {v}
@@ -461,7 +461,7 @@ export default function LeadDossier({
             <div className="flex items-start gap-2.5">
               <Badge value={lead.buyer_classification ?? null} kind="priority" />
               {potentialText && (
-                <p className="flex-1 text-sm leading-relaxed font-sans text-editorial-secondary">
+                <p className="flex-1 text-sm leading-relaxed font-sans text-editorial-secondary text-justify">
                   {potentialText}
                 </p>
               )}
@@ -474,13 +474,18 @@ export default function LeadDossier({
         </div>
       )}
 
+      {/* Divider line between Purchase Potential and Brand Description */}
+      {potentialRaw && (standfirst || showAll) && (
+        <div className="mt-5 border-t border-zinc-200" />
+      )}
+
       {(standfirst || showAll) && (
         <div className="mt-5">
           <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-1">
             Brand Description
           </div>
           {standfirst ? (
-            <p className="text-[15px] leading-relaxed font-sans text-editorial-secondary">
+            <p className="text-[15px] leading-relaxed font-sans text-editorial-secondary text-justify">
               {standfirst}
             </p>
           ) : (
