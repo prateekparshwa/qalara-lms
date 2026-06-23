@@ -1,12 +1,15 @@
 import { priorityHint, webHint } from "@/lib/glossary";
+import { classificationTier } from "@/lib/format";
 
 type BadgeKind = "priority" | "web";
 
 function grade(value: string): { cls: string; text: string } {
-  const v = value.toUpperCase();
-  if (v.includes("HIGH")) return { cls: "badge-high", text: "HIGH" };
-  if (v.includes("MED")) return { cls: "badge-medium", text: "MED" };
-  if (v.includes("LOW")) return { cls: "badge-low", text: "LOW" };
+  // Tier is the LEADING word; don't substring-match (the AI rationale text can
+  // contain "higher" inside a LOW/MED sentence — see classificationTier).
+  const tier = classificationTier(value);
+  if (tier === "HIGH") return { cls: "badge-high", text: "HIGH" };
+  if (tier === "MEDIUM") return { cls: "badge-medium", text: "MED" };
+  if (tier === "LOW") return { cls: "badge-low", text: "LOW" };
   return { cls: "badge-unverified", text: value.slice(0, 8).toUpperCase() };
 }
 

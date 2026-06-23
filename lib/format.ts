@@ -124,6 +124,24 @@ const COUNTRY_TO_ISO: Record<string, string> = {
   malta: "MT",
 };
 
+/**
+ * Extract the priority/confidence tier from a graded value.
+ *
+ * The sheet's AI rating now arrives as a full sentence
+ * ("LOW — … no signal to lift it higher.", "HIGH — …"), so a naive
+ * `includes("HIGH")` wrongly matches the word "higher" inside LOW/MED text.
+ * The tier is always the LEADING word, so anchor the match to the start.
+ */
+export function classificationTier(
+  value: string | null | undefined
+): "HIGH" | "MEDIUM" | "LOW" | null {
+  const s = String(value ?? "").trim().toUpperCase();
+  if (/^HIGH\b/.test(s)) return "HIGH";
+  if (/^MED/.test(s)) return "MEDIUM"; // MED or MEDIUM
+  if (/^LOW\b/.test(s)) return "LOW";
+  return null;
+}
+
 /** Country name -> ISO-3166 alpha-2 code, or null when unknown. */
 export function countryIso(country: string | null | undefined): string | null {
   if (!country) return null;

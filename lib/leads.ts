@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabase";
+import { classificationTier } from "./format";
 
 // All query helpers run server-side (in API routes only), so we use the
 // admin client. RLS stays enabled, blocking any direct anon/browser access.
@@ -135,7 +136,8 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
 
   if (country) query = query.eq("country", country);
   if (buyer_type) query = query.ilike("buyer_type", `%${buyer_type}%`);
-  if (classification) query = query.ilike("buyer_classification", `%${classification}%`);
+  // Tier is the leading word; prefix-match so "HIGH" doesn't catch "higher".
+  if (classification) query = query.ilike("buyer_classification", `${classification}%`);
   if (am) query = query.ilike("current_am", `%${am}%`);
   if (confidence) query = query.ilike("website_confidence", `%${confidence}%`);
   if (org_scale) query = query.eq("org_scale", org_scale);
@@ -213,14 +215,16 @@ export async function getLeadStats(segment?: string) {
     .not("website", "is", null)
     .neq("website", "");
 
+  // Tier is the LEADING word, so prefix-match — a substring "%HIGH%" wrongly
+  // counts "higher"/"high" inside LOW/MED rationale sentences.
   const { count: highConf } = await countQuery().ilike(
     "website_confidence",
-    "%HIGH%"
+    "HIGH%"
   );
 
   const { count: highClass } = await countQuery().ilike(
     "buyer_classification",
-    "%HIGH%"
+    "HIGH%"
   );
 
   const { count: amAssigned } = await countQuery()
@@ -284,7 +288,9 @@ export async function getFilterOptions(segment?: string) {
     for (const r of rows) {
       add(countries, r.country);
       add(buyerTypes, r.buyer_type);
-      add(classifications, r.buyer_classification);
+      // Collapse the AI rationale sentence to its tier so the filter shows
+      // HIGH/MEDIUM/LOW, not thousands of unique sentences.
+      add(classifications, classificationTier(r.buyer_classification as string));
       add(ams, r.current_am);
       add(orgScales, r.org_scale);
     }
@@ -296,10 +302,16 @@ export async function getFilterOptions(segment?: string) {
   const sorted = (s: Set<string>) =>
     Array.from(s).sort((a, b) => a.localeCompare(b));
 
+  // Classifications display in priority order, not alphabetical.
+  const TIER_ORDER = ["HIGH", "MEDIUM", "LOW"];
+  const classificationOrder = Array.from(classifications).sort(
+    (a, b) => TIER_ORDER.indexOf(a) - TIER_ORDER.indexOf(b)
+  );
+
   return {
     countries: sorted(countries),
     buyerTypes: sorted(buyerTypes),
-    classifications: sorted(classifications),
+    classifications: classificationOrder,
     ams: sorted(ams),
     orgScales: sorted(orgScales),
   };
@@ -313,13 +325,13 @@ export async function upsertLeads(rows: Partial<Lead>[]) {
   if (error) throw new Error(error.message);
 }
 
-/** Numeric priority for sorting (HIGH > MED > LOW > unset). */
+/** Numeric priority for sorting (HIGH > MED > LOW > unset). Anchored to the
+ * leading tier word so rationale text ("…lift it higher") can't inflate it. */
 export function priorityRank(classification: unknown): number {
-  const s = String(classification ?? "").toUpperCase();
-  if (s.includes("HIGH")) return 3;
-  if (s.includes("MED")) return 2;
-  if (s.includes("LOW")) return 1;
-  return 0;
+  const tier = classificationTier(
+    typeof classification === "string" ? classification : String(classification ?? "")
+  );
+  return tier === "HIGH" ? 3 : tier === "MEDIUM" ? 2 : tier === "LOW" ? 1 : 0;
 }
 
 const REPLACE_CHUNK = 500;
