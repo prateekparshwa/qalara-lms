@@ -39,6 +39,10 @@ export const WEB_LEGEND: { code: string; desc: string }[] = [
 export function buyerTypeTag(value: string | null): string {
   if (!value) return "tag-gray";
   const v = value.toLowerCase();
+  // Only an unknown / "Not Available" type stays grey — every real type is
+  // coloured so the grey clearly signals "no data".
+  if (v.includes("not available") || v.includes("n/a") || v.includes("unknown"))
+    return "tag-gray";
   if (v.includes("online") || v.includes("commerce") || v.includes("e-com"))
     return "tag-teal";
   if (v.includes("wholesal") || v.includes("distribut")) return "tag-amber";
@@ -47,5 +51,8 @@ export function buyerTypeTag(value: string | null): string {
     return "tag-rose";
   if (v.includes("retail") || v.includes("brick") || v.includes("multi"))
     return "tag-indigo";
-  return "tag-gray";
+  if (v.includes("lifestyle") || v.includes("brand") || v.includes("fashion"))
+    return "tag-rose";
+  // Any other real, named type gets a colour (not grey).
+  return "tag-violet";
 }
