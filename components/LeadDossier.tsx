@@ -454,8 +454,18 @@ export default function LeadDossier({
     <div>
       {(potentialRaw || showAll) && (
         <div className="mt-5">
-          <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-1.5">
-            Buyer Purchase Potential
+          <div className="flex items-center gap-1.5 mb-2">
+            <span
+              className="inline-block w-2 h-2 rounded-full"
+              style={{ backgroundColor: "#4F46E5" }}
+              aria-hidden="true"
+            />
+            <span
+              className="text-[11px] font-code font-bold uppercase tracking-[0.18em]"
+              style={{ color: "#4F46E5" }}
+            >
+              Buyer Purchase Potential
+            </span>
           </div>
           {potentialRaw ? (
             <div className="flex items-start gap-2.5">
