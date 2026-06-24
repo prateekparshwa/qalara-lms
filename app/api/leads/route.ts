@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
       buyer_type: sp.get("buyer_type") ?? undefined,
       classification: sp.get("classification") ?? undefined,
       am: sp.get("am") ?? undefined,
+      unassigned: sp.get("unassigned") ?? undefined,
       confidence: sp.get("confidence") ?? undefined,
       org_scale: sp.get("org_scale") ?? undefined,
       india: sp.get("india") ?? undefined,

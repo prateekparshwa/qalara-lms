@@ -13,6 +13,7 @@
 export const AM_EDITORS = [
   "raina.singhwi@qalara.com",
   "gunjan.kumari@qalara.com",
+  "prateek@qalara.com",
 ] as const;
 
 export const USER_EMAIL_STORAGE_KEY = "qalara_user_email";

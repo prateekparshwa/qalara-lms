@@ -167,6 +167,117 @@ export async function updateLeadAmInSheet(
   });
 }
 
+/**
+ * Bulk variant of updateLeadAmInSheet: reads the sheet ONCE and issues a single
+ * batchUpdate for every matched row, instead of a full-sheet read + write per
+ * lead. Matches each lead by organization (disambiguated by email when several
+ * rows share the name). Best-effort: returns how many rows were written and the
+ * names of any leads that had no matching sheet row.
+ */
+export async function updateLeadsAmInSheetBulk(
+  spreadsheetIdArg: string | undefined,
+  matches: { organization: string | null; email: string | null }[],
+  newAm: string
+): Promise<{ updated: number; unmatched: string[] }> {
+  const spreadsheetId =
+    spreadsheetIdArg?.trim() || process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  if (!spreadsheetId) throw new Error("No spreadsheet id configured.");
+  if (matches.length === 0) return { updated: 0, unmatched: [] };
+
+  const { client_email, private_key } = getCredentials();
+  const auth = new google.auth.JWT({
+    email: client_email,
+    key: private_key,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+  const sheets = google.sheets({ version: "v4", auth });
+
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets.properties.title",
+  });
+  const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
+  if (!sheetTitle) throw new Error("Could not find any tab in the spreadsheet.");
+
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: sheetTitle,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  const values = (resp.data.values ?? []) as unknown[][];
+  if (values.length === 0) throw new Error("Sheet is empty.");
+
+  let headerIdx = 0;
+  let bestMatches = -1;
+  for (let i = 0; i < Math.min(values.length, 5); i++) {
+    const m = values[i]
+      .map(normalizeHeader)
+      .filter((h) => h in HEADER_TO_COLUMN).length;
+    if (m > bestMatches) {
+      bestMatches = m;
+      headerIdx = i;
+    }
+  }
+  if (bestMatches === 0) throw new Error("No recognisable header row found.");
+  const headerRow = values[headerIdx].map(normalizeHeader);
+
+  const orgCol = headerRow.indexOf("Buyer Organization Name");
+  const emailCol = headerRow.indexOf("Buyer Email ID(s)");
+  const amCol = headerRow.indexOf("Current AM(Account Manager)");
+  if (orgCol === -1 || amCol === -1) {
+    throw new Error(
+      "Sheet is missing the Buyer Organization Name or Current AM column."
+    );
+  }
+  const amColLetter = columnLetter(amCol);
+
+  const data: { range: string; values: string[][] }[] = [];
+  const unmatched: string[] = [];
+  // Track rows already claimed so two leads with the same org name (different
+  // emails) don't both write to the first matching row.
+  const usedRows = new Set<number>();
+
+  for (const match of matches) {
+    const org = (match.organization ?? "").trim().toLowerCase();
+    if (!org) {
+      unmatched.push(match.organization ?? "(no name)");
+      continue;
+    }
+    const candidates: number[] = [];
+    for (let r = headerIdx + 1; r < values.length; r++) {
+      if (usedRows.has(r)) continue;
+      const rowOrg = String(values[r]?.[orgCol] ?? "").trim().toLowerCase();
+      if (rowOrg && rowOrg === org) candidates.push(r);
+    }
+    if (candidates.length === 0) {
+      unmatched.push(match.organization ?? "(no name)");
+      continue;
+    }
+    let rowIdx = candidates[0];
+    const email = (match.email ?? "").trim().toLowerCase();
+    if (candidates.length > 1 && email && emailCol !== -1) {
+      const byEmail = candidates.find((r) =>
+        String(values[r]?.[emailCol] ?? "").trim().toLowerCase().includes(email)
+      );
+      if (byEmail !== undefined) rowIdx = byEmail;
+    }
+    usedRows.add(rowIdx);
+    data.push({
+      range: `${sheetTitle}!${amColLetter}${rowIdx + 1}`,
+      values: [[newAm]],
+    });
+  }
+
+  if (data.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: { valueInputOption: "RAW", data },
+    });
+  }
+
+  return { updated: data.length, unmatched };
+}
+
 export async function readLeadsSheet(
   spreadsheetIdArg?: string
 ): Promise<SheetReadResult> {

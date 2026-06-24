@@ -40,6 +40,9 @@ export interface Lead {
   last_contact_date: string | null;
   email_snapshot: string | null;
   current_am: string | null;
+  /** True when the AM was set in the dashboard — Sync must not overwrite it
+   * from the sheet until it's released back to the sheet in the dashboard. */
+  am_locked: boolean | null;
   last_qalara_contact: string | null;
   last_email_subject: string | null;
   email_contact_summary: string | null;
@@ -71,6 +74,8 @@ export interface LeadsQueryParams {
   buyer_type?: string;
   classification?: string;
   am?: string;
+  /** "yes" → only leads with no Account Manager (blank or "No Active AM"). */
+  unassigned?: string;
   confidence?: string;
   org_scale?: string;
   /** "yes" → only buyers whose Sources-From-India field is a confirmed Yes. */
@@ -99,6 +104,7 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
     buyer_type,
     classification,
     am,
+    unassigned,
     confidence,
     org_scale,
     india,
@@ -138,7 +144,16 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
   if (buyer_type) query = query.ilike("buyer_type", `%${buyer_type}%`);
   // Tier is the leading word; prefix-match so "HIGH" doesn't catch "higher".
   if (classification) query = query.ilike("buyer_classification", `${classification}%`);
-  if (am) query = query.ilike("current_am", `%${am}%`);
+  // "Unassigned" = no AM at all: blank, NULL, or the "No Active AM" placeholder
+  // (mirrors how getLeadStats counts assigned leads). Takes precedence over a
+  // specific AM filter, which the UI clears when this is on.
+  if (unassigned === "yes") {
+    query = query.or(
+      'current_am.is.null,current_am.eq.,current_am.eq."No Active AM"'
+    );
+  } else if (am) {
+    query = query.ilike("current_am", `%${am}%`);
+  }
   if (confidence) query = query.ilike("website_confidence", `%${confidence}%`);
   if (org_scale) query = query.eq("org_scale", org_scale);
   // Sources-From-India is free text, but confirmed entries always start "Yes".
@@ -395,16 +410,34 @@ export async function replaceSegmentLeads(
   if (maxErr) throw new Error(`Reading watermark failed: ${maxErr.message}`);
   const watermark: number = (maxRow?.id as number) ?? 0;
 
-  // Carry-over: if the sheet no longer carries a preserve-able column, pull the
-  // last-known value from the existing rows (matched by identity) so the sync
-  // doesn't blank it. A column counts as "absent" only when NO incoming row
-  // has the key — a present-but-empty cell is left as-is.
+  // Carry-over: pull last-known values from existing rows (matched by identity)
+  // so a sync doesn't blank them. Two things are carried:
+  //  1. PRESERVE_COLUMNS — only when the column is ENTIRELY absent from the
+  //     sheet (a present-but-empty cell is respected and left as-is).
+  //  2. current_am / am_locked — a dashboard-LOCKED AM always wins over the
+  //     sheet, so a stale Excel value (e.g. "Srijaa") can't revert a UI
+  //     reassignment (e.g. "Gouri"). The lock is only cleared by an explicit
+  //     "release to sheet" action in the dashboard. When the whole AM column is
+  //     absent from the sheet, every row's AM (and lock) is preserved.
   const absentPreserve = PRESERVE_COLUMNS.filter(
     (col) => !rows.some((r) => col in r)
   );
+  const amColumnAbsent = !rows.some((r) => "current_am" in r);
+  const hasVal = (v: unknown) => v != null && String(v).trim() !== "";
+
+  // Always read prior rows (we need AM-lock state every sync).
   const carry = new Map<string, Record<string, unknown>>();
-  if (absentPreserve.length > 0 && watermark > 0) {
-    const cols = ["organization", "website", "email", ...absentPreserve].join(",");
+  if (watermark > 0) {
+    const cols = Array.from(
+      new Set([
+        "organization",
+        "website",
+        "email",
+        "current_am",
+        "am_locked",
+        ...absentPreserve,
+      ])
+    ).join(",");
     const pageSize = 1000;
     for (let from = 0; ; from += pageSize) {
       const { data, error } = await supabaseAdmin
@@ -431,14 +464,33 @@ export async function replaceSegmentLeads(
       imported_at: stamp,
       priority_rank: priorityRank(r.buyer_classification),
     };
-    if (absentPreserve.length > 0) {
-      const prior = carry.get(identityKey(r));
+    const prior = carry.get(identityKey(r));
+
+    // --- AM lock handling ---
+    if (amColumnAbsent) {
+      // Sheet doesn't carry AM at all — keep whatever the DB had, lock and all.
       if (prior) {
-        for (const col of absentPreserve) {
-          if (base[col] == null && prior[col] != null) base[col] = prior[col];
-        }
+        if (hasVal(prior.current_am)) base.current_am = prior.current_am;
+        base.am_locked = prior.am_locked === true;
+      } else {
+        base.am_locked = false;
+      }
+    } else if (prior && prior.am_locked === true && hasVal(prior.current_am)) {
+      // Dashboard-locked AM wins over the sheet value.
+      base.current_am = prior.current_am;
+      base.am_locked = true;
+    } else {
+      // Sheet value wins (already spread from r); mark unlocked.
+      base.am_locked = false;
+    }
+
+    // --- PRESERVE_COLUMNS blank-fill (only when the column is absent) ---
+    if (absentPreserve.length > 0 && prior) {
+      for (const col of absentPreserve) {
+        if (base[col] == null && prior[col] != null) base[col] = prior[col];
       }
     }
+
     return base;
   });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Mail, Phone, Globe, FileDown, Info, UserCheck } from "lucide-react";
+import { X, Mail, Phone, Globe, FileDown, Info, UserCheck, Lock } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import { webHint } from "@/lib/glossary";
 import EnrichPanel from "./EnrichPanel";
@@ -19,6 +19,8 @@ interface LeadDrawerProps {
   amOptions?: string[];
   /** Called when the user assigns an AM; resolves when saved. */
   onAssignAm?: (lead: Lead, am: string) => Promise<void>;
+  /** Called to release a dashboard-locked AM back to the sheet's control. */
+  onReleaseAm?: (lead: Lead) => Promise<void>;
 }
 
 function clean(v: string | null | undefined): string | null {
@@ -32,10 +34,12 @@ export default function LeadDrawer({
   onClose,
   amOptions = [],
   onAssignAm,
+  onReleaseAm,
 }: LeadDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isReleasing, setIsReleasing] = useState(false);
 
   const handleAssign = async (am: string) => {
     if (!lead || !onAssignAm || !am || am === (lead.current_am ?? "")) return;
@@ -44,6 +48,16 @@ export default function LeadDrawer({
       await onAssignAm(lead, am);
     } finally {
       setIsAssigning(false);
+    }
+  };
+
+  const handleRelease = async () => {
+    if (!lead || !onReleaseAm) return;
+    setIsReleasing(true);
+    try {
+      await onReleaseAm(lead);
+    } finally {
+      setIsReleasing(false);
     }
   };
 
@@ -217,6 +231,26 @@ export default function LeadDrawer({
                   <span className="text-[11px] font-sans text-editorial-muted">
                     Saving…
                   </span>
+                )}
+                {/* Lock state: a dashboard-set AM is protected from sheet sync */}
+                {lead.am_locked && (
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded px-1.5 py-0.5 whitespace-nowrap"
+                    title="This AM was set in the dashboard and won't be overwritten by a sheet sync. Release it to let the sheet manage it again."
+                  >
+                    <Lock size={9} />
+                    Locked
+                  </span>
+                )}
+                {lead.am_locked && onReleaseAm && (
+                  <button
+                    onClick={handleRelease}
+                    disabled={isReleasing}
+                    className="text-[10px] font-sans text-editorial-accent hover:underline cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                    title="Let the next sync adopt the sheet's AM value for this lead"
+                  >
+                    {isReleasing ? "Releasing…" : "Release to sheet"}
+                  </button>
                 )}
               </>
             ) : (

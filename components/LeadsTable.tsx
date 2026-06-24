@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronsUpDown,
   ExternalLink,
+  Lock,
 } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import Badge from "./Badge";
@@ -94,8 +95,15 @@ function Cell({ lead, col }: { lead: Lead; col: ColId }) {
       return <Badge value={lead.buyer_classification} kind="priority" />;
     case "current_am":
       return (
-        <span className="text-xs font-sans text-editorial-secondary block max-w-[120px] break-words">
-          {lead.current_am ?? "—"}
+        <span className="text-xs font-sans text-editorial-secondary flex items-start gap-1 max-w-[120px] break-words">
+          {lead.am_locked && (
+            <Lock
+              size={10}
+              className="text-violet-500 flex-shrink-0 mt-0.5"
+              aria-label="AM locked — protected from sheet sync"
+            />
+          )}
+          <span className="break-words">{lead.current_am ?? "—"}</span>
         </span>
       );
   }
@@ -113,6 +121,14 @@ interface LeadsTableProps {
   onRowClick: (lead: Lead) => void;
   onPageChange: (page: number) => void;
   onSortChange: (sort: string, order: "asc" | "desc") => void;
+  /** When true, a leading checkbox column is shown for bulk selection. */
+  selectable?: boolean;
+  /** Ids currently selected (only the rows on this page are toggled here). */
+  selectedIds?: Set<number>;
+  /** Toggle a single row's selection. */
+  onToggleRow?: (lead: Lead) => void;
+  /** Select / clear every row on the current page. */
+  onTogglePage?: (leads: Lead[], checked: boolean) => void;
 }
 
 export default function LeadsTable({
@@ -127,9 +143,18 @@ export default function LeadsTable({
   onRowClick,
   onPageChange,
   onSortChange,
+  selectable = false,
+  selectedIds,
+  onToggleRow,
+  onTogglePage,
 }: LeadsTableProps) {
   const [sortId, setSortId] = useState<ColId>("buyer_classification");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const selected = selectedIds ?? new Set<number>();
+  const pageSelectedCount = data.filter((l) => selected.has(l.id)).length;
+  const allPageSelected = data.length > 0 && pageSelectedCount === data.length;
+  const colSpan = COLUMNS.length + (selectable ? 1 : 0);
 
   const toggleSort = (id: ColId) => {
     const nextDir: "asc" | "desc" =
@@ -149,6 +174,22 @@ export default function LeadsTable({
         <table className="w-full border-collapse min-w-[860px]">
           <thead className="sticky top-0 z-10">
             <tr style={{ backgroundColor: "#F5F7FF" }}>
+              {selectable && (
+                <th className="w-10 px-3 py-2.5 border-b-2 border-editorial-black align-middle">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all leads on this page"
+                    checked={allPageSelected}
+                    ref={(el) => {
+                      if (el)
+                        el.indeterminate =
+                          pageSelectedCount > 0 && !allPageSelected;
+                    }}
+                    onChange={(e) => onTogglePage?.(data, e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-zinc-300 accent-[#7C3AED] cursor-pointer align-middle"
+                  />
+                </th>
+              )}
               {COLUMNS.map((c) => {
                 const active = sortId === c.id;
                 return (
@@ -191,6 +232,11 @@ export default function LeadsTable({
             {isLoading ? (
               Array.from({ length: 10 }).map((_, i) => (
                 <tr key={i} className="border-b border-editorial-border">
+                  {selectable && (
+                    <td className="px-3 py-3">
+                      <div className="h-3.5 w-3.5 bg-zinc-100 rounded animate-pulse" />
+                    </td>
+                  )}
                   {COLUMNS.map((c) => (
                     <td key={c.id} className="px-4 py-3">
                       <div className="h-3 bg-zinc-100 rounded animate-pulse" />
@@ -200,7 +246,7 @@ export default function LeadsTable({
               ))
             ) : error ? (
               <tr>
-                <td colSpan={COLUMNS.length} className="px-4 py-16">
+                <td colSpan={colSpan} className="px-4 py-16">
                   <div className="flex flex-col items-center gap-3 text-center">
                     <p className="text-sm font-sans text-editorial-text">
                       Couldn&apos;t load leads.
@@ -221,7 +267,7 @@ export default function LeadsTable({
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={COLUMNS.length} className="px-4 py-16">
+                <td colSpan={colSpan} className="px-4 py-16">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <p className="text-sm font-sans text-editorial-text">
                       No leads match your search or filters.
@@ -244,6 +290,7 @@ export default function LeadsTable({
             ) : (
               data.map((lead, i) => {
                 const org = lead.organization ?? "this lead";
+                const isSelected = selected.has(lead.id);
                 return (
                   <tr
                     key={lead.id}
@@ -258,9 +305,27 @@ export default function LeadsTable({
                     tabIndex={0}
                     aria-label={`Open profile for ${org}`}
                     className={`group cursor-pointer border-b border-editorial-border transition-colors hover:bg-[#F5F7FF] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-editorial-accent ${
-                      i % 2 === 1 ? "bg-zinc-50/40" : "bg-white"
+                      isSelected
+                        ? "bg-violet-50"
+                        : i % 2 === 1
+                        ? "bg-zinc-50/40"
+                        : "bg-white"
                     }`}
                   >
+                    {selectable && (
+                      <td
+                        className="px-3 py-2.5 align-top"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${org}`}
+                          checked={isSelected}
+                          onChange={() => onToggleRow?.(lead)}
+                          className="w-3.5 h-3.5 rounded border-zinc-300 accent-[#7C3AED] cursor-pointer mt-0.5"
+                        />
+                      </td>
+                    )}
                     {COLUMNS.map((c) => (
                       <td
                         key={c.id}

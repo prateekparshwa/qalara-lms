@@ -9,6 +9,8 @@ export interface Filters {
   classification: string;
   am: string;
   org_scale: string;
+  /** "yes" → only leads with no Account Manager (blank or "No Active AM"). */
+  unassigned: string;
   /** "yes" → only buyers with a confirmed Sources-From-India. */
   india: string;
 }
@@ -33,13 +35,18 @@ function FilterSelect({
   options,
   onChange,
   dot,
+  formatOption,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (v: string) => void;
   dot: string;
+  /** Optional display transform — the underlying value stays unchanged (used
+   * for filtering); only the visible text changes (e.g. "Large/ENT" → "Large"). */
+  formatOption?: (v: string) => string;
 }) {
+  const fmt = (v: string) => (formatOption ? formatOption(v) : v);
   const [open, setOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -146,13 +153,29 @@ export default function FilterPanel({
   const clear = (key: keyof Filters) =>
     onChange({ ...filters, [key]: "" });
 
+  // Org-size tier shows in a fixed business order (largest → smallest), not
+  // alphabetical. Any value not in the list falls to the end, order preserved.
+  const ORG_SCALE_ORDER = [
+    "Large/ENT",
+    "Medium",
+    "Small",
+    "Micro",
+    "Individual",
+    "Not Available",
+  ];
+  const orgScaleOptions = [
+    ...ORG_SCALE_ORDER.filter((v) => (options.orgScales ?? []).includes(v)),
+    ...(options.orgScales ?? []).filter((v) => !ORG_SCALE_ORDER.includes(v)),
+  ];
+
   const clearAll = () =>
-    onChange({ country: "", buyer_type: "", classification: "", am: "", org_scale: "", india: "" });
+    onChange({ country: "", buyer_type: "", classification: "", am: "", org_scale: "", unassigned: "", india: "" });
 
   return (
-    <aside className="w-56 flex-shrink-0 border-r border-zinc-200 bg-[#F7F8FE] px-4 py-5 overflow-y-auto">
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-4">
+    <aside className="w-56 flex-shrink-0 border-r border-zinc-200 bg-[#F7F8FE] overflow-y-auto">
+      {/* Section header — fixed height so its bottom divider lines up with the
+          adjacent main panel's header divider. */}
+      <div className="px-4 min-h-[45px] flex items-center justify-between border-b border-zinc-300">
         <span className="text-[10px] font-code font-bold uppercase tracking-widest text-editorial-black">
           Filters
         </span>
@@ -166,8 +189,7 @@ export default function FilterPanel({
         )}
       </div>
 
-      <div className="rule mb-4" />
-
+      <div className="px-4 py-5">
       {/* Active chips */}
       {activeCount > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-4">
@@ -203,6 +225,12 @@ export default function FilterPanel({
               <button onClick={() => clear("org_scale")} aria-label={`Remove org size filter ${filters.org_scale}`}>×</button>
             </span>
           )}
+          {filters.unassigned === "yes" && (
+            <span className="filter-chip chip-violet">
+              Unassigned
+              <button onClick={() => clear("unassigned")} aria-label="Remove Unassigned filter">×</button>
+            </span>
+          )}
           {filters.india === "yes" && (
             <span className="filter-chip chip-teal">
               Sources From India
@@ -214,6 +242,49 @@ export default function FilterPanel({
 
       {/* Filter selects */}
       <div className="space-y-4">
+        <FilterSelect
+          label="Buyer Purchase Potential (AI Recommended)"
+          dot="#E11D48"
+          value={filters.classification}
+          options={options.classifications}
+          onChange={(v) => onChange({ ...filters, classification: v })}
+        />
+        <FilterSelect
+          label="Account Manager"
+          dot="#7C3AED"
+          value={filters.am}
+          options={options.ams}
+          onChange={(v) =>
+            // Choosing a specific AM and "Unassigned only" are mutually
+            // exclusive — picking one clears the other.
+            onChange({ ...filters, am: v, unassigned: v ? "" : filters.unassigned })
+          }
+        />
+
+        {/* Unassigned only — leads with no Account Manager yet */}
+        <label className="flex items-center justify-between gap-2 cursor-pointer select-none">
+          <span className="flex items-center gap-1.5 text-xs font-sans font-medium text-editorial-secondary">
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: "#7C3AED" }}
+              aria-hidden="true"
+            />
+            Show Unassigned AM Leads
+          </span>
+          <input
+            type="checkbox"
+            checked={filters.unassigned === "yes"}
+            onChange={(e) =>
+              onChange({
+                ...filters,
+                unassigned: e.target.checked ? "yes" : "",
+                am: e.target.checked ? "" : filters.am,
+              })
+            }
+            className="w-3.5 h-3.5 rounded border-zinc-300 accent-[#7C3AED] cursor-pointer flex-shrink-0"
+          />
+        </label>
+
         <FilterSelect
           label="Country"
           dot="#4F46E5"
@@ -229,37 +300,15 @@ export default function FilterPanel({
           onChange={(v) => onChange({ ...filters, buyer_type: v })}
         />
         <FilterSelect
-          label="Buyer Purchase Potential (AI Recommended)"
-          dot="#E11D48"
-          value={filters.classification}
-          options={options.classifications}
-          onChange={(v) => onChange({ ...filters, classification: v })}
-        />
-        <FilterSelect
-          label="Account Manager"
-          dot="#7C3AED"
-          value={filters.am}
-          options={options.ams}
-          onChange={(v) => onChange({ ...filters, am: v })}
-        />
-        <FilterSelect
           label="Buyer Org Size Tier"
           dot="#B45309"
           value={filters.org_scale}
-          options={options.orgScales ?? []}
+          options={orgScaleOptions}
           onChange={(v) => onChange({ ...filters, org_scale: v })}
         />
 
         {/* Sources From India? — confirmed-Yes toggle */}
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={filters.india === "yes"}
-            onChange={(e) =>
-              onChange({ ...filters, india: e.target.checked ? "yes" : "" })
-            }
-            className="w-3.5 h-3.5 rounded border-zinc-300 accent-[#0D9488] cursor-pointer"
-          />
+        <label className="flex items-center justify-between gap-2 cursor-pointer select-none">
           <span className="flex items-center gap-1.5 text-xs font-sans font-medium text-editorial-secondary">
             <span
               className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -268,7 +317,16 @@ export default function FilterPanel({
             />
             Sources From India?
           </span>
+          <input
+            type="checkbox"
+            checked={filters.india === "yes"}
+            onChange={(e) =>
+              onChange({ ...filters, india: e.target.checked ? "yes" : "" })
+            }
+            className="w-3.5 h-3.5 rounded border-zinc-300 accent-[#0D9488] cursor-pointer flex-shrink-0"
+          />
         </label>
+      </div>
       </div>
     </aside>
   );
