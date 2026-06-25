@@ -7,8 +7,10 @@ export async function GET(req: NextRequest) {
   const format = sp.get("format") ?? "csv";
 
   try {
-    // Fetch all matching rows (no pagination for export)
-    const result = await getLeads({
+    // Fetch ALL matching rows. PostgREST caps each response at 1000 rows
+    // regardless of the requested limit, so page through in 1000-row chunks
+    // until we've collected every match (a short page means we're done).
+    const baseParams = {
       segment: sp.get("segment") ?? undefined,
       q: sp.get("q") ?? "",
       org: sp.get("org") ?? undefined,
@@ -22,11 +24,20 @@ export async function GET(req: NextRequest) {
       confidence: sp.get("confidence") ?? undefined,
       org_scale: sp.get("org_scale") ?? undefined,
       india: sp.get("india") ?? undefined,
-      page: 1,
-      limit: 10000,
-    });
+    };
 
-    const rows = result.data.map((lead) => ({
+    const PAGE = 1000;
+    const all: Awaited<ReturnType<typeof getLeads>>["data"] = [];
+    let total = Infinity;
+    for (let page = 1; all.length < total; page++) {
+      const res = await getLeads({ ...baseParams, page, limit: PAGE });
+      total = res.total;
+      if (res.data.length === 0) break;
+      all.push(...res.data);
+      if (res.data.length < PAGE) break;
+    }
+
+    const rows = all.map((lead) => ({
       Organization: lead.organization ?? "",
       "Full Name": lead.full_name ?? "",
       Designation: lead.designation ?? "",

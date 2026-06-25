@@ -120,8 +120,14 @@ export default function LeadDrawer({
           aria-hidden="true"
         />
 
-        <div className="sticky top-1 bg-white z-10 px-6 pt-4 pb-4 border-b border-editorial-black">
-          <div className="flex items-start justify-between gap-3">
+        <div className="sticky top-1 bg-[#fffaf2] z-10 px-6 pt-4 pb-4 border-b border-editorial-black relative overflow-hidden">
+          {/* Radar sweep (teal) — decorative, behind the header content */}
+          <div
+            className="atlas-sweep pointer-events-none absolute z-0 hidden sm:block"
+            style={{ top: "-200px", right: "-110px", width: "360px", height: "360px" }}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="font-sans font-semibold text-2xl text-editorial-black leading-tight text-balance">
                 {clean(lead.organization) ?? "Unnamed organization"}

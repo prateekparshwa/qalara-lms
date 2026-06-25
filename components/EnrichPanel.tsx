@@ -194,6 +194,8 @@ export default function EnrichPanel({ lead }: { lead: Lead }) {
     type: EnrichType;
     icon: React.ReactNode;
     label: string;
+    /** Underlying tool, rendered as a "via <link>" hyperlink before the desc. */
+    source: { label: string; url: string };
     desc: string;
     disabled?: boolean;
   }[] = [
@@ -201,27 +203,31 @@ export default function EnrichPanel({ lead }: { lead: Lead }) {
       type: "contact",
       icon: <UserSearch size={12} />,
       label: "Find Decision-Maker",
-      desc: "Hunter — procurement / sourcing contact + email",
+      source: { label: "hunter.io", url: "https://hunter.io" },
+      desc: "finds a procurement/sourcing decision-maker: name, title, email, phone & LinkedIn (saved to the lead).",
       disabled: !lead.website,
     },
     {
       type: "scrape",
       icon: <Globe size={12} />,
       label: "Scrape Website",
-      desc: "Firecrawl — extract full page content",
+      source: { label: "firecrawl.dev", url: "https://firecrawl.dev" },
+      desc: "extracts the site's full page content (about, products, materials & markets) to enrich the profile.",
       disabled: !lead.website,
     },
     {
       type: "search",
       icon: <Search size={12} />,
       label: "Web Search",
-      desc: "Find the org online",
+      source: { label: "web search", url: "https://www.google.com" },
+      desc: "surfaces the organization online: business profile, listings & recent mentions.",
     },
     {
       type: "apify",
       icon: <Zap size={12} />,
       label: "Apify Lookup",
-      desc: "Run actor — company data",
+      source: { label: "apify.com", url: "https://apify.com" },
+      desc: "pulls structured company data: org size, social handles & public contact details.",
     },
   ];
 
@@ -253,7 +259,7 @@ export default function EnrichPanel({ lead }: { lead: Lead }) {
         <div className="px-6 pb-6">
           <div className="rule mb-4" />
           <div className="space-y-3">
-            {actions.map(({ type, icon, label, desc, disabled }) => (
+            {actions.map(({ type, icon, label, source, desc, disabled }) => (
               <div key={type}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -264,7 +270,16 @@ export default function EnrichPanel({ lead }: { lead: Lead }) {
                       </span>
                     </div>
                     <p className="text-[10px] text-editorial-muted font-sans ml-4.5">
-                      {desc}
+                      via{" "}
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-editorial-accent hover:underline"
+                      >
+                        {source.label}
+                      </a>{" "}
+                      — {desc}
                     </p>
                   </div>
                   <button
