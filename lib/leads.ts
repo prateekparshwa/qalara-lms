@@ -59,6 +59,10 @@ export interface Lead {
   buyer_classification: string | null;
   full_name_original: string | null;
   website_confidence: string | null;
+  /** Free-text AM notes (dashboard-only; never in the sheet, preserved on sync). */
+  notes: string | null;
+  notes_updated_at: string | null;
+  notes_updated_by: string | null;
   enrichment_cache: Record<string, unknown> | null;
   imported_at: string | null;
   enriched_at: string | null;
@@ -357,7 +361,15 @@ const REPLACE_CHUNK = 500;
  * the next sync. Only applies when the column is ENTIRELY absent from the
  * incoming rows (a blank cell in a present column is still respected).
  */
-const PRESERVE_COLUMNS = ["website_confidence", "full_name_original"] as const;
+const PRESERVE_COLUMNS = [
+  "website_confidence",
+  "full_name_original",
+  // Dashboard-only AM notes — never present in the sheet, so always carried
+  // over (the absent-column rule preserves them on every sync).
+  "notes",
+  "notes_updated_at",
+  "notes_updated_by",
+] as const;
 
 /** Stable identity for matching an old DB row to a new sheet row: normalized
  * website first (the most reliable key), else organization + first email. */

@@ -5,6 +5,7 @@ import { X, Mail, Phone, Globe, FileDown, Info, UserCheck, Lock } from "lucide-r
 import type { Lead } from "@/lib/leads";
 import { webHint } from "@/lib/glossary";
 import EnrichPanel from "./EnrichPanel";
+import NotesPanel from "./NotesPanel";
 import Badge from "./Badge";
 import LeadDossier, { dossierSections } from "./LeadDossier";
 import Moodboard from "./Moodboard";
@@ -21,6 +22,13 @@ interface LeadDrawerProps {
   onAssignAm?: (lead: Lead, am: string) => Promise<void>;
   /** Called to release a dashboard-locked AM back to the sheet's control. */
   onReleaseAm?: (lead: Lead) => Promise<void>;
+  /** Notified after AM notes are saved, so the host can patch its lead state. */
+  onNotesSaved?: (
+    id: number,
+    notes: string | null,
+    updatedAt: string | null,
+    updatedBy: string | null
+  ) => void;
 }
 
 function clean(v: string | null | undefined): string | null {
@@ -35,11 +43,17 @@ export default function LeadDrawer({
   amOptions = [],
   onAssignAm,
   onReleaseAm,
+  onNotesSaved,
 }: LeadDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
+  // Notes collapse state — open by default only when the buyer already has a note.
+  const [notesOpen, setNotesOpen] = useState(false);
+  useEffect(() => {
+    setNotesOpen(!!clean(lead?.notes));
+  }, [lead?.id, lead?.notes]);
 
   const handleAssign = async (am: string) => {
     if (!lead || !onAssignAm || !am || am === (lead.current_am ?? "")) return;
@@ -290,6 +304,27 @@ export default function LeadDrawer({
                   {s.short}
                 </button>
               ))}
+              {/* Notes pill — opens the (collapsible) AM Notes panel and scrolls to it. */}
+              <button
+                onClick={() => {
+                  setNotesOpen(true);
+                  setTimeout(
+                    () =>
+                      document
+                        .getElementById("dossier-notes")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                    0
+                  );
+                }}
+                className="px-2 py-0.5 text-[11px] font-sans rounded-full border border-zinc-200 text-editorial-secondary hover:border-editorial-black hover:text-editorial-black transition-colors cursor-pointer inline-flex items-center gap-1"
+              >
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: "#0D9488" }}
+                  aria-hidden="true"
+                />
+                AM Notes
+              </button>
               {/* Moodboard tab — sits at the end (next to Metrics); jumps to
                   the Generate Brand Moodboard launcher. */}
               {clean(lead.website) && (
@@ -315,6 +350,13 @@ export default function LeadDrawer({
 
         <div className="px-6">
           <LeadDossier lead={lead} scrollMtClass="scroll-mt-48" />
+          <NotesPanel
+            lead={lead}
+            open={notesOpen}
+            onToggleOpen={() => setNotesOpen((v) => !v)}
+            scrollMtClass="scroll-mt-48"
+            onSaved={onNotesSaved}
+          />
           <Moodboard lead={lead} />
         </div>
 

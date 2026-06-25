@@ -285,6 +285,27 @@ export default function LeadsDashboard({
     }
   };
 
+  const handleNotesSaved = useCallback(
+    (
+      id: number,
+      notes: string | null,
+      updatedAt: string | null,
+      updatedBy: string | null
+    ) => {
+      const patch = {
+        notes,
+        notes_updated_at: updatedAt,
+        notes_updated_by: updatedBy,
+      };
+      setLeadsData((d) => ({
+        ...d,
+        data: d.data.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+      }));
+      setSelectedLead((cur) => (cur && cur.id === id ? { ...cur, ...patch } : cur));
+    },
+    []
+  );
+
   const handleReleaseAm = async (lead: Lead) => {
     try {
       const res = await fetch("/api/leads/assign-am", {
@@ -653,6 +674,7 @@ export default function LeadsDashboard({
         amOptions={canAssign ? filterOptions.ams : undefined}
         onAssignAm={canAssign ? handleAssignAm : undefined}
         onReleaseAm={canAssign ? handleReleaseAm : undefined}
+        onNotesSaved={handleNotesSaved}
       />
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
