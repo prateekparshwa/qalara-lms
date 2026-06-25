@@ -257,12 +257,22 @@ function hasSignal(v: string | null | undefined): boolean {
   return !/^(0+|no|n\/a|na|-|none|nil)$/i.test(s);
 }
 
+// Keyword lists used by the engagement scan to count Quotation / Sample intent
+// in buyer emails — surfaced as info-icon tooltips on those rows.
+const QUOTATION_KEYWORDS =
+  "Unique sum count of keywords (price, rate, cost, quote, quote sheet, cost sheet) in email received from buyer";
+const SAMPLE_KEYWORDS =
+  "Unique sum count of keywords (product development, sample, design, specifications, specs, spec sheet, template, artwork, colour proof, colour, develop) in email received from buyer";
+
 function MetricRow({
   label,
   value,
+  info,
 }: {
   label: string;
   value: string | null | undefined;
+  /** Optional tooltip shown on an info icon beside the label (e.g. the keyword list). */
+  info?: string;
 }) {
   const v = clean(value);
   if (!v) return null;
@@ -272,7 +282,19 @@ function MetricRow({
   const zeroish = /^(0|no|none|nil|n\/?a|-|false)$/i.test(v.trim());
   return (
     <div className="text-editorial-secondary">
-      {label}:{" "}
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {info && (
+          <span
+            className="inline-flex text-editorial-muted cursor-help align-middle"
+            title={info}
+            aria-label={info}
+          >
+            <Info size={12} />
+          </span>
+        )}
+      </span>
+      :{" "}
       {zeroish ? (
         v
       ) : (
@@ -283,10 +305,10 @@ function MetricRow({
 }
 
 /**
- * The sheet splits ONE inbound-email count across three bucket columns
- * (≤2 / 3–7 / 8+) — e.g. BEL EPOK arrives as mid=3, high=9 meaning 12 emails
- * total. Sum the buckets and show a single row under the bucket the TOTAL
- * falls in: "8+ emails: 12".
+ * Inbound-email counts live in three bucket columns (≤2 / 3–7 / 8+); a buyer's
+ * count sits in the bucket its total falls into. Show a SINGLE line with the
+ * matching bucket and the total count of emails received — always, irrespective
+ * of whether any emails were received (a zero buyer reads "≤2 emails: 0").
  */
 function EmailCountRow({
   low,
@@ -297,20 +319,20 @@ function EmailCountRow({
   mid: string | null | undefined;
   high: string | null | undefined;
 }) {
-  const parts = [low, mid, high].map(clean);
-  if (parts.every((p) => p === null)) return null;
-  const total = parts.reduce((sum, p) => {
-    const n = parseInt((p ?? "").replace(/[^\d]/g, ""), 10);
-    return sum + (isNaN(n) ? 0 : n);
-  }, 0);
+  const num = (v: string | null | undefined) => {
+    const n = parseInt((clean(v) ?? "").replace(/[^\d]/g, ""), 10);
+    return isNaN(n) ? 0 : n;
+  };
+  const total = num(low) + num(mid) + num(high);
   const bucket = total <= 2 ? "≤2 emails" : total <= 7 ? "3–7 emails" : "8+ emails";
   return (
-    <div
-      className={
-        total > 0 ? "font-bold text-editorial-black" : "text-editorial-secondary"
-      }
-    >
-      {bucket}: {total}
+    <div className={total > 0 ? "text-editorial-black" : "text-editorial-secondary"}>
+      <span className={total > 0 ? "font-bold" : ""}>
+        {bucket}: {total}
+      </span>{" "}
+      <span className="font-normal text-editorial-muted text-[11px]">
+        [sum count of email(s) received from buyer]
+      </span>
     </div>
   );
 }
@@ -638,7 +660,7 @@ export default function LeadDossier({
             color="#4F46E5"
             hint="Count of emails received from Buyers"
           />
-          <div className="grid grid-cols-2 gap-x-6 py-2">
+          <div className="space-y-4 py-2">
             <div>
               <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted mb-2">
                 Sourcing@qalara
@@ -649,8 +671,8 @@ export default function LeadDossier({
                   mid={lead.sourcing_emails_mid}
                   high={lead.sourcing_emails_high}
                 />
-                <MetricRow label="Quotations" value={lead.quotations_request} />
-                <MetricRow label="Samples" value={lead.samples_request} />
+                <MetricRow label="Quotations" value={lead.quotations_request} info={QUOTATION_KEYWORDS} />
+                <MetricRow label="Samples" value={lead.samples_request} info={SAMPLE_KEYWORDS} />
               </div>
             </div>
             <div>
@@ -663,8 +685,8 @@ export default function LeadDossier({
                   mid={lead.buyers_emails_mid}
                   high={lead.buyers_emails_high}
                 />
-                <MetricRow label="Quotations" value={lead.quotations} />
-                <MetricRow label="Samples" value={lead.samples} />
+                <MetricRow label="Quotations" value={lead.quotations} info={QUOTATION_KEYWORDS} />
+                <MetricRow label="Samples" value={lead.samples} info={SAMPLE_KEYWORDS} />
               </div>
             </div>
           </div>
