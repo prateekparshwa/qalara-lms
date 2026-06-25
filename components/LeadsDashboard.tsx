@@ -459,6 +459,30 @@ export default function LeadsDashboard({
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // AM identity control — sits in the header next to Sync, bolded a touch.
+  const amControl = canAssign ? (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-sans font-semibold text-editorial-secondary">
+      <UserCheck size={12} className="text-green-600" />
+      AM editing as{" "}
+      <span className="font-bold text-editorial-black">{userEmail}</span>
+      <button
+        onClick={handleIdentify}
+        className="ml-1 font-semibold text-editorial-accent hover:underline cursor-pointer"
+      >
+        change
+      </button>
+    </span>
+  ) : (
+    <button
+      onClick={handleIdentify}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-sans font-bold border border-indigo-200 rounded text-editorial-accent hover:bg-indigo-50 hover:border-editorial-accent transition-colors cursor-pointer"
+      title="Account Manager editing is limited to authorized users"
+    >
+      <Lock size={11} />
+      {userEmail ? "View only · switch account" : "Sign in to edit AMs"}
+    </button>
+  );
+
   return (
     <div className="min-h-screen flex flex-col bg-editorial-bg">
       {/* Amber vignette around the viewport edges — sits under drawer/toast */}
@@ -482,6 +506,7 @@ export default function LeadsDashboard({
         isSyncing={isSyncing}
         lastSynced={stats.lastSynced}
         segment={segment}
+        amControl={amControl}
         suggest
         onPick={(lead) => {
           // Open the buyer's dossier directly and hide the table behind it.
@@ -514,33 +539,6 @@ export default function LeadsDashboard({
                 {leadsData.total.toLocaleString()} results
               </span>
             )}
-            {/* Soft identity control — gates AM editing to the allowlist */}
-            <div className="ml-auto flex items-center">
-              {canAssign ? (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-editorial-secondary">
-                  <UserCheck size={12} className="text-green-600" />
-                  AM editing as{" "}
-                  <span className="font-medium text-editorial-black">
-                    {userEmail}
-                  </span>
-                  <button
-                    onClick={handleIdentify}
-                    className="ml-1 text-editorial-accent hover:underline cursor-pointer"
-                  >
-                    change
-                  </button>
-                </span>
-              ) : (
-                <button
-                  onClick={handleIdentify}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-sans text-editorial-muted hover:text-editorial-black cursor-pointer"
-                  title="Account Manager editing is limited to authorized users"
-                >
-                  <Lock size={11} />
-                  {userEmail ? "View only · switch account" : "Sign in to edit AMs"}
-                </button>
-              )}
-            </div>
           </div>
 
           {pickedMode ? (

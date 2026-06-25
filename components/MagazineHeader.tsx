@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Search, RefreshCw, Download, ArrowLeft, Loader2 } from "lucide-react";
+import { Search, RefreshCw, Download, ArrowLeft, Loader2, Home } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import CountryFlag from "./CountryFlag";
 import { formatIst } from "@/lib/format";
@@ -32,6 +32,8 @@ interface MagazineHeaderProps {
   onPick?: (lead: Lead) => void;
   /** ISO timestamp of the most recent sheet sync — shown under the Sync button. */
   lastSynced?: string | null;
+  /** AM identity control, rendered in the action row beside Sync. */
+  amControl?: React.ReactNode;
 }
 
 type Scope = "org" | "email" | "website";
@@ -70,6 +72,7 @@ export default function MagazineHeader({
   suggest = false,
   onPick,
   lastSynced,
+  amControl,
 }: MagazineHeaderProps) {
   const synced = formatIst(lastSynced);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -207,15 +210,27 @@ export default function MagazineHeader({
         <div className="flex items-start justify-between gap-6">
           {/* Dateline: back link + segment title + count */}
           <div className="flex-shrink-0 min-w-0">
-            {backHref && (
+            <div className="flex items-center gap-2 mb-1">
               <Link
-                href={backHref}
-                className="inline-flex items-center gap-1 text-[11px] font-code text-editorial-muted hover:text-editorial-black transition-colors mb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent rounded-sm"
+                href="/"
+                className="inline-flex items-center gap-1 text-[11px] font-code font-bold text-editorial-muted hover:text-editorial-black transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent rounded-sm"
               >
-                <ArrowLeft size={11} />
-                Qalara Buyer Directory
+                <Home size={11} />
+                Home
               </Link>
-            )}
+              {backHref && (
+                <>
+                  <span className="text-[11px] font-code text-editorial-muted">·</span>
+                  <Link
+                    href={backHref}
+                    className="inline-flex items-center gap-1 text-[11px] font-code font-bold text-editorial-muted hover:text-editorial-black transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-editorial-accent rounded-sm"
+                  >
+                    <ArrowLeft size={11} />
+                    Qalara Buyer Directory
+                  </Link>
+                </>
+              )}
+            </div>
             <div className="flex items-baseline gap-2.5">
               <h1 className="font-sans font-semibold text-2xl tracking-tight text-editorial-black truncate">
                 {segmentLabel ?? "Leads"}
@@ -229,6 +244,7 @@ export default function MagazineHeader({
           {/* Actions */}
           <div className="flex flex-col items-end gap-1 mt-1">
           <div className="flex items-center gap-2">
+            {amControl}
             <button
               onClick={onSync}
               disabled={isSyncing}
