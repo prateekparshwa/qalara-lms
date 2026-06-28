@@ -305,6 +305,25 @@ body {
     --amber-spin: 360deg;
   }
 }
+
+/* Filter dot glow — pulses in the dot's own colour while that filter is active. */
+@keyframes dotGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--dot-glow) 60%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 7px 2px color-mix(in srgb, var(--dot-glow) 60%, transparent);
+  }
+}
+.dot-glow {
+  animation: dotGlow 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot-glow {
+    animation: none;
+    box-shadow: 0 0 5px 1px color-mix(in srgb, var(--dot-glow) 60%, transparent);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .amber-ring {
     animation: none;

@@ -93,8 +93,8 @@ function FilterSelect({
     <div className="relative">
       <label className="flex items-center gap-1.5 text-xs font-sans font-medium text-editorial-secondary mb-1.5">
         <span
-          className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: dot }}
+          className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${value ? "dot-glow" : ""}`}
+          style={{ backgroundColor: dot, ["--dot-glow" as string]: dot }}
           aria-hidden="true"
         />
         {label}
@@ -265,8 +265,8 @@ export default function FilterPanel({
         <label className="flex items-center justify-between gap-2 cursor-pointer select-none">
           <span className="flex items-center gap-1.5 text-xs font-sans font-medium text-editorial-secondary">
             <span
-              className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: "#7C3AED" }}
+              className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${filters.unassigned === "yes" ? "dot-glow" : ""}`}
+              style={{ backgroundColor: "#7C3AED", ["--dot-glow" as string]: "#7C3AED" }}
               aria-hidden="true"
             />
             Show Unassigned AM Leads
@@ -311,8 +311,8 @@ export default function FilterPanel({
         <label className="flex items-center justify-between gap-2 cursor-pointer select-none">
           <span className="flex items-center gap-1.5 text-xs font-sans font-medium text-editorial-secondary">
             <span
-              className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: "#0D9488" }}
+              className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${filters.india === "yes" ? "dot-glow" : ""}`}
+              style={{ backgroundColor: "#0D9488", ["--dot-glow" as string]: "#0D9488" }}
               aria-hidden="true"
             />
             Sources From India?

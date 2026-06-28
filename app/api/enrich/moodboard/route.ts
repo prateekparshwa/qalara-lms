@@ -9,6 +9,7 @@ import {
   CtxStyleguide,
 } from "@/lib/contextdev";
 import { firecrawlScrape } from "@/lib/firecrawl";
+import { tinyfishFetch } from "@/lib/tinyfish";
 import { openrouterComplete, parseJsonLoose } from "@/lib/openrouter";
 
 export const runtime = "nodejs";
@@ -150,6 +151,24 @@ function filterImages(images: CtxImage[]): { src: string; alt: string | null }[]
     .sort((a, b) => rank(a) - rank(b))
     .slice(0, MAX_IMAGES)
     .map(({ src, alt }) => ({ src, alt }));
+}
+
+/** Site content as markdown: TinyFish Fetch first (clean, free), Firecrawl as
+ * the backup when TinyFish returns nothing or errors. Fails soft to null. */
+async function scrapeMarkdown(url: string): Promise<string | null> {
+  try {
+    const tf = await tinyfishFetch([url], { format: "markdown" });
+    const text = tf.results?.[0]?.text;
+    if (text && text.trim()) return text;
+  } catch {
+    // fall through to Firecrawl
+  }
+  try {
+    const fc = await firecrawlScrape(url);
+    return fc?.markdown?.trim() ? fc.markdown : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Firecrawl full-page screenshot — the always-works visual fallback. */
@@ -400,7 +419,7 @@ export async function POST(req: NextRequest) {
       scrapeImages(fullUrl),
       brandRetrieve(domain),
       scrapeStyleguide(domain),
-      firecrawlScrape(fullUrl),
+      scrapeMarkdown(fullUrl), // TinyFish Fetch → Firecrawl backup
     ]);
 
     const images =
@@ -408,7 +427,7 @@ export async function POST(req: NextRequest) {
     const brand = brandRes.status === "fulfilled" ? brandRes.value : null;
     const styleguide = styleRes.status === "fulfilled" ? styleRes.value : null;
     const markdown =
-      scrapeRes.status === "fulfilled" ? (scrapeRes.value?.markdown ?? null) : null;
+      scrapeRes.status === "fulfilled" ? scrapeRes.value : null;
 
     // The site's working colors strengthen the LLM's palette grounding.
     const knownColors = [
