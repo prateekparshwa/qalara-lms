@@ -25,9 +25,19 @@ export async function POST(req: NextRequest) {
   if (lead?.enrichment_cache?.search && lead.enriched_at) {
     const age = Date.now() - new Date(lead.enriched_at).getTime();
     if (age < 7 * 24 * 60 * 60 * 1000) {
+      // The cache stores { query, result }. Unwrap it so a cached hit returns
+      // the same shape as a fresh call ({ cached, query, result }) — no extra
+      // nesting in the UI. Fall back to the raw entry for any legacy shape.
+      const cached = lead.enrichment_cache.search as {
+        query?: string;
+        result?: unknown;
+      };
+      const hasWrapper =
+        cached && typeof cached === "object" && "result" in cached;
       return NextResponse.json({
         cached: true,
-        result: lead.enrichment_cache.search,
+        query: hasWrapper ? cached.query : undefined,
+        result: hasWrapper ? cached.result : cached,
       });
     }
   }
