@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { tinyfishSearch } from "@/lib/tinyfish";
+
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   const { leadId, org, country, categories } = await req.json();
@@ -31,24 +35,8 @@ export async function POST(req: NextRequest) {
   const query = `${org} ${country ?? ""} ${categories ?? "home decor wholesale"}`.trim();
 
   try {
-    const response = await fetch(
-      `https://api.tinyfish.ai/search?q=${encodeURIComponent(query)}&num=5`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "Search API error" },
-        { status: 502 }
-      );
-    }
-
-    const result = await response.json();
+    // TinyFish Search — structured, ranked results for LLM/agent use. Free.
+    const result = await tinyfishSearch(query);
 
     // Cache result
     const existingCache =

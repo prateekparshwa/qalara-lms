@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { tinyfishFetch } from "@/lib/tinyfish";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const { leadId, url } = await req.json();
@@ -27,30 +31,23 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`,
-      },
-      body: JSON.stringify({
-        url,
-        formats: ["markdown", "extract"],
-        extract: {
-          prompt:
-            "Extract: company name, description, product categories, countries served, estimated size/scale. Return as JSON.",
-        },
-      }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: result.error ?? "Firecrawl error" },
-        { status: 502 }
-      );
+    // TinyFish Fetch — renders the page (incl. JS-heavy sites) and returns
+    // clean markdown. Free endpoint; a drop-in replacement for Firecrawl.
+    const data = await tinyfishFetch([url], { format: "markdown" });
+    const page = data.results?.[0];
+    if (!page) {
+      const err = data.errors?.[0]?.error ?? "Fetch returned no content.";
+      return NextResponse.json({ error: err }, { status: 502 });
     }
+
+    const result = {
+      source: "tinyfish",
+      title: page.title ?? null,
+      url: page.final_url ?? url,
+      description: page.description ?? null,
+      language: page.language ?? null,
+      content: page.text ?? "",
+    };
 
     // Cache result
     const existingCache =

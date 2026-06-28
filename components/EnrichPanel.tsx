@@ -211,7 +211,7 @@ export default function EnrichPanel({ lead }: { lead: Lead }) {
       type: "scrape",
       icon: <Globe size={12} />,
       label: "Scrape Website",
-      source: { label: "firecrawl.dev", url: "https://firecrawl.dev" },
+      source: { label: "tinyfish.ai", url: "https://tinyfish.ai" },
       desc: "extracts the site's full page content (about, products, materials & markets) to enrich the profile.",
       disabled: !lead.website,
     },
@@ -219,7 +219,7 @@ export default function EnrichPanel({ lead }: { lead: Lead }) {
       type: "search",
       icon: <Search size={12} />,
       label: "Web Search",
-      source: { label: "web search", url: "https://www.google.com" },
+      source: { label: "tinyfish.ai", url: "https://tinyfish.ai" },
       desc: "surfaces the organization online: business profile, listings & recent mentions.",
     },
     {
