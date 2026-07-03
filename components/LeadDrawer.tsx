@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Mail, Phone, Globe, FileDown, Info, UserCheck, Lock } from "lucide-react";
+import { X, Mail, Phone, Globe, FileDown, Info, UserCheck, Lock, Briefcase } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import { webHint } from "@/lib/glossary";
 import EnrichPanel from "./EnrichPanel";
@@ -216,8 +216,19 @@ export default function LeadDrawer({
             )}
           </div>
 
-          {/* Account Manager: editable for allow-listed users, read-only for everyone else */}
-          <div className="flex items-center gap-2 mt-3">
+          {/* Designation + Account Manager (Designation sits just left of AM) */}
+          <div className="flex items-center gap-x-4 gap-y-2 mt-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Briefcase size={13} className="text-editorial-secondary flex-shrink-0" />
+              <span className="text-xs font-sans text-editorial-secondary whitespace-nowrap">
+                Designation
+              </span>
+              <span className="text-xs font-sans font-medium text-editorial-black">
+                {clean(lead.designation) ?? "Publicly Not Available"}
+              </span>
+            </div>
+            {/* Account Manager: editable for allow-listed users, read-only for everyone else */}
+            <div className="flex items-center gap-2">
             <UserCheck size={13} className="text-editorial-secondary flex-shrink-0" />
             <span className="text-xs font-sans text-editorial-secondary whitespace-nowrap">
               Account Manager
@@ -278,6 +289,7 @@ export default function LeadDrawer({
                 {clean(lead.current_am) ?? "No Active AM"}
               </span>
             )}
+            </div>
           </div>
 
           {/* Quick-nav: jump to a dossier section without scrolling blind */}
