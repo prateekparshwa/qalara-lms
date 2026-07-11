@@ -10,11 +10,18 @@
  * could still type it. Good enough for an internal tool; replace with real
  * per-user auth (SSO) if a hard boundary is ever required.
  */
-export const AM_EDITORS = [
-  "raina.singhwi@qalara.com",
-  "gunjan.kumari@qalara.com",
-  "prateek@qalara.com",
-] as const;
+/**
+ * Allowlist of AM editors, sourced from NEXT_PUBLIC_AM_EDITORS (a comma-
+ * separated list of emails) so the addresses aren't hardcoded in the public
+ * repo. Read client-side, so it must be a NEXT_PUBLIC_ var (inlined at build).
+ * Empty when unset — then nobody gets the AM-edit control.
+ */
+export const AM_EDITORS: readonly string[] = (
+  process.env.NEXT_PUBLIC_AM_EDITORS ?? ""
+)
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 export const USER_EMAIL_STORAGE_KEY = "qalara_user_email";
 
