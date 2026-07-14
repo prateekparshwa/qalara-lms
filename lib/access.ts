@@ -29,7 +29,7 @@ export function normalizeEmail(email: string | null | undefined): string {
   return (email ?? "").trim().toLowerCase();
 }
 
-/** True only for the hard-coded AM editors. */
+/** True only for the configured AM editors (from NEXT_PUBLIC_AM_EDITORS). */
 export function canEditAm(email: string | null | undefined): boolean {
   return (AM_EDITORS as readonly string[]).includes(normalizeEmail(email));
 }
