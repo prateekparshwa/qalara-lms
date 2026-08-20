@@ -127,6 +127,26 @@ export default function LeadsDashboard({
     setToast({ message, type, key: toastKey.current });
   }, []);
 
+  // Arriving from the Directory-wide search (?pickId=<id>) — fetch that lead
+  // and open its dossier directly, same as picking from the typeahead.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pickId = params.get("pickId");
+    if (!pickId) return;
+    // Clean the URL so a refresh doesn't keep re-triggering the fetch.
+    window.history.replaceState({}, "", window.location.pathname);
+    fetch(`/api/leads/${pickId}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => {
+        if (data?.data) {
+          setSelectedLead(data.data);
+          setPickedMode(true);
+        }
+      })
+      .catch(() => showToast("Couldn't find that buyer.", "error"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const debouncedSearch = useDebounce(search, 300);
 
   // Load stats + filter options (on mount / segment change / after sync)

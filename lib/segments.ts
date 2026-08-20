@@ -83,3 +83,11 @@ export function segmentSpreadsheetId(seg: Segment): string | undefined {
   }
   return undefined;
 }
+
+/** Segments that are live (linked to a sheet, not deferred) — the ones a
+ * cross-segment directory search actually has data for. */
+export function activeSegmentKeys(): SegmentKey[] {
+  return SEGMENTS.filter((s) => !s.deferred && !!segmentSpreadsheetId(s)).map(
+    (s) => s.key
+  );
+}

@@ -210,6 +210,50 @@ export async function suggestLeads(
   return (data as Lead[]) ?? [];
 }
 
+export interface DirectorySearchParams {
+  org?: string;
+  website?: string;
+  email?: string;
+  buyerName?: string;
+  country?: string;
+}
+
+/**
+ * Cross-segment buyer lookup for the Directory chooser: the user knows a few
+ * details about a buyer but not which segment they're in. Combines whichever
+ * fields are filled with AND (same per-field match style as getLeads), scoped
+ * to the given (active) segments only — never touches 'discover'.
+ */
+export async function searchDirectory(
+  params: DirectorySearchParams,
+  segments: string[],
+  limit = 30
+): Promise<{ data: Lead[]; total: number }> {
+  const { org, website, email, buyerName, country } = params;
+  if (!org?.trim() && !website?.trim() && !email?.trim() && !buyerName?.trim() && !country?.trim()) {
+    return { data: [], total: 0 };
+  }
+  if (segments.length === 0) return { data: [], total: 0 };
+
+  let query = supabase
+    .from("leads")
+    .select("*", { count: "exact" })
+    .in("segment", segments);
+
+  if (org?.trim()) query = query.ilike("organization", `${org.trim()}%`);
+  if (website?.trim()) query = query.ilike("website", `%${website.trim()}%`);
+  if (email?.trim()) query = query.ilike("email", `%${email.trim()}%`);
+  if (buyerName?.trim()) query = query.ilike("full_name", `%${buyerName.trim()}%`);
+  if (country?.trim()) query = query.ilike("country", `%${country.trim()}%`);
+
+  query = query.order("organization", { ascending: true }).limit(limit);
+
+  const { data, error, count } = await query;
+  if (error) throw new Error(error.message);
+
+  return { data: (data as Lead[]) ?? [], total: count ?? 0 };
+}
+
 export async function getLeadById(id: number): Promise<Lead | null> {
   const { data, error } = await supabase
     .from("leads")
