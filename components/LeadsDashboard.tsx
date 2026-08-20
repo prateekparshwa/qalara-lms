@@ -214,6 +214,7 @@ export default function LeadsDashboard({
 
   const handleSync = async () => {
     setIsSyncing(true);
+    showToast("Syncing from Google Sheets — this can take ~20s…", "info");
     try {
       const res = await fetch(`/api/leads/sync?segment=${segment}`, {
         method: "POST",

@@ -78,6 +78,19 @@ export default function MagazineHeader({
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [scope, setScope] = useState<Scope>("org");
 
+  // Elapsed-seconds counter while a sync runs — a sheet sync takes ~15-20s, so
+  // a live count reassures the user it's working rather than stuck.
+  const [syncSeconds, setSyncSeconds] = useState(0);
+  useEffect(() => {
+    if (!isSyncing) {
+      setSyncSeconds(0);
+      return;
+    }
+    setSyncSeconds(0);
+    const t = setInterval(() => setSyncSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [isSyncing]);
+
   // Typeahead suggestions (org OR email match) shown beneath the search box.
   const [suggestions, setSuggestions] = useState<Lead[]>([]);
   const [showSuggest, setShowSuggest] = useState(false);
@@ -251,7 +264,7 @@ export default function MagazineHeader({
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium border border-indigo-200 rounded text-editorial-accent hover:bg-indigo-50 hover:border-editorial-accent transition-colors duration-150 disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw size={12} className={isSyncing ? "animate-spin" : ""} />
-              {isSyncing ? "Syncing…" : "Sync"}
+              {isSyncing ? `Syncing… ${syncSeconds}s` : "Sync"}
             </button>
 
             <div className="relative">
@@ -292,10 +305,16 @@ export default function MagazineHeader({
               )}
             </div>
           </div>
-          {synced && (
+          {isSyncing ? (
+            <span className="text-[10px] font-sans text-editorial-accent whitespace-nowrap">
+              Pulling from Google Sheets — this can take ~20s…
+            </span>
+          ) : (
+            synced && (
             <span className="text-[10px] font-code text-editorial-muted whitespace-nowrap">
               Last synced: {synced}
             </span>
+            )
           )}
           </div>
         </div>
