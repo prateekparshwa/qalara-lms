@@ -41,7 +41,7 @@ export interface Segment {
 export const SEGMENTS: Segment[] = [
   {
     key: "engagement",
-    label: "Leads with Engagement",
+    label: "Lead ( Qalara Qualified )",
     definition: "Buyers who have had formal communication with Qalara.",
     envVars: [
       "GOOGLE_SHEETS_SPREADSHEET_ID_ENGAGEMENT",

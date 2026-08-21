@@ -51,7 +51,7 @@ export default async function DirectoryPage() {
       <main className="flex-1 relative overflow-hidden">
         <AtlasBackdrop />
 
-        <div className="relative z-10 max-w-6xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
+        <div className="relative z-10 max-w-[90rem] mx-auto px-6 lg:px-10 py-4 lg:py-6">
           {/* Breadcrumb back to the lobby */}
           <Link
             href="/"
@@ -64,24 +64,20 @@ export default async function DirectoryPage() {
             Lobby
           </Link>
 
-          <h1 className="mt-5 font-display font-bold text-3xl text-editorial-black">
+          <h1 className="mt-3 font-display font-bold text-2xl lg:text-3xl text-editorial-black">
             Choose a segment
           </h1>
-          <p className="mt-2 text-sm text-editorial-secondary font-sans max-w-xl">
-            Each segment is its own list of buyers. Engagement is live now; the
-            rest light up as their sheets are linked. Or search directly if you
+          <p className="mt-1.5 text-sm text-editorial-secondary font-sans max-w-xl">
+            Each segment is its own list of buyers — or search directly if you
             already know the buyer.
           </p>
 
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-start">
+          <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-6 lg:gap-8 items-start">
             <div>
-              <h2 className="font-display font-bold text-xl text-editorial-black mb-4">
-                Browse by segment
-              </h2>
               <ul className="border-t border-editorial-black">
                 {rows.map((r) => {
                   const inner = (
-                    <div className="flex items-center gap-4 py-5">
+                    <div className="flex items-center gap-4 py-3.5">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2.5">
                           <span className="font-display font-semibold text-lg text-editorial-black">

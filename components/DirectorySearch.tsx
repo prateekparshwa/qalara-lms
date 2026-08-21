@@ -99,7 +99,7 @@ export default function DirectorySearch() {
         }}
         aria-hidden="true"
       />
-      <div className="p-5 lg:p-6">
+      <div className="p-4 lg:p-5">
         <div className="flex items-center gap-2.5">
           <span
             className="inline-flex items-center justify-center w-9 h-9 rounded-lg shrink-0"
@@ -117,7 +117,7 @@ export default function DirectorySearch() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <Field label="Organization" placeholder="Brand or company name" value={org} onChange={setOrg} />
           <Field label="Website URL" placeholder="example.com" value={website} onChange={setWebsite} />
           <Field label="Email ID" placeholder="name@company.com" value={email} onChange={setEmail} />
@@ -125,7 +125,7 @@ export default function DirectorySearch() {
           <Field label="Country" placeholder="e.g. USA, UAE, Germany" value={country} onChange={setCountry} />
         </div>
 
-        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-editorial-muted">
             Fill any one field — more detail narrows the results.
           </p>
@@ -149,13 +149,13 @@ export default function DirectorySearch() {
         </div>
 
         {error && !loading && (
-          <div className="error-banner mt-5 !mx-0">
+          <div className="error-banner mt-4 !mx-0">
             <p className="text-sm font-sans text-red-700">{error}</p>
           </div>
         )}
 
         {searched && !loading && !error && (
-          <div className="mt-5 border-t border-editorial-border pt-4">
+          <div className="mt-4 border-t border-editorial-border pt-4">
             {results.length === 0 ? (
               <p className="text-sm font-sans text-editorial-secondary">
                 No buyers matched those details across the live segments.
