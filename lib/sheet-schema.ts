@@ -147,3 +147,56 @@ export const SHEET_HEADERS = SHEET_COLUMNS.map((c) => c.header);
 export const HEADER_TO_COLUMN: Record<string, string> = Object.fromEntries(
   SHEET_COLUMNS.map((c) => [c.header, c.column])
 );
+
+/**
+ * The "Customers" tab lives in the SAME spreadsheet as Engagement (a second
+ * tab, not a separate file) but uses its own, much terser header names, plus
+ * ~28 order-history columns (order dates/values/counts) the `leads` table
+ * doesn't model yet. This maps only the columns that overlap in MEANING with
+ * the standard buyer schema; the order-history columns are intentionally
+ * left unmapped for now (surfaced as "unrecognised headers", harmless) —
+ * adding them needs a schema decision (new leads columns) first.
+ */
+export const CUSTOMERS_SHEET_COLUMNS: SheetColumn[] = [
+  // Customer lifecycle status (Active / Churned) — distinct from the app's
+  // own `segment` concept, so it maps to its own `customer_status` column.
+  { header: "Segment", column: "customer_status" },
+  { header: "Organization Name", column: "organization" },
+  { header: "Buyer Full Name", column: "full_name" },
+  { header: "Designation", column: "designation" },
+  { header: "Phone", column: "phone" },
+  { header: "Email", column: "email" },
+  { header: "Website", column: "website" },
+  { header: "Country", column: "country" },
+  { header: "Address", column: "address" },
+  { header: "Buyer_Type", column: "buyer_type" },
+  { header: "Categories", column: "categories" },
+  { header: "Employee_Size", column: "employee_size" },
+  { header: "Org_Scale", column: "org_scale" },
+  { header: "Brand_Description", column: "brand_description" },
+  { header: "Materials_Dealt", column: "materials_dealt" },
+  { header: "Customers_And_Markets", column: "customers_and_markets" },
+  { header: "Revenue_Turnover", column: "revenue_turnover" },
+  { header: "Competitors", column: "competitors" },
+  { header: "Target_Audience", column: "target_audience" },
+  { header: "Import_Countries", column: "import_countries" },
+  { header: "Price_Points", column: "price_points" },
+  { header: "Imports_From_India", column: "imports_from_india" },
+  { header: "LinkedIn_URL", column: "linkedin_url" },
+  { header: "LinkedIn_Followers", column: "linkedin_followers" },
+  { header: "Instagram_Handle", column: "instagram_handle" },
+  { header: "Instagram_Followers", column: "instagram_followers" },
+  { header: "Social_Media_Activity", column: "social_media_activity" },
+  { header: "Source", column: "source" },
+  { header: "First_Contact_Date", column: "first_contact_date" },
+  { header: "Last_Contact_Date", column: "last_contact_date" },
+  // "AM(Account Manager)" reflects the most-recent-contact owner (matches the
+  // Current AM semantics elsewhere); the earlier "AM" column is an internal
+  // data-prep tag, not the customer-facing owner, so it's left unmapped.
+  { header: "AM(Account Manager)", column: "current_am" },
+  { header: "Email_Last_Subject", column: "last_email_subject" },
+  { header: "EMAIL_Last_Contact_Summary", column: "email_contact_summary" },
+];
+
+export const CUSTOMERS_HEADER_TO_COLUMN: Record<string, string> =
+  Object.fromEntries(CUSTOMERS_SHEET_COLUMNS.map((c) => [c.header, c.column]));

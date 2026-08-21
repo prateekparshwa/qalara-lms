@@ -8,6 +8,7 @@ import { SEGMENTS } from "@/lib/segments";
 
 // Live numbers — never statically cached.
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function formatSynced(iso: string | null): string {
   if (!iso) return "not yet synced";

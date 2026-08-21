@@ -1,13 +1,18 @@
 /**
  * Google Sheets reader (service-account auth, read-only).
  *
- * Reads the configured spreadsheet's first tab and maps each row to a
- * partial `leads` record using lib/sheet-schema.ts. Runs server-side only
- * (Node runtime) — never import this into client components.
+ * Reads a spreadsheet tab and maps each row to a partial `leads` record using
+ * lib/sheet-schema.ts. Runs server-side only (Node runtime) — never import
+ * this into client components.
  *
  * Required env vars:
  *   GOOGLE_SHEETS_SPREADSHEET_ID   — the id from the sheet URL
  *   GOOGLE_SERVICE_ACCOUNT_JSON    — the full service-account key JSON (verbatim)
+ *
+ * Most segments live in their own spreadsheet (first tab read by default).
+ * A segment can instead point at a specific TAB within a shared spreadsheet
+ * (e.g. Customers is a second tab in the Engagement workbook, with its own
+ * header names) via the `sheetTitle` / `headerToColumn` options below.
  */
 
 import { google } from "googleapis";
@@ -23,6 +28,20 @@ export interface SheetReadResult {
   /** Expected db columns whose header was missing from the sheet. */
   missingHeaders: string[];
 }
+
+/** Column-header names to match on for the AM write-back — differs per tab
+ * (Engagement vs Customers use different header text for the same concept). */
+export interface MatchColumns {
+  org: string;
+  email: string;
+  am: string;
+}
+
+const DEFAULT_MATCH_COLUMNS: MatchColumns = {
+  org: "Buyer Organization Name",
+  email: "Buyer Email ID(s)",
+  am: "Current AM(Account Manager)",
+};
 
 function getCredentials(): { client_email: string; private_key: string } {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
@@ -79,6 +98,36 @@ function columnLetter(index: number): string {
 }
 
 /**
+ * Resolve which tab to read/write: an exact title match when `wantedTitle` is
+ * given (throws a clear error if that tab doesn't exist — most likely a typo
+ * or a renamed tab), else the spreadsheet's first tab (existing behaviour).
+ */
+async function resolveSheetTitle(
+  sheets: ReturnType<typeof google.sheets>,
+  spreadsheetId: string,
+  wantedTitle?: string
+): Promise<string> {
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets.properties.title",
+  });
+  const titles = (meta.data.sheets ?? [])
+    .map((s) => s.properties?.title)
+    .filter((t): t is string => !!t);
+  if (titles.length === 0) {
+    throw new Error("Could not find any tab in the spreadsheet.");
+  }
+  if (!wantedTitle) return titles[0];
+  const match = titles.find((t) => t === wantedTitle);
+  if (!match) {
+    throw new Error(
+      `Tab "${wantedTitle}" not found in the spreadsheet (tabs present: ${titles.join(", ")}).`
+    );
+  }
+  return match;
+}
+
+/**
  * Write a new Account Manager into the sheet row matching this lead.
  * Matches by organization name (and email when several rows share the name).
  * Requires the service account to have EDITOR access on the spreadsheet.
@@ -86,13 +135,17 @@ function columnLetter(index: number): string {
 export async function updateLeadAmInSheet(
   spreadsheetIdArg: string | undefined,
   match: { organization: string | null; email: string | null },
-  newAm: string
+  newAm: string,
+  opts?: { sheetTitle?: string; headerToColumn?: Record<string, string>; matchColumns?: MatchColumns }
 ): Promise<void> {
   const spreadsheetId =
     spreadsheetIdArg?.trim() || process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
   if (!spreadsheetId) throw new Error("No spreadsheet id configured.");
   const org = (match.organization ?? "").trim().toLowerCase();
   if (!org) throw new Error("Lead has no organization name to match on.");
+
+  const headerToColumn = opts?.headerToColumn ?? HEADER_TO_COLUMN;
+  const cols = opts?.matchColumns ?? DEFAULT_MATCH_COLUMNS;
 
   const { client_email, private_key } = getCredentials();
   const auth = new google.auth.JWT({
@@ -102,12 +155,7 @@ export async function updateLeadAmInSheet(
   });
   const sheets = google.sheets({ version: "v4", auth });
 
-  const meta = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: "sheets.properties.title",
-  });
-  const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
-  if (!sheetTitle) throw new Error("Could not find any tab in the spreadsheet.");
+  const sheetTitle = await resolveSheetTitle(sheets, spreadsheetId, opts?.sheetTitle);
 
   const resp = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -123,7 +171,7 @@ export async function updateLeadAmInSheet(
   for (let i = 0; i < Math.min(values.length, 5); i++) {
     const matches = values[i]
       .map(normalizeHeader)
-      .filter((h) => h in HEADER_TO_COLUMN).length;
+      .filter((h) => h in headerToColumn).length;
     if (matches > bestMatches) {
       bestMatches = matches;
       headerIdx = i;
@@ -132,13 +180,11 @@ export async function updateLeadAmInSheet(
   if (bestMatches === 0) throw new Error("No recognisable header row found.");
   const headerRow = values[headerIdx].map(normalizeHeader);
 
-  const orgCol = headerRow.indexOf("Buyer Organization Name");
-  const emailCol = headerRow.indexOf("Buyer Email ID(s)");
-  const amCol = headerRow.indexOf("Current AM(Account Manager)");
+  const orgCol = headerRow.indexOf(cols.org);
+  const emailCol = headerRow.indexOf(cols.email);
+  const amCol = headerRow.indexOf(cols.am);
   if (orgCol === -1 || amCol === -1) {
-    throw new Error(
-      "Sheet is missing the Buyer Organization Name or Current AM column."
-    );
+    throw new Error(`Sheet is missing the "${cols.org}" or "${cols.am}" column.`);
   }
 
   const email = (match.email ?? "").trim().toLowerCase();
@@ -177,12 +223,16 @@ export async function updateLeadAmInSheet(
 export async function updateLeadsAmInSheetBulk(
   spreadsheetIdArg: string | undefined,
   matches: { organization: string | null; email: string | null }[],
-  newAm: string
+  newAm: string,
+  opts?: { sheetTitle?: string; headerToColumn?: Record<string, string>; matchColumns?: MatchColumns }
 ): Promise<{ updated: number; unmatched: string[] }> {
   const spreadsheetId =
     spreadsheetIdArg?.trim() || process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
   if (!spreadsheetId) throw new Error("No spreadsheet id configured.");
   if (matches.length === 0) return { updated: 0, unmatched: [] };
+
+  const headerToColumn = opts?.headerToColumn ?? HEADER_TO_COLUMN;
+  const cols = opts?.matchColumns ?? DEFAULT_MATCH_COLUMNS;
 
   const { client_email, private_key } = getCredentials();
   const auth = new google.auth.JWT({
@@ -192,12 +242,7 @@ export async function updateLeadsAmInSheetBulk(
   });
   const sheets = google.sheets({ version: "v4", auth });
 
-  const meta = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: "sheets.properties.title",
-  });
-  const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
-  if (!sheetTitle) throw new Error("Could not find any tab in the spreadsheet.");
+  const sheetTitle = await resolveSheetTitle(sheets, spreadsheetId, opts?.sheetTitle);
 
   const resp = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -212,7 +257,7 @@ export async function updateLeadsAmInSheetBulk(
   for (let i = 0; i < Math.min(values.length, 5); i++) {
     const m = values[i]
       .map(normalizeHeader)
-      .filter((h) => h in HEADER_TO_COLUMN).length;
+      .filter((h) => h in headerToColumn).length;
     if (m > bestMatches) {
       bestMatches = m;
       headerIdx = i;
@@ -221,13 +266,11 @@ export async function updateLeadsAmInSheetBulk(
   if (bestMatches === 0) throw new Error("No recognisable header row found.");
   const headerRow = values[headerIdx].map(normalizeHeader);
 
-  const orgCol = headerRow.indexOf("Buyer Organization Name");
-  const emailCol = headerRow.indexOf("Buyer Email ID(s)");
-  const amCol = headerRow.indexOf("Current AM(Account Manager)");
+  const orgCol = headerRow.indexOf(cols.org);
+  const emailCol = headerRow.indexOf(cols.email);
+  const amCol = headerRow.indexOf(cols.am);
   if (orgCol === -1 || amCol === -1) {
-    throw new Error(
-      "Sheet is missing the Buyer Organization Name or Current AM column."
-    );
+    throw new Error(`Sheet is missing the "${cols.org}" or "${cols.am}" column.`);
   }
   const amColLetter = columnLetter(amCol);
 
@@ -279,13 +322,16 @@ export async function updateLeadsAmInSheetBulk(
 }
 
 export async function readLeadsSheet(
-  spreadsheetIdArg?: string
+  spreadsheetIdArg?: string,
+  opts?: { sheetTitle?: string; headerToColumn?: Record<string, string> }
 ): Promise<SheetReadResult> {
   const spreadsheetId =
     spreadsheetIdArg?.trim() || process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
   if (!spreadsheetId || !spreadsheetId.trim()) {
     throw new Error("No spreadsheet id configured for this segment.");
   }
+
+  const headerToColumn = opts?.headerToColumn ?? HEADER_TO_COLUMN;
 
   const { client_email, private_key } = getCredentials();
   const auth = new google.auth.JWT({
@@ -295,15 +341,9 @@ export async function readLeadsSheet(
   });
   const sheets = google.sheets({ version: "v4", auth });
 
-  // Discover the first tab's title so we don't hard-code "Sheet1" vs "Leads".
-  const meta = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: "sheets.properties.title",
-  });
-  const sheetTitle = meta.data.sheets?.[0]?.properties?.title;
-  if (!sheetTitle) {
-    throw new Error("Could not find any tab in the spreadsheet.");
-  }
+  // Discover the target tab's title — a specific tab when opts.sheetTitle is
+  // given (e.g. "Customers"), else the spreadsheet's first tab (default).
+  const sheetTitle = await resolveSheetTitle(sheets, spreadsheetId, opts?.sheetTitle);
 
   // Pull the whole used range of that tab.
   const resp = await sheets.spreadsheets.values.get({
@@ -318,7 +358,7 @@ export async function readLeadsSheet(
     return { sheetTitle, rows: [], unknownHeaders: [], missingHeaders: [] };
   }
 
-  const expectedHeaders = Object.keys(HEADER_TO_COLUMN);
+  const expectedHeaders = Object.keys(headerToColumn);
 
   // The header row isn't always row 1 — banner/grouping rows get inserted
   // above it. Scan the first few rows and use the one matching the schema best.
@@ -327,7 +367,7 @@ export async function readLeadsSheet(
   for (let i = 0; i < Math.min(values.length, 5); i++) {
     const matches = values[i]
       .map(normalizeHeader)
-      .filter((h) => h in HEADER_TO_COLUMN).length;
+      .filter((h) => h in headerToColumn).length;
     if (matches > bestMatches) {
       bestMatches = matches;
       headerIdx = i;
@@ -341,14 +381,14 @@ export async function readLeadsSheet(
   const headerRow = values[headerIdx].map(normalizeHeader);
 
   const unknownHeaders = headerRow.filter(
-    (h) => h !== "" && !(h in HEADER_TO_COLUMN)
+    (h) => h !== "" && !(h in headerToColumn)
   );
   const missingHeaders = expectedHeaders.filter((h) => !headerRow.includes(h));
 
   // Pre-compute column index -> db column for known headers.
   const colMap: { index: number; column: string }[] = [];
   headerRow.forEach((h, i) => {
-    const column = HEADER_TO_COLUMN[h];
+    const column = headerToColumn[h];
     if (column) colMap.push({ index: i, column });
   });
 

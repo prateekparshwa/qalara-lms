@@ -154,14 +154,18 @@ export default function LeadDrawer({
                   </span>
                 )}
                 <Badge value={lead.buyer_classification} kind="priority" />
-                <span
-                  className="inline-flex items-center gap-1 text-[10px] font-sans text-editorial-muted cursor-help"
-                  title={`Website Confidence — how sure we are that the website on file actually belongs to this buyer (AI-verified). ${webHint(lead.website_confidence)}`}
-                >
-                  Website Confidence{" "}
-                  <Badge value={lead.website_confidence} kind="web" />
-                  <Info size={11} className="text-editorial-muted" aria-hidden="true" />
-                </span>
+                {lead.customer_status ? (
+                  <Badge value={lead.customer_status} kind="customerStatus" />
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-sans text-editorial-muted cursor-help"
+                    title={`Website Confidence — how sure we are that the website on file actually belongs to this buyer (AI-verified). ${webHint(lead.website_confidence)}`}
+                  >
+                    Website Confidence{" "}
+                    <Badge value={lead.website_confidence} kind="web" />
+                    <Info size={11} className="text-editorial-muted" aria-hidden="true" />
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">

@@ -7,6 +7,7 @@ import { SEGMENTS, segmentSpreadsheetId } from "@/lib/segments";
 import { getLeadStats } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type Row = {
   key: string;

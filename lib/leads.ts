@@ -59,6 +59,9 @@ export interface Lead {
   buyer_classification: string | null;
   full_name_original: string | null;
   website_confidence: string | null;
+  /** Customers-segment only: "Active" or "Churned", from the sheet's own
+   * "Segment" column (a customer-lifecycle status — not the app's `segment`). */
+  customer_status: string | null;
   /** Free-text AM notes (dashboard-only; never in the sheet, preserved on sync). */
   notes: string | null;
   notes_updated_at: string | null;

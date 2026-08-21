@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { updateLeadsAmInSheetBulk } from "@/lib/google-sheets";
-import { getSegment, segmentSpreadsheetId } from "@/lib/segments";
+import { getSegment, segmentSpreadsheetId, sheetOptionsFor } from "@/lib/segments";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -113,7 +113,8 @@ export async function POST(req: NextRequest) {
       const res = await updateLeadsAmInSheetBulk(
         segmentSpreadsheetId(segment),
         matches,
-        am
+        am,
+        sheetOptionsFor(segment)
       );
       sheetUpdated += res.updated;
       unmatched.push(...res.unmatched);

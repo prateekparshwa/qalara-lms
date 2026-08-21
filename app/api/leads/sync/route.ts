@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { replaceSegmentLeads } from "@/lib/leads";
 import { readLeadsSheet } from "@/lib/google-sheets";
-import { getSegment, segmentSpreadsheetId } from "@/lib/segments";
+import { getSegment, segmentSpreadsheetId, sheetOptionsFor } from "@/lib/segments";
 
 // googleapis needs the Node.js runtime (not edge); allow time for a full reload.
 export const runtime = "nodejs";
@@ -43,9 +43,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 1. Read the segment's sheet.
+    // 1. Read the segment's sheet — Customers reads a specific tab within a
+    // shared workbook, with its own header names (see lib/segments.ts).
     const { sheetTitle, rows, unknownHeaders, missingHeaders } =
-      await readLeadsSheet(spreadsheetId);
+      await readLeadsSheet(spreadsheetId, sheetOptionsFor(segment));
 
     // 2. Safety guard: never wipe a segment from an empty/unreadable sheet.
     if (rows.length === 0) {

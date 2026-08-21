@@ -1,6 +1,7 @@
 import { ExternalLink, Info } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import { relativeDate } from "@/lib/format";
+import { customerStatusLabel } from "@/lib/glossary";
 import Badge from "./Badge";
 
 /**
@@ -397,7 +398,8 @@ export function dossierSections(
       lead.target_audience,
       lead.import_countries,
       lead.imports_from_india,
-      lead.website_confidence
+      lead.website_confidence,
+      lead.customer_status
     )
   ) {
     out.push({
@@ -616,11 +618,19 @@ export default function LeadDossier({
             <Field showAll={showAll} label="Target Audience of the Buyer" value={lead.target_audience} />
             <Field showAll={showAll} label="Sourcing Countries of the Buyer" value={lead.import_countries} />
             <Field showAll={showAll} label="Sources From India?" value={lead.imports_from_india} />
-            <Field
-              showAll={showAll}
-              label="Website Confidence (AI-Verified)"
-              value={lead.website_confidence}
-            />
+            {lead.customer_status ? (
+              <Field
+                showAll={showAll}
+                label="Customer Status"
+                value={customerStatusLabel(lead.customer_status)}
+              />
+            ) : (
+              <Field
+                showAll={showAll}
+                label="Website Confidence (AI-Verified)"
+                value={lead.website_confidence}
+              />
+            )}
           </div>
         </>
       )}

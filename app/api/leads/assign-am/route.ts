@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { updateLeadAmInSheet } from "@/lib/google-sheets";
-import { getSegment, segmentSpreadsheetId } from "@/lib/segments";
+import { getSegment, segmentSpreadsheetId, sheetOptionsFor } from "@/lib/segments";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -82,7 +82,8 @@ export async function POST(req: NextRequest) {
       await updateLeadAmInSheet(
         segmentSpreadsheetId(segment),
         { organization: lead.organization, email: lead.email },
-        am
+        am,
+        sheetOptionsFor(segment)
       );
       sheet = "updated";
     } catch (err) {

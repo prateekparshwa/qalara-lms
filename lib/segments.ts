@@ -11,6 +11,8 @@
  * keeps working without re-adding env vars.
  */
 
+import { CUSTOMERS_HEADER_TO_COLUMN } from "./sheet-schema";
+
 export type SegmentKey =
   | "engagement"
   | "no_engagement"
@@ -30,6 +32,10 @@ export interface Segment {
   envVars: string[];
   /** Deferred = intentionally not built yet (no sheet planned soon). */
   deferred?: boolean;
+  /** Specific tab within the resolved spreadsheet, when a segment shares its
+   * workbook with another (e.g. Customers is a second tab in the Engagement
+   * spreadsheet). Omit to read the spreadsheet's first tab (default). */
+  sheetTitle?: string;
 }
 
 export const SEGMENTS: Segment[] = [
@@ -59,7 +65,14 @@ export const SEGMENTS: Segment[] = [
     key: "customers",
     label: "Qalara Customers",
     definition: "Buyers who have placed at least one order with Qalara.",
-    envVars: ["GOOGLE_SHEETS_SPREADSHEET_ID_CUSTOMERS"],
+    // Lives in the SAME spreadsheet as Engagement, on its own "Customers" tab
+    // — not a separate file. Falls back to the shared workbook id when a
+    // dedicated one isn't set.
+    envVars: [
+      "GOOGLE_SHEETS_SPREADSHEET_ID_CUSTOMERS",
+      "GOOGLE_SHEETS_SPREADSHEET_ID",
+    ],
+    sheetTitle: "Customers",
   },
 ];
 
@@ -90,4 +103,26 @@ export function activeSegmentKeys(): SegmentKey[] {
   return SEGMENTS.filter((s) => !s.deferred && !!segmentSpreadsheetId(s)).map(
     (s) => s.key
   );
+}
+
+/**
+ * Sheet read/write options for a segment that lives in a shared workbook
+ * under its own tab with its own header names (currently only Customers).
+ * Centralised here so sync and both AM-assign routes agree on the same
+ * tab + header map + match-column names instead of repeating the special
+ * case in three places.
+ */
+export function sheetOptionsFor(seg: Segment): {
+  sheetTitle?: string;
+  headerToColumn?: Record<string, string>;
+  matchColumns?: { org: string; email: string; am: string };
+} {
+  if (seg.key === "customers") {
+    return {
+      sheetTitle: seg.sheetTitle,
+      headerToColumn: CUSTOMERS_HEADER_TO_COLUMN,
+      matchColumns: { org: "Organization Name", email: "Email", am: "AM(Account Manager)" },
+    };
+  }
+  return { sheetTitle: seg.sheetTitle };
 }

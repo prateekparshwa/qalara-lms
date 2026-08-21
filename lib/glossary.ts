@@ -23,6 +23,26 @@ export function webHint(value: string | null): string {
   return `Website confidence: ${value}`;
 }
 
+export function customerStatusHint(value: string | null): string {
+  if (!value) return "Customer status not set.";
+  const v = value.toUpperCase();
+  if (v.includes("ACTIVE"))
+    return "Active customer — has placed an order recently.";
+  if (v.includes("CHURN"))
+    return "Churned customer — has ordered before, but not recently.";
+  return `Customer status: ${value}`;
+}
+
+/** "Active" / "Churned" (from the sheet) -> "Active Customer" / "Churned
+ * Customer" for display. Falls back to the raw value for anything else. */
+export function customerStatusLabel(value: string | null): string | null {
+  if (!value) return null;
+  const v = value.trim().toUpperCase();
+  if (v.includes("ACTIVE")) return "Active Customer";
+  if (v.includes("CHURN")) return "Churned Customer";
+  return value;
+}
+
 export const PRIORITY_LEGEND: { code: string; desc: string }[] = [
   { code: "HIGH", desc: "Strong potential — pursue first" },
   { code: "MED", desc: "Medium potential" },
