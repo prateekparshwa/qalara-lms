@@ -17,6 +17,7 @@
 
 import { google } from "googleapis";
 import { HEADER_TO_COLUMN } from "./sheet-schema";
+import { normalizeCountry } from "./format";
 
 export interface SheetReadResult {
   /** Title of the tab that was read. */
@@ -402,6 +403,9 @@ export async function readLeadsSheet(
     for (const { index, column } of colMap) {
       obj[column] = clean(row[index]);
     }
+    // Collapse known duplicate spellings ("United States (US)" etc.) to one
+    // canonical name, so a filter never lists the same country twice.
+    if ("country" in obj) obj.country = normalizeCountry(obj.country);
     // Virtual column: the AI rating wins over the legacy classification.
     if (obj.__ai_classification) {
       obj.buyer_classification = obj.__ai_classification;

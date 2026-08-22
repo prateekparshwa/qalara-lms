@@ -148,6 +148,54 @@ export function countryIso(country: string | null | undefined): string | null {
   return COUNTRY_TO_ISO[country.trim().toLowerCase()] ?? null;
 }
 
+/**
+ * Known alias spellings for a country that would otherwise create duplicate
+ * entries in a filter/dropdown (e.g. "United States" vs "United States (US)"
+ * vs a typo like "Unites States (US)"). Maps a lowercased alias to ONE
+ * canonical display name. Extend this list as new duplicate spellings show
+ * up in a sync — it is intentionally short, covering only spellings actually
+ * seen in the data, not an exhaustive ISO alias table.
+ */
+const COUNTRY_ALIASES: Record<string, string> = {
+  us: "United States",
+  usa: "United States",
+  "u.s.a.": "United States",
+  "u.s.": "United States",
+  "united states": "United States",
+  "united states of america": "United States",
+  "united states (us)": "United States",
+  "unites states (us)": "United States", // observed typo in a source sheet
+  uk: "United Kingdom",
+  "u.k.": "United Kingdom",
+  "united kingdom": "United Kingdom",
+  "united kingdom (uk)": "United Kingdom",
+  "great britain": "United Kingdom",
+  uae: "United Arab Emirates",
+  "u.a.e.": "United Arab Emirates",
+  "united arab emirates": "United Arab Emirates",
+  "united arab emirates (uae)": "United Arab Emirates",
+  "south korea": "South Korea",
+  "korea, republic of": "South Korea",
+  "republic of korea": "South Korea",
+  "hong kong": "Hong Kong",
+  "hong kong sar": "Hong Kong",
+  "czech republic": "Czech Republic",
+  czechia: "Czech Republic",
+};
+
+/**
+ * Normalize a country value to one canonical spelling, so a filter never
+ * lists the same country twice under different names. Applied at sync time
+ * (lib/google-sheets.ts) to every incoming "country" cell, for every segment.
+ * Not a validator — an unrecognised value passes through unchanged (trimmed
+ * only), it does not attempt to detect or fix garbage data.
+ */
+export function normalizeCountry(value: string | null | undefined): string | null {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  return COUNTRY_ALIASES[v.toLowerCase()] ?? v;
+}
+
 /** "2026-06-12T08:15:00Z" -> "12 Jun 2026, 1:45 pm IST". */
 export function formatIst(iso: string | null | undefined): string | null {
   if (!iso) return null;
