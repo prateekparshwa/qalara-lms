@@ -17,7 +17,7 @@
 
 import { google } from "googleapis";
 import { HEADER_TO_COLUMN } from "./sheet-schema";
-import { normalizeCountry } from "./format";
+import { normalizeCountry, sanitizeAmValue } from "./format";
 
 export interface SheetReadResult {
   /** Title of the tab that was read. */
@@ -406,6 +406,9 @@ export async function readLeadsSheet(
     // Collapse known duplicate spellings ("United States (US)" etc.) to one
     // canonical name, so a filter never lists the same country twice.
     if ("country" in obj) obj.country = normalizeCountry(obj.country);
+    // Reject obviously-junk AM values (leaked email subject lines, raw
+    // placeholders) so the Account Manager filter never lists them.
+    if ("current_am" in obj) obj.current_am = sanitizeAmValue(obj.current_am);
     // Virtual column: the AI rating wins over the legacy classification.
     if (obj.__ai_classification) {
       obj.buyer_classification = obj.__ai_classification;

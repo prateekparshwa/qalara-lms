@@ -196,6 +196,28 @@ export function normalizeCountry(value: string | null | undefined): string | nul
   return COUNTRY_ALIASES[v.toLowerCase()] ?? v;
 }
 
+/**
+ * Reject values in the AM (Account Manager) field that are clearly not a
+ * person's name — an email subject line that leaked in from a shifted source
+ * column ("Re: Following up on your RFQ...", "Qalara shipment | GB100... |
+ * Delivered"), or a raw placeholder like "NOT ASSIGNED". Falls back to the
+ * standard "No Active AM" placeholder already used throughout the app.
+ * Deliberately conservative — only rejects unambiguous junk patterns, since a
+ * false positive would silently unassign a real AM; a genuine short name
+ * (even an unfamiliar one) passes through unchanged.
+ */
+export function sanitizeAmValue(value: string | null | undefined): string | null {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  const lower = v.toLowerCase();
+  if (lower === "not assigned" || lower === "unassigned") return "No Active AM";
+  const looksLikeJunk =
+    v.includes("|") ||
+    /^(re|fwd)\s*:/i.test(v) ||
+    v.length > 40; // real names are short; subject lines/sentences aren't
+  return looksLikeJunk ? "No Active AM" : v;
+}
+
 /** "2026-06-12T08:15:00Z" -> "12 Jun 2026, 1:45 pm IST". */
 export function formatIst(iso: string | null | undefined): string | null {
   if (!iso) return null;
