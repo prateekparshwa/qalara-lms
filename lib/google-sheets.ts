@@ -17,7 +17,7 @@
 
 import { google } from "googleapis";
 import { HEADER_TO_COLUMN } from "./sheet-schema";
-import { normalizeCountry, sanitizeAmValue } from "./format";
+import { normalizeCountry, normalizeOrgScale, sanitizeAmValue } from "./format";
 
 export interface SheetReadResult {
   /** Title of the tab that was read. */
@@ -409,6 +409,9 @@ export async function readLeadsSheet(
     // Reject obviously-junk AM values (leaked email subject lines, raw
     // placeholders) so the Account Manager filter never lists them.
     if ("current_am" in obj) obj.current_am = sanitizeAmValue(obj.current_am);
+    // Collapse known duplicate spellings ("Medium Enterprise" vs "Medium")
+    // so the Org Size Tier filter never lists the same tier twice.
+    if ("org_scale" in obj) obj.org_scale = normalizeOrgScale(obj.org_scale);
     // Virtual column: the AI rating wins over the legacy classification.
     if (obj.__ai_classification) {
       obj.buyer_classification = obj.__ai_classification;

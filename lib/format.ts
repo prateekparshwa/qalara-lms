@@ -196,6 +196,28 @@ export function normalizeCountry(value: string | null | undefined): string | nul
   return COUNTRY_ALIASES[v.toLowerCase()] ?? v;
 }
 
+/** Known alias spellings for org-size tier that would otherwise create
+ * duplicate entries in the "Buyer Org Size Tier" filter (e.g. "Medium" vs
+ * "Medium Enterprise" for the same tier). Canonical forms match the ones
+ * already used across the app (Individual / Large/ENT / Medium / Micro /
+ * Not Available / Small). */
+const ORG_SCALE_ALIASES: Record<string, string> = {
+  "small enterprise": "Small",
+  "medium enterprise": "Medium",
+  "large enterprise": "Large/ENT",
+  large: "Large/ENT",
+  "micro enterprise": "Micro",
+};
+
+/** Normalize an org-size value to one canonical spelling, so a filter never
+ * lists the same tier twice under different names. Applied at sync time
+ * (lib/google-sheets.ts), same spirit as normalizeCountry. */
+export function normalizeOrgScale(value: string | null | undefined): string | null {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  return ORG_SCALE_ALIASES[v.toLowerCase()] ?? v;
+}
+
 /**
  * Reject values in the AM (Account Manager) field that are clearly not a
  * person's name — an email subject line that leaked in from a shifted source
