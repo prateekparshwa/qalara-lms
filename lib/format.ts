@@ -207,6 +207,9 @@ const ORG_SCALE_ALIASES: Record<string, string> = {
   "large enterprise": "Large/ENT",
   large: "Large/ENT",
   "micro enterprise": "Micro",
+  // "Unknown" is one source sheet's spelling of the same "no data" concept
+  // every other segment already calls "Not Available".
+  unknown: "Not Available",
 };
 
 /** Normalize an org-size value to one canonical spelling, so a filter never
@@ -216,6 +219,15 @@ export function normalizeOrgScale(value: string | null | undefined): string | nu
   const v = (value ?? "").trim();
   if (!v) return null;
   return ORG_SCALE_ALIASES[v.toLowerCase()] ?? v;
+}
+
+/** "Unknown" -> "Not Available", the canonical "no data" label already used
+ * for buyer type across the app. Applied at sync time so a future import
+ * can't reintroduce the split. */
+export function normalizeBuyerType(value: string | null | undefined): string | null {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  return v.toLowerCase() === "unknown" ? "Not Available" : v;
 }
 
 /**

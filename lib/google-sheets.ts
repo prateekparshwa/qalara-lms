@@ -17,7 +17,7 @@
 
 import { google } from "googleapis";
 import { HEADER_TO_COLUMN } from "./sheet-schema";
-import { normalizeCountry, normalizeOrgScale, sanitizeAmValue } from "./format";
+import { normalizeCountry, normalizeOrgScale, normalizeBuyerType, sanitizeAmValue } from "./format";
 
 export interface SheetReadResult {
   /** Title of the tab that was read. */
@@ -412,6 +412,9 @@ export async function readLeadsSheet(
     // Collapse known duplicate spellings ("Medium Enterprise" vs "Medium")
     // so the Org Size Tier filter never lists the same tier twice.
     if ("org_scale" in obj) obj.org_scale = normalizeOrgScale(obj.org_scale);
+    // "Unknown" -> "Not Available", the canonical "no data" label used
+    // elsewhere, so the Business Type filter never lists both spellings.
+    if ("buyer_type" in obj) obj.buyer_type = normalizeBuyerType(obj.buyer_type);
     // Virtual column: the AI rating wins over the legacy classification.
     if (obj.__ai_classification) {
       obj.buyer_classification = obj.__ai_classification;
