@@ -94,6 +94,7 @@ export default function LeadsDashboard({
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isHubspotSyncing, setIsHubspotSyncing] = useState(false);
   const [leadsError, setLeadsError] = useState<string | null>(null);
   // Set when a typeahead pick optimistically filled the table — the confirming
   // background fetch then skips the loading skeleton (no flash).
@@ -267,6 +268,49 @@ export default function LeadsDashboard({
     }
   };
 
+  // Read-only pull from HubSpot (Customers segment only). Always previews
+  // first — a dry run reports match counts without writing anything — then
+  // asks for explicit confirmation before committing to Supabase, since the
+  // first run touches ~1000+ live leads at once.
+  const handleHubspotSync = async () => {
+    setIsHubspotSyncing(true);
+    try {
+      const previewRes = await fetch(`/api/leads/hubspot-sync?segment=${segment}`, {
+        method: "POST",
+      });
+      const preview = await previewRes.json().catch(() => ({}));
+      if (!previewRes.ok) {
+        throw new Error(preview.error || `HubSpot preview failed (${previewRes.status})`);
+      }
+      if (typeof preview.total !== "number") {
+        // Not configured, or segment not eligible — the API already returned
+        // a clear message; just surface it.
+        showToast(preview.message || "HubSpot sync unavailable.", "info");
+        return;
+      }
+      if (!window.confirm(`${preview.message}\n\nWrite these matches to the dashboard?`)) {
+        return;
+      }
+      const commitRes = await fetch(
+        `/api/leads/hubspot-sync?segment=${segment}&commit=true`,
+        { method: "POST" }
+      );
+      const result = await commitRes.json().catch(() => ({}));
+      if (!commitRes.ok) {
+        throw new Error(result.error || `HubSpot sync failed (${commitRes.status})`);
+      }
+      showToast(result.message || "HubSpot sync complete.", "success");
+      fetchLeads();
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "HubSpot sync failed. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsHubspotSyncing(false);
+    }
+  };
+
   const handleAssignAm = async (lead: Lead, am: string) => {
     try {
       const res = await fetch("/api/leads/assign-am", {
@@ -353,6 +397,37 @@ export default function LeadsDashboard({
     } catch (err) {
       showToast(
         err instanceof Error ? err.message : "Couldn't release the AM.",
+        "error"
+      );
+    }
+  };
+
+  const handleReleaseHubspotEmail = async (lead: Lead) => {
+    try {
+      const res = await fetch("/api/leads/release-hubspot-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: lead.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
+
+      setSelectedLead((cur) =>
+        cur && cur.id === lead.id ? { ...cur, hubspot_email_locked: false } : cur
+      );
+      setLeadsData((d) => ({
+        ...d,
+        data: d.data.map((l) =>
+          l.id === lead.id ? { ...l, hubspot_email_locked: false } : l
+        ),
+      }));
+      showToast(
+        "Released — the next Sheets sync will use the sheet's email for this lead.",
+        "info"
+      );
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Couldn't release the HubSpot email lock.",
         "error"
       );
     }
@@ -546,6 +621,8 @@ export default function LeadsDashboard({
         onExport={handleExport}
         totalLeads={stats.total}
         isSyncing={isSyncing}
+        onHubspotSync={segment === "customers" ? handleHubspotSync : undefined}
+        isHubspotSyncing={isHubspotSyncing}
         lastSynced={stats.lastSynced}
         segment={segment}
         amControl={amControl}
@@ -695,6 +772,7 @@ export default function LeadsDashboard({
         amOptions={canAssign ? filterOptions.ams : undefined}
         onAssignAm={canAssign ? handleAssignAm : undefined}
         onReleaseAm={canAssign ? handleReleaseAm : undefined}
+        onReleaseHubspotEmail={handleReleaseHubspotEmail}
         onNotesSaved={handleNotesSaved}
       />
       <Toast toast={toast} onDismiss={() => setToast(null)} />

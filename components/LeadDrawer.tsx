@@ -22,6 +22,8 @@ interface LeadDrawerProps {
   onAssignAm?: (lead: Lead, am: string) => Promise<void>;
   /** Called to release a dashboard-locked AM back to the sheet's control. */
   onReleaseAm?: (lead: Lead) => Promise<void>;
+  /** Called to release a HubSpot-locked email back to the sheet's control. */
+  onReleaseHubspotEmail?: (lead: Lead) => Promise<void>;
   /** Notified after AM notes are saved, so the host can patch its lead state. */
   onNotesSaved?: (
     id: number,
@@ -43,12 +45,14 @@ export default function LeadDrawer({
   amOptions = [],
   onAssignAm,
   onReleaseAm,
+  onReleaseHubspotEmail,
   onNotesSaved,
 }: LeadDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
+  const [isReleasingEmail, setIsReleasingEmail] = useState(false);
   // Notes collapse state — open by default only when the buyer already has a note.
   const [notesOpen, setNotesOpen] = useState(false);
   useEffect(() => {
@@ -72,6 +76,16 @@ export default function LeadDrawer({
       await onReleaseAm(lead);
     } finally {
       setIsReleasing(false);
+    }
+  };
+
+  const handleReleaseHubspotEmail = async () => {
+    if (!lead || !onReleaseHubspotEmail) return;
+    setIsReleasingEmail(true);
+    try {
+      await onReleaseHubspotEmail(lead);
+    } finally {
+      setIsReleasingEmail(false);
     }
   };
 
@@ -294,6 +308,32 @@ export default function LeadDrawer({
               </span>
             )}
             </div>
+            {/* HubSpot-pulled email: locked against the next Sheets sync, same as AM above */}
+            {lead.hubspot_email_locked && (
+              <div className="flex items-center gap-2">
+                <Mail size={13} className="text-editorial-secondary flex-shrink-0" />
+                <span className="text-xs font-sans text-editorial-secondary whitespace-nowrap">
+                  Last Email
+                </span>
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5 whitespace-nowrap"
+                  title="Pulled from HubSpot — won't be overwritten by a Sheets sync until released."
+                >
+                  <Lock size={9} />
+                  HubSpot locked
+                </span>
+                {onReleaseHubspotEmail && (
+                  <button
+                    onClick={handleReleaseHubspotEmail}
+                    disabled={isReleasingEmail}
+                    className="text-[10px] font-sans text-editorial-accent hover:underline cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                    title="Let the next sync adopt the sheet's email value for this lead"
+                  >
+                    {isReleasingEmail ? "Releasing…" : "Release to sheet"}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quick-nav: jump to a dossier section without scrolling blind */}

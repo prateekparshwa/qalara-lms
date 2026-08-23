@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "import": "tsx scripts/import-leads.ts",
-    "export-sheet": "tsx scripts/export-for-sheets.ts"
+    "export-sheet": "tsx scripts/export-for-sheets.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.107.0",
@@ -31,6 +32,7 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }

@@ -20,6 +20,10 @@ interface MagazineHeaderProps {
   onExport: (format: "csv" | "xlsx") => void;
   totalLeads: number;
   isSyncing: boolean;
+  /** Customers-segment only — pulls read-only rollup fields from HubSpot.
+   * Omit to hide the button entirely (other segments aren't wired up yet). */
+  onHubspotSync?: () => Promise<void>;
+  isHubspotSyncing?: boolean;
   /** Segment name shown as the dateline title. */
   segmentLabel?: string;
   /** Back link target (the directory chooser). */
@@ -73,6 +77,8 @@ export default function MagazineHeader({
   onPick,
   lastSynced,
   amControl,
+  onHubspotSync,
+  isHubspotSyncing,
 }: MagazineHeaderProps) {
   const synced = formatIst(lastSynced);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -266,6 +272,18 @@ export default function MagazineHeader({
               <RefreshCw size={12} className={isSyncing ? "animate-spin" : ""} />
               {isSyncing ? `Syncing… ${syncSeconds}s` : "Sync"}
             </button>
+
+            {onHubspotSync && (
+              <button
+                onClick={onHubspotSync}
+                disabled={isHubspotSyncing}
+                title="Pull deal stage and activity rollups from HubSpot (read-only, matched by email/domain)"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium border border-orange-200 rounded text-orange-700 hover:bg-orange-50 hover:border-orange-400 transition-colors duration-150 disabled:opacity-50 cursor-pointer"
+              >
+                <RefreshCw size={12} className={isHubspotSyncing ? "animate-spin" : ""} />
+                {isHubspotSyncing ? "Pulling…" : "Pull HubSpot"}
+              </button>
+            )}
 
             <div className="relative">
               <button

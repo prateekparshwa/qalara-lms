@@ -66,6 +66,19 @@ export interface Lead {
   notes: string | null;
   notes_updated_at: string | null;
   notes_updated_by: string | null;
+  /** Customers-segment only: read-only rollup fields pulled from HubSpot
+   * (see lib/hubspot.ts). Never written back to HubSpot. */
+  hubspot_contact_id: string | null;
+  hubspot_company_id: string | null;
+  hubspot_deal_stage: string | null;
+  hubspot_last_activity_date: string | null;
+  hubspot_notes_count: number | null;
+  hubspot_match_status: string | null;
+  hubspot_synced_at: string | null;
+  /** True once a HubSpot pull has written last_email_subject /
+   * email_contact_summary — a later Sheets sync then leaves them alone,
+   * mirroring am_locked for current_am (see replaceSegmentLeads). */
+  hubspot_email_locked: boolean | null;
   enrichment_cache: Record<string, unknown> | null;
   imported_at: string | null;
   enriched_at: string | null;
@@ -494,6 +507,9 @@ export async function replaceSegmentLeads(
         "email",
         "current_am",
         "am_locked",
+        "last_email_subject",
+        "email_contact_summary",
+        "hubspot_email_locked",
         ...absentPreserve,
       ])
     ).join(",");
@@ -541,6 +557,15 @@ export async function replaceSegmentLeads(
     } else {
       // Sheet value wins (already spread from r); mark unlocked.
       base.am_locked = false;
+    }
+
+    // --- HubSpot email lock handling (same pattern as AM above) ---
+    if (prior && prior.hubspot_email_locked === true) {
+      base.last_email_subject = prior.last_email_subject;
+      base.email_contact_summary = prior.email_contact_summary;
+      base.hubspot_email_locked = true;
+    } else {
+      base.hubspot_email_locked = false;
     }
 
     // --- PRESERVE_COLUMNS blank-fill (only when the column is absent) ---
