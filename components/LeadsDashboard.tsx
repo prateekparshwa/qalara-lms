@@ -268,6 +268,21 @@ export default function LeadsDashboard({
     }
   };
 
+  // A HubSpot sync is a long-running fetch (10-20s typically) from the
+  // browser, which makes it more exposed than a quick API call to a one-off
+  // network blip (cold start, flaky proxy) producing a "Failed to fetch"
+  // network-level error rather than a proper HTTP response. Both the dry run
+  // (no side effects) and the commit (idempotent upsert) are safe to retry,
+  // so retry once automatically before surfacing an error.
+  const fetchWithRetry = async (url: string, init: RequestInit): Promise<Response> => {
+    try {
+      return await fetch(url, init);
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return fetch(url, init);
+    }
+  };
+
   // Read-only pull from HubSpot (Customers segment only). Always previews
   // first — a dry run reports match counts without writing anything — then
   // asks for explicit confirmation before committing to Supabase, since the
@@ -275,7 +290,7 @@ export default function LeadsDashboard({
   const handleHubspotSync = async () => {
     setIsHubspotSyncing(true);
     try {
-      const previewRes = await fetch(`/api/leads/hubspot-sync?segment=${segment}`, {
+      const previewRes = await fetchWithRetry(`/api/leads/hubspot-sync?segment=${segment}`, {
         method: "POST",
       });
       const preview = await previewRes.json().catch(() => ({}));
@@ -291,7 +306,7 @@ export default function LeadsDashboard({
       if (!window.confirm(`${preview.message}\n\nWrite these matches to the dashboard?`)) {
         return;
       }
-      const commitRes = await fetch(
+      const commitRes = await fetchWithRetry(
         `/api/leads/hubspot-sync?segment=${segment}&commit=true`,
         { method: "POST" }
       );
@@ -302,10 +317,13 @@ export default function LeadsDashboard({
       showToast(result.message || "HubSpot sync complete.", "success");
       fetchLeads();
     } catch (err) {
-      showToast(
-        err instanceof Error ? err.message : "HubSpot sync failed. Please try again.",
-        "error"
-      );
+      const message =
+        err instanceof TypeError
+          ? "Couldn't reach the server — check your connection and try again."
+          : err instanceof Error
+          ? err.message
+          : "HubSpot sync failed. Please try again.";
+      showToast(message, "error");
     } finally {
       setIsHubspotSyncing(false);
     }
