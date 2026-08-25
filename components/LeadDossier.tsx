@@ -618,19 +618,18 @@ export default function LeadDossier({
             <Field showAll={showAll} label="Target Audience of the Buyer" value={lead.target_audience} />
             <Field showAll={showAll} label="Sourcing Countries of the Buyer" value={lead.import_countries} />
             <Field showAll={showAll} label="Sources From India?" value={lead.imports_from_india} />
-            {lead.customer_status ? (
+            {lead.customer_status && (
               <Field
                 showAll={showAll}
                 label="Customer Status"
                 value={customerStatusLabel(lead.customer_status)}
               />
-            ) : (
-              <Field
-                showAll={showAll}
-                label="Website Confidence (AI-Verified)"
-                value={lead.website_confidence}
-              />
             )}
+            <Field
+              showAll={showAll}
+              label="Website Confidence (AI-Verified)"
+              value={lead.website_confidence}
+            />
           </div>
         </>
       )}

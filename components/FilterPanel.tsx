@@ -13,6 +13,8 @@ export interface Filters {
   unassigned: string;
   /** "yes" → only buyers with a confirmed Sources-From-India. */
   india: string;
+  /** Website Confidence tier — HIGH / MEDIUM / LOW. */
+  confidence: string;
 }
 
 interface FilterOptions {
@@ -169,7 +171,9 @@ export default function FilterPanel({
   ];
 
   const clearAll = () =>
-    onChange({ country: "", buyer_type: "", classification: "", am: "", org_scale: "", unassigned: "", india: "" });
+    onChange({ country: "", buyer_type: "", classification: "", am: "", org_scale: "", unassigned: "", india: "", confidence: "" });
+
+  const CONFIDENCE_OPTIONS = ["HIGH", "MEDIUM", "LOW"];
 
   return (
     <aside className="w-56 flex-shrink-0 border-r border-zinc-200 bg-[#F7F8FE] overflow-y-auto">
@@ -235,6 +239,12 @@ export default function FilterPanel({
             <span className="filter-chip chip-teal">
               Sources From India
               <button onClick={() => clear("india")} aria-label="Remove Sources From India filter">×</button>
+            </span>
+          )}
+          {filters.confidence && (
+            <span className="filter-chip chip-teal">
+              {filters.confidence} confidence
+              <button onClick={() => clear("confidence")} aria-label={`Remove website confidence filter ${filters.confidence}`}>×</button>
             </span>
           )}
         </div>
@@ -305,6 +315,13 @@ export default function FilterPanel({
           value={filters.org_scale}
           options={orgScaleOptions}
           onChange={(v) => onChange({ ...filters, org_scale: v })}
+        />
+        <FilterSelect
+          label="Website Confidence (AI-Verified)"
+          dot="#0D9488"
+          value={filters.confidence}
+          options={CONFIDENCE_OPTIONS}
+          onChange={(v) => onChange({ ...filters, confidence: v })}
         />
 
         {/* Sources From India? — confirmed-Yes toggle */}

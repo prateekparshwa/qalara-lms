@@ -19,6 +19,7 @@ type ColId =
   | "organization"
   | "email"
   | "website"
+  | "website_confidence"
   | "country"
   | "buyer_type"
   | "buyer_classification"
@@ -28,6 +29,7 @@ const COLUMNS: { id: ColId; label: string; dot: string; sortable: boolean }[] = 
   { id: "organization", label: "Buyer Organization", dot: "#4F46E5", sortable: true },
   { id: "email", label: "Buyer Email ID", dot: "#0D9488", sortable: true },
   { id: "website", label: "Brand Website", dot: "#B45309", sortable: true },
+  { id: "website_confidence", label: "Website Confidence", dot: "#0D9488", sortable: true },
   { id: "country", label: "Buyer Country", dot: "#7C3AED", sortable: true },
   { id: "buyer_type", label: "Business Type", dot: "#E11D48", sortable: true },
   { id: "buyer_classification", label: "Buyer Purchase Potential (AI Recommended)", dot: "#4F46E5", sortable: true },
@@ -75,6 +77,8 @@ function Cell({ lead, col }: { lead: Lead; col: ColId }) {
         </a>
       );
     }
+    case "website_confidence":
+      return <Badge value={lead.website_confidence} kind="web" />;
     case "country":
       return (
         <span className="text-xs font-sans text-editorial-secondary block max-w-[140px] break-words">
@@ -330,7 +334,9 @@ export default function LeadsTable({
                       <td
                         key={c.id}
                         className={`px-3 py-2.5 align-top ${
-                          c.id === "buyer_classification" ? "text-center" : ""
+                          c.id === "buyer_classification" || c.id === "website_confidence"
+                            ? "text-center"
+                            : ""
                         }`}
                       >
                         <Cell lead={lead} col={c.id} />
