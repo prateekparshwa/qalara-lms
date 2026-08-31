@@ -73,8 +73,8 @@ export default async function DirectoryPage() {
           </p>
 
           <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-6 lg:gap-8 items-start">
-            <div>
-              <ul className="border-t border-editorial-black">
+            <div className="lg:pr-6 lg:border-r lg:border-editorial-black">
+              <ul className="border-t border-b border-editorial-black">
                 {rows.map((r) => {
                   const inner = (
                     <div className="flex items-center gap-4 py-3.5">

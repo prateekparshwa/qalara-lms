@@ -99,7 +99,7 @@ export default function DirectorySearch() {
         }}
         aria-hidden="true"
       />
-      <div className="p-4 lg:p-5">
+      <div className="pt-2.5 px-4 pb-4 lg:pt-2.5 lg:px-5 lg:pb-5">
         <div className="flex items-center gap-2.5">
           <span
             className="inline-flex items-center justify-center w-9 h-9 rounded-lg shrink-0"
@@ -206,6 +206,11 @@ export default function DirectorySearch() {
           </div>
         )}
       </div>
+
+      <div
+        className="h-[3px] w-full bg-editorial-black"
+        aria-hidden="true"
+      />
     </div>
   );
 }

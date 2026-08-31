@@ -5,6 +5,17 @@ import { classificationTier } from "./format";
 // admin client. RLS stays enabled, blocking any direct anon/browser access.
 const supabase = supabaseAdmin;
 
+/**
+ * Strip everything but letters/digits and lowercase, matching the
+ * `organization_normalized` generated column (see
+ * supabase-migration-org-search.sql). Lets a search for "Asterblume" find a
+ * lead stored as "Aster Blume Living" — spacing, punctuation and case all
+ * stop mattering once both sides are normalized the same way.
+ */
+function normalizeOrgTerm(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
 export interface Lead {
   id: number;
   segment: string | null;
@@ -142,19 +153,25 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
   // Scope to a single segment (engagement / no_engagement / prospects / discover)
   if (segment) query = query.eq("segment", segment);
 
-  // Free-text search across org, email, website (legacy single-field)
+  // Free-text search across org, email, website (legacy single-field).
+  // Organization goes through the same normalized match as the dedicated
+  // org filter below, for the same reason (spacing/punctuation shouldn't
+  // hide a real lead).
   if (q && q.trim()) {
     const term = q.trim();
     query = query.or(
-      `organization.ilike.%${term}%,email.ilike.%${term}%,website.ilike.%${term}%,full_name.ilike.%${term}%`
+      `organization_normalized.ilike.%${normalizeOrgTerm(term)}%,email.ilike.%${term}%,website.ilike.%${term}%,full_name.ilike.%${term}%`
     );
   }
 
-  // Dedicated per-field search (combined with AND). Organization is a PREFIX
-  // match (starts-with) so "arredo" returns "arredo" but not "Trendarredo";
-  // email/website stay substring since the term is usually mid-string.
+  // Dedicated per-field search (combined with AND). Organization matches as
+  // a normalized substring — "Asterblume" finds "Aster Blume Living" since
+  // both sides are lowercased and stripped of spaces/punctuation before
+  // comparing (see organization_normalized in supabase-migration-org-search.sql).
+  // Deliberately broader than a prefix match: showing "Trendarredo" for a
+  // search of "arredo" beats hiding a real lead over a spacing difference.
   if (org && org.trim())
-    query = query.ilike("organization", `${org.trim()}%`);
+    query = query.ilike("organization_normalized", `%${normalizeOrgTerm(org)}%`);
   if (email && email.trim())
     query = query.ilike("email", `%${email.trim()}%`);
   if (website && website.trim())
@@ -217,7 +234,9 @@ export async function suggestLeads(
   let query = supabase.from("leads").select("*");
   if (segment) query = query.eq("segment", segment);
   query = query
-    .or(`organization.ilike.${term}%,email.ilike.%${term}%`)
+    .or(
+      `organization_normalized.ilike.%${normalizeOrgTerm(term)}%,email.ilike.%${term}%`
+    )
     .order("organization", { ascending: true })
     .limit(limit);
 
@@ -256,7 +275,11 @@ export async function searchDirectory(
     .select("*", { count: "exact" })
     .in("segment", segments);
 
-  if (org?.trim()) query = query.ilike("organization", `${org.trim()}%`);
+  // Normalized substring match — see normalizeOrgTerm() above. A search for
+  // "Asterblume" must find "Aster Blume Living"; hiding a real lead over a
+  // spacing/punctuation difference is worse than a few extra results.
+  if (org?.trim())
+    query = query.ilike("organization_normalized", `%${normalizeOrgTerm(org)}%`);
   if (website?.trim()) query = query.ilike("website", `%${website.trim()}%`);
   if (email?.trim()) query = query.ilike("email", `%${email.trim()}%`);
   if (buyerName?.trim()) query = query.ilike("full_name", `%${buyerName.trim()}%`);
