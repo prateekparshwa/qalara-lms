@@ -78,10 +78,36 @@ function normalizeHeader(h: unknown): string {
     .trim();
 }
 
-function clean(v: unknown): string | null {
+// Columns where "0" is a real, meaningful count (e.g. "0 emails received") —
+// never treat it as a missing-data placeholder for these.
+const ZERO_IS_VALID_COLUMNS = new Set([
+  "sourcing_emails_low",
+  "sourcing_emails_mid",
+  "sourcing_emails_high",
+  "buyers_emails_low",
+  "buyers_emails_mid",
+  "buyers_emails_high",
+  "quotations_request",
+  "samples_request",
+  "quotations",
+  "samples",
+  "store_count", // "0 stores" is a real answer for an online-only buyer.
+]);
+
+function clean(v: unknown, column?: string): string | null {
   if (v === null || v === undefined) return null;
   const s = String(v).trim();
-  return s === "" || s.toLowerCase() === "null" || s.toLowerCase() === "undefined"
+  // A bare "0" shows up in source data (ByrMaster org profiles, signup
+  // dumps) as a data-entry placeholder for "nothing here" — e.g. Business
+  // Type recorded as the text "0". None of the descriptive fields are ever
+  // legitimately just "0", so treat it as blank there. The email/quotation
+  // count columns are the opposite: "0" is a real, meaningful count, so
+  // they're explicitly exempted above.
+  const isPlaceholderZero = s === "0" && !(column && ZERO_IS_VALID_COLUMNS.has(column));
+  return s === "" ||
+    s.toLowerCase() === "null" ||
+    s.toLowerCase() === "undefined" ||
+    isPlaceholderZero
     ? null
     : s;
 }
@@ -401,7 +427,7 @@ export async function readLeadsSheet(
 
     const obj: Record<string, string | null> = {};
     for (const { index, column } of colMap) {
-      obj[column] = clean(row[index]);
+      obj[column] = clean(row[index], column);
     }
     // Collapse known duplicate spellings ("United States (US)" etc.) to one
     // canonical name, so a filter never lists the same country twice.
