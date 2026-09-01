@@ -20,8 +20,8 @@ interface MagazineHeaderProps {
   onExport: (format: "csv" | "xlsx") => void;
   totalLeads: number;
   isSyncing: boolean;
-  /** Customers-segment only — pulls read-only rollup fields from HubSpot.
-   * Omit to hide the button entirely (other segments aren't wired up yet). */
+  /** Pulls read-only rollup fields from HubSpot — available on every
+   * segment. Omit to hide the button entirely. */
   onHubspotSync?: () => Promise<void>;
   isHubspotSyncing?: boolean;
   /** Segment name shown as the dateline title. */

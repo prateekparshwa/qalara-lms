@@ -285,10 +285,10 @@ export default function LeadsDashboard({
     }
   };
 
-  // Read-only pull from HubSpot (Customers segment only). Always previews
+  // Read-only pull from HubSpot, available on every segment. Always previews
   // first — a dry run reports match counts without writing anything — then
   // asks for explicit confirmation before committing to Supabase, since the
-  // first run touches ~1000+ live leads at once.
+  // first run on a big segment touches thousands of live leads at once.
   const handleHubspotSync = async () => {
     setIsHubspotSyncing(true);
     try {
@@ -642,7 +642,7 @@ export default function LeadsDashboard({
         onExport={handleExport}
         totalLeads={stats.total}
         isSyncing={isSyncing}
-        onHubspotSync={segment === "customers" ? handleHubspotSync : undefined}
+        onHubspotSync={handleHubspotSync}
         isHubspotSyncing={isHubspotSyncing}
         lastSynced={stats.lastSynced}
         segment={segment}

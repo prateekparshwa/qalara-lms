@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { hubspotConfigured, pullHubspotDataForLeads } from "@/lib/hubspot";
 
-// Batched HubSpot calls need the Node.js runtime (not edge). 60 is Vercel
-// Hobby's hard cap — the deal-stage/email/company lookups run concurrently
-// (see Promise.allSettled in pullHubspotDataForLeads) specifically so the
-// whole sync fits inside this, despite the email pull not being batchable
-// the way the rollup fields are.
+// Batched HubSpot calls need the Node.js runtime (not edge). The rollup
+// lookups (deal stage/email/company) run concurrently via Promise.allSettled
+// in pullHubspotDataForLeads, but each is still a sequence of 100-row batch
+// calls — for the bigger segments (engagement is ~4x Customers' row count)
+// that's enough sequential HubSpot round-trips to risk running long, so this
+// is set well above Customers' original budget rather than tight to it.
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 290;
 
 const PAGE = 1000;
 const WRITE_CHUNK = 500;
@@ -20,29 +21,22 @@ interface LeadRow {
 }
 
 /**
- * POST /api/leads/hubspot-sync?segment=customers[&commit=true]
+ * POST /api/leads/hubspot-sync?segment=<any segment key>[&commit=true]
  *
  * Read-only pull from HubSpot (Contacts by email, Companies by domain, plus a
  * best-effort deal stage) — nothing is ever written back to HubSpot. Without
  * `commit=true` this is a DRY RUN: it reports match counts but writes nothing
- * to Supabase, so the first sync against ~1000+ live Customers leads can be
- * previewed before anything changes.
+ * to Supabase, so a sync against thousands of live leads can be previewed
+ * before anything changes. Available for every segment, same as the sheet
+ * Sync button — not scoped to Customers.
  */
 export async function POST(req: NextRequest) {
   const segment = req.nextUrl.searchParams.get("segment") ?? "";
   const commit = req.nextUrl.searchParams.get("commit") === "true";
 
-  // Scoped to Customers only for now — the largest segments (engagement /
-  // no_engagement / prospects) are thousands of unqualified leads that
-  // shouldn't be matched against a live sales CRM yet.
-  if (segment !== "customers") {
+  if (!segment) {
     return NextResponse.json(
-      {
-        message: "HubSpot sync is only enabled for the Customers segment right now.",
-        matched: 0,
-        notFound: 0,
-        skipped: 0,
-      },
+      { message: "No segment specified.", matched: 0, notFound: 0, skipped: 0 },
       { status: 200 }
     );
   }
@@ -60,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 1. Read every Customers lead's id/email/website (paginated).
+    // 1. Read every lead in this segment's id/email/website (paginated).
     const rows: LeadRow[] = [];
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await supabaseAdmin
@@ -76,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     if (rows.length === 0) {
       return NextResponse.json({
-        message: "No Customers leads found to sync.",
+        message: "No leads found in this segment to sync.",
         matched: 0,
         notFound: 0,
         skipped: 0,
@@ -95,7 +89,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         dryRun: true,
         message:
-          `Dry run: would match ${matched.length} of ${rows.length} Customers leads in HubSpot ` +
+          `Dry run: would match ${matched.length} of ${rows.length} leads in HubSpot ` +
           `(${notFound.length} not found, ${skipped.length} skipped — no email or website on file), ` +
           `${withEmail.length} with a HubSpot email to pull into last_email_subject/email_contact_summary ` +
           `(this locks those fields against the next Sheets sync). Nothing was written yet.`,
@@ -145,7 +139,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       dryRun: false,
       message:
-        `Synced ${updated} Customers leads from HubSpot ` +
+        `Synced ${updated} leads from HubSpot ` +
         `(${matched.length} matched, ${notFound.length} not found, ${skipped.length} skipped, ` +
         `${withEmail.length} email(s) pulled)` +
         (failed ? `, ${failed} failed to save` : "") +
