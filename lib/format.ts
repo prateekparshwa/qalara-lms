@@ -181,6 +181,20 @@ const COUNTRY_ALIASES: Record<string, string> = {
   "hong kong sar": "Hong Kong",
   "czech republic": "Czech Republic",
   czechia: "Czech Republic",
+  canada: "Canada", // observed all-lowercase in a source row
+  mauritius: "Mauritius", // observed all-caps in a source row
+  "trinidad & tobago": "Trinidad and Tobago",
+  "state of palestine": "Palestine",
+  // City/region qualifiers a researcher appended in parentheses — same
+  // country, just more detail than this field is meant to hold.
+  "united kingdom (brigg, lincolnshire)": "United Kingdom",
+  "united kingdom (london)": "United Kingdom",
+  "united kingdom (sutton, surrey)": "United Kingdom",
+  "united states (likely dublin, oh based on facebook location)": "United States",
+  "united states (new york)": "United States",
+  "usa (mesa, arizona)": "United States",
+  "usa (new york)": "United States",
+  "usa (philadelphia, pennsylvania)": "United States",
 };
 
 /**
@@ -206,10 +220,19 @@ const ORG_SCALE_ALIASES: Record<string, string> = {
   "medium enterprise": "Medium",
   "large enterprise": "Large/ENT",
   large: "Large/ENT",
+  enterprise: "Large/ENT",
+  "mid to large": "Large/ENT",
+  mid: "Medium",
   "micro enterprise": "Micro",
   // "Unknown" is one source sheet's spelling of the same "no data" concept
   // every other segment already calls "Not Available".
   unknown: "Not Available",
+  // One-off researcher annotations appended in parentheses — same tier,
+  // just more detail than this field is meant to hold.
+  "small (described as 'a small boutique' on the website)": "Small",
+  "small (estimate)": "Small",
+  "small (solo influencer/creator)": "Small",
+  "small to mid (family-owned, private limited company)": "Small",
 };
 
 /** Normalize an org-size value to one canonical spelling, so a filter never
@@ -337,9 +360,12 @@ const BUYER_TYPE_ALIASES: Record<string, string> = {
 
   // --- Buying Agent ---
   "sourcing agent": "Buying Agent",
-  "buying team": "Buying Agent",
   agent: "Buying Agent",
   "buying house": "Buying Agent",
+
+  // --- Buying Team (kept distinct from Buying Agent per explicit call —
+  // an internal buying/procurement team is not an external agent) ---
+  "buying team": "Buying Team",
 
   // --- Marketing / Advertising Agency ---
   "agency / service provider": "Marketing / Advertising Agency",
@@ -367,6 +393,30 @@ export function normalizeBuyerType(value: string | null | undefined): string | n
 }
 
 /**
+ * First-name-only entries that are unambiguously the same person as one
+ * (and only one) fuller name already in the data — merged so the Account
+ * Manager filter doesn't list the same person twice. Deliberately narrow:
+ * a bare first name shared by two different AMs (e.g. "Neha" — both
+ * "Neha G" and "Neha Kaushik" exist) is left alone rather than guessed at,
+ * since misattributing a real person's assignment is a real data-integrity
+ * risk, not just a cosmetic filter issue.
+ */
+const AM_ALIASES: Record<string, string> = {
+  himanshu: "Himanshu Sahu",
+  gouri: "Gouri Sree",
+  raina: "Raina Singhwi",
+  roopali: "Roopali Varma",
+  prasad: "Prasad Vaidyanathan",
+  ashraf: "Ashraf Hamid",
+  sunny: "Sunny Shah",
+  srijaa: "Srijaa Sundararajan",
+  gunjan: "Gunjan Kumari",
+  "dilip": "Dilip BR",
+  "dilip b r": "Dilip BR", // canonical spelling picked by count (86 vs 65)
+  "shivanjali bhute": "Shivanjali Bhute", // casing typo only
+};
+
+/**
  * Reject values in the AM (Account Manager) field that are clearly not a
  * person's name — an email subject line that leaked in from a shifted source
  * column ("Re: Following up on your RFQ...", "Qalara shipment | GB100... |
@@ -375,6 +425,9 @@ export function normalizeBuyerType(value: string | null | undefined): string | n
  * Deliberately conservative — only rejects unambiguous junk patterns, since a
  * false positive would silently unassign a real AM; a genuine short name
  * (even an unfamiliar one) passes through unchanged.
+ *
+ * Also collapses known same-person spelling variants (AM_ALIASES) so the
+ * filter never lists one AM under two names.
  */
 export function sanitizeAmValue(value: string | null | undefined): string | null {
   const v = (value ?? "").trim();
@@ -385,7 +438,8 @@ export function sanitizeAmValue(value: string | null | undefined): string | null
     v.includes("|") ||
     /^(re|fwd)\s*:/i.test(v) ||
     v.length > 40; // real names are short; subject lines/sentences aren't
-  return looksLikeJunk ? "No Active AM" : v;
+  if (looksLikeJunk) return "No Active AM";
+  return AM_ALIASES[lower] ?? v;
 }
 
 /** "2026-06-12T08:15:00Z" -> "12 Jun 2026, 1:45 pm IST". */
