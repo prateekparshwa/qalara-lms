@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { diffTrackerAgainstDb, createOrgFromTracker } from "@/lib/trackerSync";
+import { diffTrackerAgainstDb, createOrgFromTracker, loadExistingOrgKeys } from "@/lib/trackerSync";
 
 // Each new org runs the full web-research pipeline (scrape + search + LLM +
 // POC lookup) sequentially, same cost per org as one General Discovery call
@@ -66,23 +66,27 @@ export async function POST(req: NextRequest) {
     }
 
     const batch = diff.newOrgs.slice(0, limit);
+    const existing = await loadExistingOrgKeys();
     const results = [];
     for (const candidate of batch) {
-      results.push(await createOrgFromTracker(candidate));
+      results.push(await createOrgFromTracker(candidate, existing));
     }
     const created = results.filter((r) => r.ok);
-    const failed = results.filter((r) => !r.ok);
+    const duplicates = results.filter((r) => !r.ok && r.duplicateOf);
+    const failed = results.filter((r) => !r.ok && !r.duplicateOf);
     const remaining = diff.newOrgs.length - batch.length;
 
     return NextResponse.json({
       dryRun: false,
       message:
         `Created ${created.length} of ${batch.length} attempted` +
+        (duplicates.length ? ` (${duplicates.length} turned out to already exist — skipped)` : "") +
         (failed.length ? ` (${failed.length} failed)` : "") +
         (remaining > 0
           ? `. ${remaining} more new org(s) still pending — run Tracker Sync again to continue.`
           : ". No more new orgs pending."),
       created: created.length,
+      duplicates: duplicates.length,
       failed: failed.length,
       remaining,
       results,
