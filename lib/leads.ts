@@ -12,7 +12,7 @@ const supabase = supabaseAdmin;
  * lead stored as "Aster Blume Living" — spacing, punctuation and case all
  * stop mattering once both sides are normalized the same way.
  */
-function normalizeOrgTerm(s: string): string {
+export function normalizeOrgTerm(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 

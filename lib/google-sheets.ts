@@ -44,7 +44,7 @@ const DEFAULT_MATCH_COLUMNS: MatchColumns = {
   am: "Current AM(Account Manager)",
 };
 
-function getCredentials(): { client_email: string; private_key: string } {
+export function getCredentials(): { client_email: string; private_key: string } {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!raw || !raw.trim()) {
     throw new Error(
@@ -450,4 +450,76 @@ export async function readLeadsSheet(
   }
 
   return { sheetTitle, rows, unknownHeaders, missingHeaders };
+}
+
+/**
+ * Appends new lead rows (db-column-keyed) to a segment's sheet, so a record
+ * created outside the normal Sheet-upload flow (e.g. Tracker sync) survives
+ * the next full segment Sync instead of being wiped by it — replaceSegmentLeads
+ * always replaces a segment with exactly what the sheet currently holds, so
+ * anything not also written here only lives until the next Sync.
+ *
+ * Values are placed by the sheet's OWN current header order (read fresh each
+ * call), not assumed — a column this row has no value for is left blank
+ * rather than shifting later columns.
+ */
+export async function appendLeadRowsToSheet(
+  spreadsheetIdArg: string | undefined,
+  rows: Record<string, string | null>[],
+  opts?: { sheetTitle?: string; headerToColumn?: Record<string, string> }
+): Promise<void> {
+  const spreadsheetId =
+    spreadsheetIdArg?.trim() || process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  if (!spreadsheetId) throw new Error("No spreadsheet id configured.");
+  if (rows.length === 0) return;
+
+  const headerToColumn = opts?.headerToColumn ?? HEADER_TO_COLUMN;
+
+  const { client_email, private_key } = getCredentials();
+  const auth = new google.auth.JWT({
+    email: client_email,
+    key: private_key,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+  const sheets = google.sheets({ version: "v4", auth });
+
+  const sheetTitle = await resolveSheetTitle(sheets, spreadsheetId, opts?.sheetTitle);
+
+  const headerResp = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: sheetTitle,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  const values = (headerResp.data.values ?? []) as unknown[][];
+
+  // Same banner-row-aware header detection as everywhere else in this file.
+  let headerIdx = 0;
+  let bestMatches = -1;
+  for (let i = 0; i < Math.min(values.length, 5); i++) {
+    const matches = values[i]
+      .map(normalizeHeader)
+      .filter((h) => h in headerToColumn).length;
+    if (matches > bestMatches) {
+      bestMatches = matches;
+      headerIdx = i;
+    }
+  }
+  if (bestMatches === 0) throw new Error("No recognisable header row found.");
+  const headerRow = values[headerIdx].map(normalizeHeader);
+
+  const sheetRows = rows.map((row) =>
+    headerRow.map((header) => {
+      const column = headerToColumn[header];
+      if (!column) return "";
+      return row[column] ?? "";
+    })
+  );
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: sheetTitle,
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: sheetRows },
+  });
 }

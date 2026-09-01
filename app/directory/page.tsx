@@ -3,6 +3,7 @@ import { ArrowRight, ArrowLeft } from "lucide-react";
 import Masthead from "@/components/Masthead";
 import AtlasBackdrop from "@/components/AtlasBackdrop";
 import DirectorySearch from "@/components/DirectorySearch";
+import TrackerSyncPanel from "@/components/TrackerSyncPanel";
 import { SEGMENTS, segmentSpreadsheetId } from "@/lib/segments";
 import { getLeadStats } from "@/lib/leads";
 
@@ -142,6 +143,8 @@ export default async function DirectoryPage() {
 
             <DirectorySearch />
           </div>
+
+          <TrackerSyncPanel />
         </div>
       </main>
     </div>
