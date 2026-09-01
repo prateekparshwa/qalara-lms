@@ -221,13 +221,149 @@ export function normalizeOrgScale(value: string | null | undefined): string | nu
   return ORG_SCALE_ALIASES[v.toLowerCase()] ?? v;
 }
 
-/** "Unknown" -> "Not Available", the canonical "no data" label already used
- * for buyer type across the app. Applied at sync time so a future import
- * can't reintroduce the split. */
+/**
+ * Alias map collapsing every spelling variant / near-duplicate business-type
+ * value seen in the source data down to the 14 official categories defined
+ * in the "Buyer Business Type Criteria" tab of the Qualified Leads workbook
+ * (the documented, authoritative label set for this column), plus "Others"
+ * which is kept as its own bucket since it's a deliberate ByrMaster answer
+ * ("doesn't fit any category"), not missing data.
+ *
+ * ByrMaster's own raw dropdown ("Retailer", "Wholesale / Importer", "Amazon
+ * Seller", "Boutique Store", "Horeca Wholesale", etc.) uses entirely
+ * different wording from the Qualified Leads canonical set, and earlier
+ * one-off enrichment passes wrote inconsistent free text on top of that —
+ * this map absorbs both sources into one clean, deduplicated list so the
+ * "Buyer Business Type" filter never lists near-identical entries twice.
+ */
+const BUYER_TYPE_ALIASES: Record<string, string> = {
+  unknown: "Not Available",
+
+  // --- Digital / Online retailer ---
+  "digital/ online retailer": "Digital / Online retailer",
+  "online retailer": "Digital / Online retailer",
+  "online / e-commerce": "Digital / Online retailer",
+  "online / e-commerce (affiliate/influencer)": "Digital / Online retailer",
+  "online marketplace": "Digital / Online retailer",
+  "online marketplace / subscription box retailer": "Digital / Online retailer",
+  "online retailer (ethical/artisan home decor)": "Digital / Online retailer",
+  "manufacturer / online retailer": "Digital / Online retailer",
+  "amazon seller": "Digital / Online retailer",
+  "subscription box": "Digital / Online retailer",
+
+  // --- Independent / Boutique owner ---
+  "independent/ boutique owner": "Independent / Boutique owner",
+  "boutique store": "Independent / Boutique owner",
+  "fashion boutique / retailer": "Independent / Boutique owner",
+  "gift shop / boutique retail (physical, some online ordering)":
+    "Independent / Boutique owner",
+  "retail store / artisan collective": "Independent / Boutique owner",
+
+  // --- Brick-and-mortar / Multi-channel retailer ---
+  "brick-and-mortar / multi channel retailer":
+    "Brick-and-mortar / Multi-channel retailer",
+  "brick-and-mortar / manufacturer & builder":
+    "Brick-and-mortar / Multi-channel retailer",
+  "brick-and-mortar / online retailer": "Brick-and-mortar / Multi-channel retailer",
+  "brick-and-mortar retailer; manufacturer":
+    "Brick-and-mortar / Multi-channel retailer",
+  "large off-price retail chain": "Brick-and-mortar / Multi-channel retailer",
+  "large supermarket / department store chain":
+    "Brick-and-mortar / Multi-channel retailer",
+  "retail store": "Brick-and-mortar / Multi-channel retailer",
+  "retail store (closed)": "Brick-and-mortar / Multi-channel retailer",
+  "retail store / brand": "Brick-and-mortar / Multi-channel retailer",
+  retailer: "Brick-and-mortar / Multi-channel retailer",
+  "multi-channel retailer": "Brick-and-mortar / Multi-channel retailer",
+  "multi-channel retailer (brick-and-mortar and e-commerce)":
+    "Brick-and-mortar / Multi-channel retailer",
+  "multi-channel retailer (brick-and-mortar boutique and e-commerce)":
+    "Brick-and-mortar / Multi-channel retailer",
+  "multi-channel retailer; online / e-commerce":
+    "Brick-and-mortar / Multi-channel retailer",
+  "multi-channel retailer; online / e-commerce; brick-and-mortar showroom":
+    "Brick-and-mortar / Multi-channel retailer",
+  "online / e-commerce; multi-channel retailer":
+    "Brick-and-mortar / Multi-channel retailer",
+  "online / e-commerce; subscription box service; multi-channel retailer":
+    "Brick-and-mortar / Multi-channel retailer",
+  "domestic retailer": "Brick-and-mortar / Multi-channel retailer",
+
+  // --- Retailer & Wholesaler (does both B2C and B2B) ---
+  both: "Retailer & Wholesaler",
+  "multi-channel retailer (direct-to-consumer via website and wholesale to retailers)":
+    "Retailer & Wholesaler",
+  "wholesale distributor; online / retailer": "Retailer & Wholesaler",
+
+  // --- Wholesaler / Importer ---
+  "whole-seller / importer": "Wholesaler / Importer",
+  "wholesale / importer": "Wholesaler / Importer",
+  "b2b / wholesale distributor": "Wholesaler / Importer",
+  "closeout wholesaler": "Wholesaler / Importer",
+  "trading company / wholesaler": "Wholesaler / Importer",
+  "manufacturer / b2b wholesale": "Wholesaler / Importer",
+  "import/distribution company (cosmetics/personal care)":
+    "Wholesaler / Importer",
+  importer: "Wholesaler / Importer",
+  "trading company (it / technology)": "Wholesaler / Importer",
+  "trading company (uniforms, safety wear, gifts)": "Wholesaler / Importer",
+  "stock clearance / liquidation company": "Wholesaler / Importer",
+  "manufacturer / distributor (subsidiary)": "Wholesaler / Importer",
+  "corporate gifting / merchandise company": "Wholesaler / Importer",
+  "corporate gifting company": "Wholesaler / Importer",
+  "corporate gifting distributor": "Wholesaler / Importer",
+  "corporate gifting distributor / reseller": "Wholesaler / Importer",
+  "indian exporter": "Wholesaler / Importer",
+  "liaison office": "Wholesaler / Importer",
+  "horeca wholesale": "Wholesaler / Importer",
+
+  // --- Lifestyle brand ---
+  "brand / publisher of stationery and giftware": "Lifestyle brand",
+  "brand / retailer": "Lifestyle brand",
+  "corporate gifting brand": "Lifestyle brand",
+  "manufacturer / d2c retailer": "Lifestyle brand",
+  "manufacturer / publisher": "Lifestyle brand",
+  "retailer / brand": "Lifestyle brand",
+  "brand aggregator": "Lifestyle brand",
+
+  // --- Architect / Interior Designer ---
+  "architect/ interior designer": "Architect / Interior Designer",
+  "interior designer": "Architect / Interior Designer",
+  architect: "Architect / Interior Designer",
+  designer: "Architect / Interior Designer",
+
+  // --- Hotel, Restaurant, Cafe ---
+  "hotelier/ architect": "Hotel, Restaurant, Cafe",
+
+  // --- Buying Agent ---
+  "sourcing agent": "Buying Agent",
+  "buying team": "Buying Agent",
+  agent: "Buying Agent",
+  "buying house": "Buying Agent",
+
+  // --- Marketing / Advertising Agency ---
+  "agency / service provider": "Marketing / Advertising Agency",
+
+  // --- No reliable signal / off-category for this taxonomy ---
+  "aquaculture biotechnology / animal nutrition company": "Not Available",
+  "event logistics / freight company": "Not Available",
+  "fintech / payments company (government-linked)": "Not Available",
+  "industrial technology / iot hardware company": "Not Available",
+  "logistics / courier / hauling company": "Not Available",
+  "travel & meetings/events management company": "Not Available",
+  "vendor ++": "Not Available",
+};
+
+/** Collapses spelling variants of the same business type (ByrMaster's raw
+ * dropdown wording, and one-off free text from enrichment) down to the 14
+ * official categories from the "Buyer Business Type Criteria" tab, plus the
+ * distinct "Others" bucket. Applied at sync time so a future import can't
+ * reintroduce a duplicate. "Others" and already-canonical values pass
+ * through unchanged. */
 export function normalizeBuyerType(value: string | null | undefined): string | null {
   const v = (value ?? "").trim();
   if (!v) return null;
-  return v.toLowerCase() === "unknown" ? "Not Available" : v;
+  return BUYER_TYPE_ALIASES[v.toLowerCase()] ?? v;
 }
 
 /**
