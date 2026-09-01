@@ -389,6 +389,28 @@ function matchesExistingOrg(
     return true;
   }
 
+  // Character-substring containment — catches a spelling that concatenates
+  // what the DB spells as separate words, or vice versa: "Artfile" only
+  // matches the existing "Theartfile" here (both are single, unsplit
+  // tokens with no shared word boundary for the tier above to line up).
+  // Gated the same way as tokenSequenceMatch: a single-token existing entry
+  // can't carry the match alone if that token is a known junk placeholder
+  // ("Order", "Style", "Business", "Store" — a handful of corrupted
+  // single-word records already sit in this DB) — otherwise those matched
+  // real orgs by pure substring coincidence ("Land[mark ]Group" ~ "mark").
+  if (soft && soft.length >= 5) {
+    if (
+      Array.from(existing.tokenKeys).some((k) => {
+        const parts = k.split("|");
+        if (parts.length === 1 && GENERIC_JUNK_WORDS.has(parts[0])) return false;
+        const squashed = normalizeOrgTerm(parts.join(""));
+        return squashed.length >= 5 && (squashed.includes(soft) || soft.includes(squashed));
+      })
+    ) {
+      return true;
+    }
+  }
+
   // A hyphen-joined token exactly matches an existing org on its own —
   // catches ByrMaster's "OrgName-ContactFirstName" convention
   // ("Envogue-Manoj", "Tanha - Envogue") without risking a false match on
