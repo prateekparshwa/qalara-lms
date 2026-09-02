@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
           contact: o.contact,
           sources: o.sources,
           targetSegment: o.targetSegment,
+          am: o.am,
         })),
       });
     }

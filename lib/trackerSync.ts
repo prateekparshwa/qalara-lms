@@ -23,13 +23,14 @@ import { google } from "googleapis";
 import { supabaseAdmin } from "./supabase";
 import { getCredentials, appendLeadRowsToSheet } from "./google-sheets";
 import { normalizeOrgTerm } from "./leads";
-import { normalizeBuyerType, normalizeCountry, normalizeOrgScale } from "./format";
+import { normalizeBuyerType, normalizeCountry, normalizeOrgScale, sanitizeAmValue } from "./format";
 import { researchOrgProfile } from "./researchOrg";
 import { getSegment, sheetOptionsFor, segmentSpreadsheetId, type SegmentKey } from "./segments";
 
 const TRACKER_SPREADSHEET_ID_ENV = "GOOGLE_SHEETS_TRACKER_ID";
 const BYRMASTER_TAB = "ByrMaster";
 const ENQUIRY_TAB = "EnquiryTracker";
+const LEAD_TRACKER_TAB = "LeadTracker";
 
 export interface TrackerOrg {
   /** The org name as it should be created (cleanest of any duplicate rows found). */
@@ -43,6 +44,11 @@ export interface TrackerOrg {
    * signal that this buyer has actually ordered, so belongs in Customers. */
   hasOrderId: boolean;
   targetSegment: Extract<SegmentKey, "engagement" | "customers">;
+  /** From the LeadTracker tab, matched by org name — the AM already working
+   * this lead ("Resp AM") and their latest status/next-step note, when a
+   * row for this org exists there. Null when LeadTracker has no match. */
+  am: string | null;
+  leadTrackerNote: string | null;
 }
 
 function getSheetsClient() {
@@ -229,7 +235,7 @@ export async function readTrackerOrgs(): Promise<TrackerOrg[]> {
   const spreadsheetId = trackerSpreadsheetId();
   const sheets = getSheetsClient();
 
-  const [bm, et] = await Promise.all([
+  const [bm, et, lt] = await Promise.all([
     sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `${BYRMASTER_TAB}!A1:J20000`,
@@ -240,7 +246,43 @@ export async function readTrackerOrgs(): Promise<TrackerOrg[]> {
       range: `${ENQUIRY_TAB}!A1:AC20000`,
       valueRenderOption: "UNFORMATTED_VALUE",
     }),
+    sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${LEAD_TRACKER_TAB}!A1:Q20000`,
+      valueRenderOption: "UNFORMATTED_VALUE",
+    }),
   ]);
+
+  // LeadTracker: F (5)=Buyer Org "Name (Country)", G (6)=Resp AM,
+  // M (12)=Actionable Next Steps, N (13)=Stage, O (14)=Lead Status,
+  // P (15)=Response Status. Indexed by squashed org name for lookup below —
+  // this tab isn't itself a source of NEW orgs, just AM/notes context for
+  // ones already found in ByrMaster/EnquiryTracker.
+  const leadTrackerByKey = new Map<string, { am: string | null; note: string | null }>();
+  const ltRows = lt.data.values ?? [];
+  for (let r = 1; r < ltRows.length; r++) {
+    const row = ltRows[r];
+    const buyerOrgRaw = String(row?.[5] ?? "").trim();
+    if (!buyerOrgRaw) continue;
+    const { org } = splitOrgCountry(buyerOrgRaw);
+    const key = softKey(org) || normalizeOrgTerm(org);
+    if (!key) continue;
+    const am = sanitizeAmValue(String(row?.[6] ?? "").trim() || null);
+    const nextSteps = String(row?.[12] ?? "").trim();
+    const stage = String(row?.[13] ?? "").trim();
+    const status = String(row?.[14] ?? "").trim();
+    const respStatus = String(row?.[15] ?? "").trim();
+    const noteParts = [
+      nextSteps && `Next step: ${nextSteps}`,
+      stage && `Stage: ${stage}`,
+      status && `Status: ${status}`,
+      respStatus && `Response: ${respStatus}`,
+    ].filter(Boolean);
+    leadTrackerByKey.set(key, {
+      am: am && am !== "No Active AM" ? am : null,
+      note: noteParts.length ? noteParts.join(" | ") : null,
+    });
+  }
 
   const raw: TrackerOrg[] = [];
 
@@ -258,6 +300,8 @@ export async function readTrackerOrgs(): Promise<TrackerOrg[]> {
       sources: ["ByrMaster"],
       hasOrderId: false,
       targetSegment: "engagement",
+      am: null,
+      leadTrackerNote: null,
     });
   }
 
@@ -278,6 +322,8 @@ export async function readTrackerOrgs(): Promise<TrackerOrg[]> {
       sources: ["EnquiryTracker"],
       hasOrderId: !!orderId,
       targetSegment: orderId ? "customers" : "engagement",
+      am: null,
+      leadTrackerNote: null,
     });
   }
 
@@ -303,6 +349,16 @@ export async function readTrackerOrgs(): Promise<TrackerOrg[]> {
     if (cand.hasOrderId) {
       existing.hasOrderId = true;
       existing.targetSegment = "customers";
+    }
+  }
+
+  // Attach LeadTracker's AM/notes context, matched by the same squashed key.
+  for (const entry of Array.from(bySoftKey.values())) {
+    const key = softKey(entry.org) || normalizeOrgTerm(entry.org);
+    const hit = leadTrackerByKey.get(key);
+    if (hit) {
+      entry.am = hit.am;
+      entry.leadTrackerNote = hit.note;
     }
   }
 
@@ -539,13 +595,19 @@ export async function createOrgFromTracker(
     const seg = getSegment(candidate.targetSegment);
     if (!seg) throw new Error(`Unknown segment "${candidate.targetSegment}".`);
 
+    const noteParts = [
+      `Created from Leads&Enqs Tracker (${candidate.sources.join(" + ")}).`,
+      candidate.leadTrackerNote && `LeadTracker: ${candidate.leadTrackerNote}`,
+    ].filter(Boolean);
+
     const record = {
       ...row,
       segment: candidate.targetSegment,
       source: "Leads&Enqs Tracker",
       imported_at: new Date().toISOString(),
       enriched_at: new Date().toISOString(),
-      notes: `Created from Leads&Enqs Tracker (${candidate.sources.join(" + ")}).`,
+      current_am: candidate.am ?? "No Active AM",
+      notes: noteParts.join(" "),
       notes_updated_at: new Date().toISOString(),
       notes_updated_by: "Tracker Sync",
     };

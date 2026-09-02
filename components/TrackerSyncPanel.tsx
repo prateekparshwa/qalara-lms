@@ -10,6 +10,7 @@ interface PreviewOrg {
   contact: string | null;
   sources: string[];
   targetSegment: "engagement" | "customers";
+  am: string | null;
 }
 
 interface Preview {
@@ -161,6 +162,7 @@ export default function TrackerSyncPanel() {
                     <th className="px-2 py-1.5 font-medium">Country</th>
                     <th className="px-2 py-1.5 font-medium">Source</th>
                     <th className="px-2 py-1.5 font-medium">Goes to</th>
+                    <th className="px-2 py-1.5 font-medium">AM</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -175,6 +177,9 @@ export default function TrackerSyncPanel() {
                       </td>
                       <td className="px-2 py-1.5 text-editorial-secondary">
                         {SEGMENT_LABEL[o.targetSegment] ?? o.targetSegment}
+                      </td>
+                      <td className="px-2 py-1.5 text-editorial-secondary">
+                        {o.am || "—"}
                       </td>
                     </tr>
                   ))}
