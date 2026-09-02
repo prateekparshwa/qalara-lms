@@ -10,10 +10,16 @@ const supabase = supabaseAdmin;
  * `organization_normalized` generated column (see
  * supabase-migration-org-search.sql). Lets a search for "Asterblume" find a
  * lead stored as "Aster Blume Living" — spacing, punctuation and case all
- * stop mattering once both sides are normalized the same way.
+ * stop mattering once both sides are normalized the same way. "&" is
+ * expanded to "and" FIRST (not just stripped) so "Love and Rosie" finds
+ * "Love & Rosie" and vice versa — a bare strip would leave "loveandrosie"
+ * and "loverosie" as different strings that never match.
  */
 export function normalizeOrgTerm(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return s
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 export interface Lead {

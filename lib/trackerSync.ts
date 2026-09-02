@@ -161,6 +161,9 @@ const CONFIRMED_TRACKER_ALIASES: Record<string, string> = {
   "la-ra's luxury store": "La-Ra's",
   lfh: "LFH Home Private Limited",
   "mk int'l": "M.K International Inc.",
+  mg: "Marni",
+  "perenne dissain": "Perenne",
+  "pertama merchandizing pte ltd": "Pertama Merchandising Pte Ltd",
 };
 
 /** A raw org cell that means "we don't actually know the name yet" — never
@@ -312,7 +315,12 @@ export async function readTrackerOrgs(): Promise<TrackerOrg[]> {
     });
   }
 
-  // EnquiryTracker: K (10)=Buyer Org "Name (Country)", Y (24)=Order ID.
+  // EnquiryTracker: K (10)=Buyer Org "Name (Country)", U (20)=Next Actionable
+  // Steps, Y (24)=Order ID. The dedicated Order ID column is the primary
+  // signal, but an AM sometimes just writes "Order Placed" as their next
+  // step instead of filling in the actual order number — checking ONLY
+  // column Y missed a real customer ("Love & Rosie": Order ID blank, Next
+  // Actionable Steps = "Order Placed"), so both are treated as evidence.
   const etRows = et.data.values ?? [];
   for (let r = 1; r < etRows.length; r++) {
     const row = etRows[r];
@@ -321,14 +329,16 @@ export async function readTrackerOrgs(): Promise<TrackerOrg[]> {
     const { org, country } = splitOrgCountry(buyerOrgRaw);
     if (!org || isPlaceholderOrgName(org)) continue;
     const orderId = String(row?.[24] ?? "").trim();
+    const nextSteps = String(row?.[20] ?? "").trim();
+    const orderPlaced = !!orderId || /order\s*(placed|confirmed|received)/i.test(nextSteps);
     raw.push({
       org,
       country,
       contact: null,
       businessTypeRaw: null,
       sources: ["EnquiryTracker"],
-      hasOrderId: !!orderId,
-      targetSegment: orderId ? "customers" : "engagement",
+      hasOrderId: orderPlaced,
+      targetSegment: orderPlaced ? "customers" : "engagement",
       am: null,
       leadTrackerNote: null,
     });
