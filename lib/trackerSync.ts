@@ -151,9 +151,16 @@ function tokenSequenceMatch(a: string[], b: string[]): boolean {
  * Add an entry here (lowercased raw org -> the real org it represents) only
  * once a human has actually confirmed the mapping; this exists to stop
  * wasting a research call on the SAME already-settled case every batch.
+ * The 4 below each resolved to the SAME match repeatedly (2-4 identical
+ * results across separate batches) via the post-research safety check
+ * before being promoted here — 2026-09-02.
  */
 const CONFIRMED_TRACKER_ALIASES: Record<string, string> = {
   "cmk - amazon order": "CMK Brands Ltd",
+  "gloabal sourching": "Global Sourcing Solutions",
+  "la-ra's luxury store": "La-Ra's",
+  lfh: "LFH Home Private Limited",
+  "mk int'l": "M.K International Inc.",
 };
 
 /** A raw org cell that means "we don't actually know the name yet" — never
