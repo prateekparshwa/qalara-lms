@@ -107,10 +107,23 @@ function wordTokens(org: string): string[] {
     .filter(Boolean);
 }
 
-/** True when the shorter token sequence is a whole-word PREFIX or SUFFIX of
- * the longer one ("Amatuli" is a prefix of "Amatuli Artefacts"; "Tekama" is
- * a suffix of "Rem Holding Tekama") — never a mid-string substring, and
- * never justified by a single generic/junk word alone. */
+/**
+ * True when the shorter token sequence is a whole-word, EXACT-spelling
+ * PREFIX or SUFFIX of the longer one ("Amatuli" is a prefix of "Amatuli
+ * Artefacts"; "Tekama" is a suffix of "Rem Holding Tekama") — never a
+ * mid-string substring, and never justified by a single generic/junk word
+ * alone.
+ *
+ * Deliberately exact, not fuzzy: a per-token edit-distance-1 version was
+ * tried (to catch tracker typos like "Gloabal Sourching" -> "Global
+ * Sourcing") and immediately produced real false positives — "Lifestyle
+ * Brand" ~ the unrelated real company "Litestyle", "PSC Business" ~ the
+ * unrelated real company "4Business". A missed match here just costs one
+ * wasted research call (the post-research safety check still catches a
+ * genuine duplicate); a false match here would silently and permanently
+ * block a real new lead from ever being created. That asymmetry isn't
+ * worth the efficiency gain.
+ */
 function tokenSequenceMatch(a: string[], b: string[]): boolean {
   const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
   if (shorter.length === 0 || shorter.length === longer.length) return false;
@@ -120,6 +133,22 @@ function tokenSequenceMatch(a: string[], b: string[]): boolean {
   const isSuffix = shorter.every((tok, i) => longer[longer.length - shorter.length + i] === tok);
   return isPrefix || isSuffix;
 }
+
+/**
+ * Tracker org names confirmed, through actual use, to be an internal
+ * reference note rather than a real organization name — matching logic has
+ * no way to derive these automatically (the underlying identity isn't
+ * recoverable from the string itself, and web research resolves them
+ * inconsistently run to run). "Cmk - Amazon Order" is CMK Brands Ltd's own
+ * Amazon-channel order, already in the DB (id 194411) — confirmed manually
+ * 2026-09-01 after research twice misresolved it to the unrelated "Amazon".
+ * Add an entry here (lowercased raw org -> the real org it represents) only
+ * once a human has actually confirmed the mapping; this exists to stop
+ * wasting a research call on the SAME already-settled case every batch.
+ */
+const CONFIRMED_TRACKER_ALIASES: Record<string, string> = {
+  "cmk - amazon order": "CMK Brands Ltd",
+};
 
 /** A raw org cell that means "we don't actually know the name yet" — never
  * a real, creatable organization, regardless of which tab or spelling. */
@@ -369,6 +398,8 @@ function matchesExistingOrg(
   org: string,
   existing: { exact: Set<string>; soft: Set<string>; tokenKeys: Set<string> }
 ): boolean {
+  if (CONFIRMED_TRACKER_ALIASES[org.trim().toLowerCase()]) return true;
+
   const exactKey = normalizeOrgTerm(org);
   const soft = softKey(org);
   if (exactKey && existing.exact.has(exactKey)) return true;
