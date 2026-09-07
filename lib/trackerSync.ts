@@ -172,6 +172,10 @@ const CONFIRMED_TRACKER_ALIASES: Record<string, string> = {
   "psc business": "Project Sales Corp (PSC)",
   "love bohemia u&": "Love Bohemia",
   "support@shoppeasandcarrots.com": "Peas and Carrots",
+  "roustique boutique": "The Rustique Boutique, LLC",
+  "tjc-lights , storagekithchen": "TJC - Lights, Storage & Kitchen",
+  "vivre - home | gifts | plants": "Vivre - Home | Gifts | Plants",
+  "wheel and barrow": "Wheel & Barrow Homewares",
 };
 
 /** A raw org cell that means "we don't actually know the name yet" — never
