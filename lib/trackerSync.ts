@@ -176,6 +176,10 @@ const CONFIRMED_TRACKER_ALIASES: Record<string, string> = {
   "tjc-lights , storagekithchen": "TJC - Lights, Storage & Kitchen",
   "vivre - home | gifts | plants": "Vivre - Home | Gifts | Plants",
   "wheel and barrow": "Wheel & Barrow Homewares",
+  "yellow drama": "Yellow Drama Pty Ltd",
+  "info@deji.co.in": "Deji Industry",
+  amisco: "Amisco Industries Limited",
+  "venus fatani": "Village - School of Business",
 };
 
 /** A raw org cell that means "we don't actually know the name yet" — never
