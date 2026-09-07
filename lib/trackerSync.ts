@@ -164,6 +164,12 @@ const CONFIRMED_TRACKER_ALIASES: Record<string, string> = {
   mg: "Marni",
   "perenne dissain": "Perenne",
   "pertama merchandizing pte ltd": "Pertama Merchandising Pte Ltd",
+  // Research resolved this to its full legal name once, allowing that
+  // batch's post-research check to catch it, then resolved it VERBATIM the
+  // next time — no string-similarity tier can bridge an acronym ("PSC") to
+  // its spelled-out name ("Project Sales Corp") without that resolution.
+  // A duplicate (id 202650) was created as a result; merged and removed.
+  "psc business": "Project Sales Corp (PSC)",
 };
 
 /** A raw org cell that means "we don't actually know the name yet" — never
