@@ -180,6 +180,10 @@ const CONFIRMED_TRACKER_ALIASES: Record<string, string> = {
   "info@deji.co.in": "Deji Industry",
   amisco: "Amisco Industries Limited",
   "venus fatani": "Village - School of Business",
+  "https://www.shopbarclaybutera.com/": "Barclay Butera Interiors",
+  "tamara baskin art glass": "Tamara Baskin Art Glass",
+  "bfl group": "BFL Group (Brands for Less)",
+  "wrednale designs": "Wrendale Designs Limited",
 };
 
 /** A raw org cell that means "we don't actually know the name yet" — never
