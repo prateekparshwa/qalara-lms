@@ -170,6 +170,8 @@ const CONFIRMED_TRACKER_ALIASES: Record<string, string> = {
   // its spelled-out name ("Project Sales Corp") without that resolution.
   // A duplicate (id 202650) was created as a result; merged and removed.
   "psc business": "Project Sales Corp (PSC)",
+  "love bohemia u&": "Love Bohemia",
+  "support@shoppeasandcarrots.com": "Peas and Carrots",
 };
 
 /** A raw org cell that means "we don't actually know the name yet" — never
