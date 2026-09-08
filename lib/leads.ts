@@ -99,6 +99,22 @@ export interface Lead {
   enrichment_cache: Record<string, unknown> | null;
   imported_at: string | null;
   enriched_at: string | null;
+  /** Every EnquiryTracker row found for this org (Leads&Enqs Tracker,
+   * matched by org name), latest Enquiry/Sample Date first. Populated by a
+   * one-off backfill, not the regular sheet sync — see
+   * supabase-migration-enquiry-history.sql. */
+  enquiry_history: EnquiryHistoryEntry[] | null;
+}
+
+export interface EnquiryHistoryEntry {
+  enquiryId: string | null;
+  description: string | null;
+  enquiryDate: string | null;
+  estimateClosure: string | null;
+  actualClosureDispatch: string | null;
+  scheduledNextAction: string | null;
+  revisedNextAction: string | null;
+  orderId: string | null;
 }
 
 export interface LeadsQueryParams {

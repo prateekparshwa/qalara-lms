@@ -448,6 +448,14 @@ export function dossierSections(
       color: "#4F46E5",
     });
   }
+  if (lead.enquiry_history && lead.enquiry_history.length > 0) {
+    out.push({
+      id: "dossier-enquiries",
+      title: "Enquiry History",
+      short: "Enquiries",
+      color: "#B45309",
+    });
+  }
   return out;
 }
 
@@ -701,6 +709,94 @@ export default function LeadDossier({
           </div>
         </>
       )}
+
+      {has("dossier-enquiries") && (
+        <>
+          <SectionHeader
+            id="dossier-enquiries"
+            scrollMtClass={scrollMtClass}
+            title="Enquiry History"
+            color="#B45309"
+            hint={
+              lead.enquiry_history!.length > 1
+                ? `${lead.enquiry_history!.length} enquiries, latest first`
+                : undefined
+            }
+          />
+          <div className="py-2">
+            {lead.enquiry_history!.map((e, i) => (
+              <div
+                key={e.enquiryId ?? i}
+                className="py-2.5 border-b border-zinc-200 last:border-0 break-inside-avoid"
+              >
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-xs font-code font-semibold text-editorial-text">
+                    {clean(e.enquiryDate) ?? "Not Available"}
+                  </span>
+                  {i === 0 && lead.enquiry_history!.length > 1 && (
+                    <span className="text-[9px] font-code font-bold uppercase tracking-wide text-amber-700">
+                      Latest
+                    </span>
+                  )}
+                  {clean(e.enquiryId) && (
+                    <span className="text-[10px] font-code text-editorial-muted">
+                      {e.enquiryId}
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm font-sans text-editorial-text leading-relaxed mb-1.5">
+                  {clean(e.description) ?? (
+                    <span className="italic text-editorial-muted">
+                      No description on file
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  <EnquiryDateField label="Estimate Closure" value={e.estimateClosure} />
+                  <EnquiryDateField
+                    label="Actual Closure / Dispatch"
+                    value={e.actualClosureDispatch}
+                  />
+                  <EnquiryDateField
+                    label="Scheduled Next Action"
+                    value={e.scheduledNextAction}
+                  />
+                  <EnquiryDateField label="Revised Next Action" value={e.revisedNextAction} />
+                </div>
+                {clean(e.orderId) && (
+                  <div className="mt-1.5 text-xs font-code font-semibold text-emerald-700">
+                    Order: {e.orderId}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function EnquiryDateField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  const v = clean(value);
+  return (
+    <div>
+      <div className="text-[9px] font-code uppercase tracking-wide text-editorial-muted">
+        {label}
+      </div>
+      <div
+        className={`text-xs font-code ${
+          v ? "text-editorial-text" : "text-editorial-muted italic"
+        }`}
+      >
+        {v ?? "Not Available"}
+      </div>
     </div>
   );
 }
