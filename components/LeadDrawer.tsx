@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Mail, Phone, Globe, FileDown, Info, UserCheck, Lock, Briefcase } from "lucide-react";
+import { X, Mail, Phone, Globe, FileDown, UserCheck, Lock, Briefcase } from "lucide-react";
 import type { Lead } from "@/lib/leads";
-import { webHint } from "@/lib/glossary";
 import EnrichPanel from "./EnrichPanel";
 import NotesPanel from "./NotesPanel";
-import Badge from "./Badge";
+import Badge, { OutreachStatusBadge } from "./Badge";
 import LeadDossier, { dossierSections } from "./LeadDossier";
 import Moodboard from "./Moodboard";
 import { downloadLeadPdf } from "@/lib/leadPdf";
-import { primaryEmail as pickPrimaryEmail } from "@/lib/format";
+import { primaryEmail as pickPrimaryEmail, outreachStatus } from "@/lib/format";
 import CountryFlag from "./CountryFlag";
 
 interface LeadDrawerProps {
@@ -171,13 +170,9 @@ export default function LeadDrawer({
                 {lead.customer_status && (
                   <Badge value={lead.customer_status} kind="customerStatus" />
                 )}
-                <span
-                  className="inline-flex items-center gap-1 text-[10px] font-sans text-editorial-muted cursor-help"
-                  title={`Website Confidence — how sure we are that the website on file actually belongs to this buyer (AI-verified). ${webHint(lead.website_confidence)}`}
-                >
-                  Website Confidence{" "}
-                  <Badge value={lead.website_confidence} kind="web" />
-                  <Info size={11} className="text-editorial-muted" aria-hidden="true" />
+                <span className="inline-flex items-center gap-1 text-[10px] font-sans text-editorial-muted">
+                  Outreach Status{" "}
+                  <OutreachStatusBadge value={outreachStatus(lead.notes)} />
                 </span>
               </div>
             </div>

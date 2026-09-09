@@ -411,6 +411,7 @@ const AM_ALIASES: Record<string, string> = {
   sunny: "Sunny Shah",
   srijaa: "Srijaa Sundararajan",
   gunjan: "Gunjan Kumari",
+  shivani: "Shivani Verma",
   "dilip": "Dilip BR",
   "dilip b r": "Dilip BR", // canonical spelling picked by count (86 vs 65)
   "shivanjali bhute": "Shivanjali Bhute", // casing typo only
@@ -440,6 +441,90 @@ export function sanitizeAmValue(value: string | null | undefined): string | null
     v.length > 40; // real names are short; subject lines/sentences aren't
   if (looksLikeJunk) return "No Active AM";
   return AM_ALIASES[lower] ?? v;
+}
+
+/**
+ * Canonical outcome buckets for the free-text "AM Remarks" the Lead
+ * Assignment Sheet bulk-reassignment apply appended into `notes` (format:
+ * "...Remarks: <text>"). Most leads have no such remark — this only applies
+ * to the ~276 rows touched by that exercise.
+ */
+export type OutreachStatus =
+  | "Buyer Contacted"
+  | "Bad / Bounced Email"
+  | "Business Closed"
+  | "Not a Buyer"
+  | "Off-Category"
+  | "Contact Left Company"
+  | "Duplicate"
+  | "Insufficient Data";
+
+/** Exact remark text (lowercased) -> canonical bucket, covering every raw
+ * value seen in the Lead Assignment Sheet's "AM Remarks" column. */
+const OUTREACH_REMARK_MAP: Record<string, OutreachStatus> = {
+  "buyer contacted": "Buyer Contacted",
+  "email sent": "Buyer Contacted",
+  "email bounced": "Bad / Bounced Email",
+  "email bounce": "Bad / Bounced Email",
+  "wrong email": "Bad / Bounced Email",
+  bounced: "Bad / Bounced Email",
+  "no email id": "Bad / Bounced Email",
+  "hubspot rejecting email id": "Bad / Bounced Email",
+  "seems out of business": "Business Closed",
+  "business closed": "Business Closed",
+  "business closed but indicated some new business coming soon": "Business Closed",
+  "cohymart.com is out of business and permanently offline.": "Business Closed",
+  "wordsmith & parker is permanently closed.": "Business Closed",
+  vendor: "Not a Buyer",
+  "amazon logistics": "Not a Buyer",
+  "customs broker": "Not a Buyer",
+  "exhibition venue": "Not a Buyer",
+  irrelevant: "Off-Category",
+  "irrelevant lead": "Off-Category",
+  "not a comp category": "Off-Category",
+  apparel: "Off-Category",
+  "buyer no longer with company": "Contact Left Company",
+  "no longer associated with dipyque. currently working as an individual consultant.":
+    "Contact Left Company",
+  "buyer currently in real estate business- ai data": "Contact Left Company",
+  duplicate: "Duplicate",
+  "not much info": "Insufficient Data",
+};
+
+/**
+ * Extract the AM Remark appended into `notes` and bucket it into one of the
+ * canonical OutreachStatus categories. Falls back to keyword heuristics for
+ * remark text not seen verbatim above (e.g. the one-off LinkedIn/WhatsApp
+ * note), then to the raw remark itself so nothing is silently dropped.
+ * Returns null when the lead has no "Remarks:" segment in its notes at all.
+ */
+export function outreachStatus(notes: string | null | undefined): OutreachStatus | string | null {
+  if (!notes) return null;
+  const m = notes.match(/Remarks:\s*([\s\S]+)$/i);
+  if (!m) return null;
+  const raw = m[1].trim();
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  if (OUTREACH_REMARK_MAP[lower]) return OUTREACH_REMARK_MAP[lower];
+  if (/bounce|wrong email|no email|rejecting email/.test(lower)) return "Bad / Bounced Email";
+  if (/out of business|permanently closed|permanently offline/.test(lower)) return "Business Closed";
+  if (/no longer (with|associated)/.test(lower)) return "Contact Left Company";
+  if (/duplicate/.test(lower)) return "Duplicate";
+  if (/\bvendor\b|logistics|customs broker|exhibition venue/.test(lower)) return "Not a Buyer";
+  if (/irrelevant|not a comp category/.test(lower)) return "Off-Category";
+  if (/contacted|connected on linkedin|email sent/.test(lower)) return "Buyer Contacted";
+  if (/not much info/.test(lower)) return "Insufficient Data";
+  return raw;
+}
+
+/** Visual tone for an OutreachStatus value — drives badge/row color. */
+export function outreachStatusTone(
+  status: string
+): "good" | "critical" | "warn" | "neutral" {
+  if (status === "Buyer Contacted") return "good";
+  if (status === "Business Closed" || status === "Bad / Bounced Email") return "critical";
+  if (status === "Off-Category" || status === "Contact Left Company") return "warn";
+  return "neutral"; // Not a Buyer, Duplicate, Insufficient Data, unrecognized text
 }
 
 /** "2026-06-12T08:15:00Z" -> "12 Jun 2026, 1:45 pm IST". */

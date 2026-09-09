@@ -8,7 +8,6 @@ import Aurora from "@/components/Aurora";
 import RotatingWord from "@/components/RotatingWord";
 import LeadDossier, { dossierSections } from "@/components/LeadDossier";
 import Moodboard from "@/components/Moodboard";
-import Badge from "@/components/Badge";
 import { downloadLeadPdf } from "@/lib/leadPdf";
 import type { Lead } from "@/lib/leads";
 
@@ -281,12 +280,6 @@ export default function DiscoverPage() {
                         {profile.country && (
                           <span className="text-xs font-sans text-editorial-secondary">
                             {profile.country}
-                          </span>
-                        )}
-                        {profile.website_confidence && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-sans text-editorial-muted">
-                            Website Confidence{" "}
-                            <Badge value={profile.website_confidence} kind="web" />
                           </span>
                         )}
                         {website2 && (

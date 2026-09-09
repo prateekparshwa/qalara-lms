@@ -9,17 +9,17 @@ import {
   Lock,
 } from "lucide-react";
 import type { Lead } from "@/lib/leads";
-import Badge from "./Badge";
+import Badge, { OutreachStatusBadge } from "./Badge";
 import Legend from "./Legend";
 import { buyerTypeTag } from "@/lib/glossary";
-import { primaryEmail } from "@/lib/format";
+import { primaryEmail, outreachStatus } from "@/lib/format";
 import CountryFlag from "./CountryFlag";
 
 type ColId =
   | "organization"
   | "email"
   | "website"
-  | "website_confidence"
+  | "outreach_status"
   | "country"
   | "buyer_type"
   | "buyer_classification"
@@ -29,7 +29,7 @@ const COLUMNS: { id: ColId; label: string; dot: string; sortable: boolean }[] = 
   { id: "organization", label: "Buyer Organization", dot: "#4F46E5", sortable: true },
   { id: "email", label: "Buyer Email ID", dot: "#0D9488", sortable: true },
   { id: "website", label: "Brand Website", dot: "#B45309", sortable: true },
-  { id: "website_confidence", label: "Website Confidence", dot: "#0D9488", sortable: true },
+  { id: "outreach_status", label: "Outreach Status", dot: "#E11D48", sortable: false },
   { id: "country", label: "Buyer Country", dot: "#7C3AED", sortable: true },
   { id: "buyer_type", label: "Business Type", dot: "#E11D48", sortable: true },
   { id: "buyer_classification", label: "Buyer Purchase Potential (AI Recommended)", dot: "#4F46E5", sortable: true },
@@ -77,8 +77,8 @@ function Cell({ lead, col }: { lead: Lead; col: ColId }) {
         </a>
       );
     }
-    case "website_confidence":
-      return <Badge value={lead.website_confidence} kind="web" />;
+    case "outreach_status":
+      return <OutreachStatusBadge value={outreachStatus(lead.notes)} />;
     case "country":
       return (
         <span className="text-xs font-sans text-editorial-secondary block max-w-[140px] break-words">
@@ -295,6 +295,10 @@ export default function LeadsTable({
               data.map((lead, i) => {
                 const org = lead.organization ?? "this lead";
                 const isSelected = selected.has(lead.id);
+                // Business-closed leads get a readable red row so an AM
+                // spots them without opening the dossier — takes priority
+                // over the usual zebra striping, but selection still wins.
+                const isClosed = outreachStatus(lead.notes) === "Business Closed";
                 return (
                   <tr
                     key={lead.id}
@@ -308,12 +312,14 @@ export default function LeadsTable({
                     role="button"
                     tabIndex={0}
                     aria-label={`Open profile for ${org}`}
-                    className={`group cursor-pointer border-b border-editorial-border transition-colors hover:bg-[#F5F7FF] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-editorial-accent ${
+                    className={`group cursor-pointer border-b border-editorial-border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-editorial-accent ${
                       isSelected
-                        ? "bg-violet-50"
+                        ? "bg-violet-50 hover:bg-violet-100"
+                        : isClosed
+                        ? "bg-red-50 hover:bg-red-100"
                         : i % 2 === 1
-                        ? "bg-zinc-50/40"
-                        : "bg-white"
+                        ? "bg-zinc-50/40 hover:bg-[#F5F7FF]"
+                        : "bg-white hover:bg-[#F5F7FF]"
                     }`}
                   >
                     {selectable && (
@@ -334,7 +340,7 @@ export default function LeadsTable({
                       <td
                         key={c.id}
                         className={`px-3 py-2.5 align-top ${
-                          c.id === "buyer_classification" || c.id === "website_confidence"
+                          c.id === "buyer_classification" || c.id === "outreach_status"
                             ? "text-center"
                             : ""
                         }`}

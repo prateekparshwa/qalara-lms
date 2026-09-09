@@ -1,4 +1,5 @@
 import type { Lead } from "./leads";
+import { outreachStatus } from "./format";
 
 /**
  * Client-side PDF export of a lead/buyer profile (jsPDF, dynamically imported).
@@ -96,10 +97,11 @@ export async function downloadLeadPdf(lead: Partial<Lead>): Promise<void> {
   doc.text(doc.splitTextToSize(org, width), margin, y);
   y += 22;
 
+  const outreach = outreachStatus(lead.notes);
   const sub = [
     val(lead.country),
     val(lead.buyer_classification) ? `Priority: ${lead.buyer_classification}` : null,
-    val(lead.website_confidence) ? `Web: ${lead.website_confidence}` : null,
+    outreach ? `Outreach: ${outreach}` : null,
   ]
     .filter(Boolean)
     .join("    •    ");

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLeads } from "@/lib/leads";
+import { outreachStatus } from "@/lib/format";
 import * as XLSX from "xlsx";
 
 export async function GET(req: NextRequest) {
@@ -21,7 +22,6 @@ export async function GET(req: NextRequest) {
       classification: sp.get("classification") ?? undefined,
       am: sp.get("am") ?? undefined,
       unassigned: sp.get("unassigned") ?? undefined,
-      confidence: sp.get("confidence") ?? undefined,
       org_scale: sp.get("org_scale") ?? undefined,
       india: sp.get("india") ?? undefined,
     };
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
       "Last Email Subject": lead.last_email_subject ?? "",
       "Email Contact Summary": lead.email_contact_summary ?? "",
       "Buyer Classification": lead.buyer_classification ?? "",
-      "Website Confidence": lead.website_confidence ?? "",
+      "Outreach Status": outreachStatus(lead.notes) ?? "",
       Source: lead.source ?? "",
     }));
 

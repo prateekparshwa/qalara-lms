@@ -1,5 +1,5 @@
 import { priorityHint, webHint, customerStatusHint, customerStatusLabel } from "@/lib/glossary";
-import { classificationTier } from "@/lib/format";
+import { classificationTier, outreachStatusTone } from "@/lib/format";
 
 type BadgeKind = "priority" | "web" | "customerStatus";
 
@@ -52,6 +52,36 @@ export default function Badge({
   return (
     <span className={`badge ${cls}`} title={hint} aria-label={hint}>
       {text}
+    </span>
+  );
+}
+
+/** Tailwind classes for the small Outreach Status pill, by tone. Shared by
+ * the leads table and the dossier drawer header so both stay in sync. */
+const OUTREACH_TONE_CLASSES: Record<ReturnType<typeof outreachStatusTone>, string> = {
+  good: "bg-emerald-50 text-emerald-700",
+  critical: "bg-red-100 text-red-700",
+  warn: "bg-amber-50 text-amber-700",
+  neutral: "bg-zinc-100 text-zinc-600",
+};
+
+/**
+ * Pill for a lead's Outreach Status (the canonical bucket derived from the
+ * AM Remark appended to `notes` during the Lead Assignment Sheet apply).
+ * Takes the already-computed status text — call `outreachStatus(lead.notes)`
+ * first — since not every lead has one.
+ */
+export function OutreachStatusBadge({ value }: { value: string | null }) {
+  if (!value) {
+    return <span className="text-editorial-muted text-xs">—</span>;
+  }
+  const tone = outreachStatusTone(value);
+  return (
+    <span
+      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold whitespace-nowrap ${OUTREACH_TONE_CLASSES[tone]}`}
+      title={`Outreach Status — outcome of the AM's follow-up on this lead. ${value}`}
+    >
+      {value}
     </span>
   );
 }

@@ -57,7 +57,6 @@ const DEFAULT_FILTERS: Filters = {
   org_scale: "",
   unassigned: "",
   india: "",
-  confidence: "",
 };
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -194,7 +193,6 @@ export default function LeadsDashboard({
         ...(filters.org_scale && { org_scale: filters.org_scale }),
         ...(filters.unassigned && { unassigned: filters.unassigned }),
         ...(filters.india && { india: filters.india }),
-        ...(filters.confidence && { confidence: filters.confidence }),
       });
       const res = await fetch(`/api/leads?${params}`);
       if (!res.ok) {
@@ -579,7 +577,6 @@ export default function LeadsDashboard({
       ...(filters.org_scale && { org_scale: filters.org_scale }),
       ...(filters.unassigned && { unassigned: filters.unassigned }),
       ...(filters.india && { india: filters.india }),
-      ...(filters.confidence && { confidence: filters.confidence }),
     });
     window.open(`/api/leads/export?${params}`, "_blank");
     showToast(

@@ -129,7 +129,6 @@ export interface LeadsQueryParams {
   am?: string;
   /** "yes" → only leads with no Account Manager (blank or "No Active AM"). */
   unassigned?: string;
-  confidence?: string;
   org_scale?: string;
   /** "yes" → only buyers whose Sources-From-India field is a confirmed Yes. */
   india?: string;
@@ -158,7 +157,6 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
     classification,
     am,
     unassigned,
-    confidence,
     org_scale,
     india,
     page = 1,
@@ -213,7 +211,6 @@ export async function getLeads(params: LeadsQueryParams): Promise<LeadsResult> {
   } else if (am) {
     query = query.ilike("current_am", `%${am}%`);
   }
-  if (confidence) query = query.ilike("website_confidence", `%${confidence}%`);
   if (org_scale) query = query.eq("org_scale", org_scale);
   // Sources-From-India is free text, but confirmed entries always start "Yes".
   if (india === "yes") query = query.ilike("imports_from_india", "yes%");
@@ -341,11 +338,6 @@ export async function getLeadStats(segment?: string) {
 
   // Tier is the LEADING word, so prefix-match — a substring "%HIGH%" wrongly
   // counts "higher"/"high" inside LOW/MED rationale sentences.
-  const { count: highConf } = await countQuery().ilike(
-    "website_confidence",
-    "HIGH%"
-  );
-
   const { count: highClass } = await countQuery().ilike(
     "buyer_classification",
     "HIGH%"
@@ -359,7 +351,6 @@ export async function getLeadStats(segment?: string) {
   return {
     total: total ?? 0,
     verified: verified ?? 0,
-    highConfidence: highConf ?? 0,
     highClassification: highClass ?? 0,
     amAssigned: amAssigned ?? 0,
   };

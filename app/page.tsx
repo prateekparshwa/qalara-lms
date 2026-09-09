@@ -20,11 +20,10 @@ function formatSynced(iso: string | null): string {
 interface Stats {
   total: number;
   verified: number;
-  highConfidence: number;
 }
 
 export default async function LobbyPage() {
-  let stats: Stats = { total: 0, verified: 0, highConfidence: 0 };
+  let stats: Stats = { total: 0, verified: 0 };
   let lastSynced: string | null = null;
   try {
     // Scope to the engagement directory so the lobby figure matches the
@@ -36,7 +35,6 @@ export default async function LobbyPage() {
     stats = {
       total: s.total,
       verified: s.verified,
-      highConfidence: s.highConfidence,
     };
     lastSynced = synced;
   } catch {

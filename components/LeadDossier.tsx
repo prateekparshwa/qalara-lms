@@ -1,6 +1,6 @@
 import { ExternalLink, Info } from "lucide-react";
 import type { Lead } from "@/lib/leads";
-import { relativeDate } from "@/lib/format";
+import { relativeDate, outreachStatus } from "@/lib/format";
 import { customerStatusLabel } from "@/lib/glossary";
 import Badge from "./Badge";
 
@@ -398,7 +398,7 @@ export function dossierSections(
       lead.target_audience,
       lead.import_countries,
       lead.imports_from_india,
-      lead.website_confidence,
+      outreachStatus(lead.notes),
       lead.customer_status
     )
   ) {
@@ -635,8 +635,8 @@ export default function LeadDossier({
             )}
             <Field
               showAll={showAll}
-              label="Website Confidence (AI-Verified)"
-              value={lead.website_confidence}
+              label="Outreach Status"
+              value={outreachStatus(lead.notes)}
             />
           </div>
         </>
