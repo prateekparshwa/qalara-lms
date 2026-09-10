@@ -599,6 +599,11 @@ export async function replaceSegmentLeads(
     if (prior && prior.hubspot_email_locked === true) {
       base.last_email_subject = prior.last_email_subject;
       base.email_contact_summary = prior.email_contact_summary;
+      // The HubSpot sync sets this alongside the subject/summary; keep it too
+      // so the sheet's stale "Last Contact Date from Qalara" can't override it.
+      if (hasVal(prior.last_qalara_contact)) {
+        base.last_qalara_contact = prior.last_qalara_contact;
+      }
       base.hubspot_email_locked = true;
     } else {
       base.hubspot_email_locked = false;

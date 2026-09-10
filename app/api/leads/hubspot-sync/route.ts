@@ -102,9 +102,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Commit — batched upsert. Rollup columns are always written for every
-    // row; last_email_subject/email_contact_summary/hubspot_email_locked are
-    // only included (and only then locked) for rows where a HubSpot email was
-    // actually found, so a miss never blanks out the sheet's existing value.
+    // row; last_email_subject/email_contact_summary/last_qalara_contact/
+    // hubspot_email_locked are only included (and only then locked) for rows
+    // where a HubSpot email was actually found, so a miss never blanks out
+    // the sheet's existing value.
     const stamp = new Date().toISOString();
     let updated = 0;
     let failed = 0;
@@ -123,6 +124,10 @@ export async function POST(req: NextRequest) {
         if (r.email_subject || r.email_summary) {
           row.last_email_subject = r.email_subject;
           row.email_contact_summary = r.email_summary;
+          // Keep the "last contact from Qalara" date in step with the email
+          // we just pulled — otherwise it keeps showing the sheet's old date
+          // next to a much newer summary.
+          if (r.email_date) row.last_qalara_contact = r.email_date;
           row.hubspot_email_locked = true;
         }
         return row;

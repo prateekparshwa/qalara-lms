@@ -314,6 +314,9 @@ export interface HubspotSyncResult {
    * rather than blanking them. */
   email_subject: string | null;
   email_summary: string | null;
+  /** Date (YYYY-MM-DD) of that latest HubSpot email — the caller writes this
+   * into last_qalara_contact so it can't drift from the summary/subject. */
+  email_date: string | null;
 }
 
 /** Orchestrates the whole read-only pull for a batch of leads: match Contacts
@@ -404,6 +407,7 @@ export async function pullHubspotDataForLeads(leads: HubspotSyncInput[]): Promis
       hubspot_notes_count: notesCountRaw != null ? Number(notesCountRaw) : null,
       email_subject: latestEmail?.subject ?? null,
       email_summary: emailSummary,
+      email_date: emailDateLabel,
       hubspot_match_status: classifyMatchStatus({
         hasEmail: !!email,
         hasDomain: !!domain,
