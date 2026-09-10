@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { hubspotConfigured, pullHubspotDataForLeads } from "@/lib/hubspot";
+import { gistEmail, excerptFallback, mapLimit } from "@/lib/emailGist";
 
 // Batched HubSpot calls need the Node.js runtime (not edge). The rollup
 // lookups (deal stage/email/company) run concurrently via Promise.allSettled
@@ -13,6 +14,11 @@ export const maxDuration = 290;
 
 const PAGE = 1000;
 const WRITE_CHUNK = 500;
+// Emails whose body changed since last sync get a fresh LLM gist. Bounded per
+// run so one sync can't stall on thousands of model calls — the rest carry
+// over unchanged and are picked up on the next run.
+const GIST_PER_RUN = 300;
+const GIST_CONCURRENCY = 15;
 
 interface LeadRow {
   id: number;
@@ -55,16 +61,21 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1. Read every lead in this segment's id/email/website (paginated).
+    // email_contact_full lets us re-gist only the emails that actually changed.
     const rows: LeadRow[] = [];
+    const fullByLead = new Map<number, string | null>();
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await supabaseAdmin
         .from("leads")
-        .select("id,email,website")
+        .select("id,email,website,email_contact_full")
         .eq("segment", segment)
         .range(from, from + PAGE - 1);
       if (error) throw new Error(error.message);
-      const page = (data ?? []) as LeadRow[];
-      rows.push(...page);
+      const page = (data ?? []) as unknown as (LeadRow & { email_contact_full: string | null })[];
+      for (const r of page) {
+        rows.push({ id: r.id, email: r.email, website: r.website });
+        fullByLead.set(r.id, r.email_contact_full ?? null);
+      }
       if (page.length < PAGE) break;
     }
 
@@ -83,7 +94,12 @@ export async function POST(req: NextRequest) {
     const matched = results.filter((r) => r.hubspot_match_status === "matched");
     const notFound = results.filter((r) => r.hubspot_match_status === "not_found");
     const skipped = results.filter((r) => r.hubspot_match_status === "skipped");
-    const withEmail = results.filter((r) => r.email_subject || r.email_summary);
+    const withEmail = results.filter((r) => r.email_subject || r.email_full);
+
+    // Rows whose email body differs from what's stored need a fresh gist.
+    const changed = results.filter(
+      (r) => r.email_full && r.email_full !== (fullByLead.get(r.id) ?? null)
+    );
 
     if (!commit) {
       return NextResponse.json({
@@ -91,21 +107,35 @@ export async function POST(req: NextRequest) {
         message:
           `Dry run: would match ${matched.length} of ${rows.length} leads in HubSpot ` +
           `(${notFound.length} not found, ${skipped.length} skipped — no email or website on file), ` +
-          `${withEmail.length} with a HubSpot email to pull into last_email_subject/email_contact_summary ` +
-          `(this locks those fields against the next Sheets sync). Nothing was written yet.`,
+          `${withEmail.length} with a HubSpot email; ${changed.length} email(s) changed and would be ` +
+          `re-gisted (up to ${GIST_PER_RUN} per run). Nothing was written yet.`,
         matched: matched.length,
         notFound: notFound.length,
         skipped: skipped.length,
         withEmail: withEmail.length,
+        changed: changed.length,
         total: rows.length,
       });
     }
 
+    // Gist the changed emails (bounded). id -> gist text.
+    const toGist = changed.slice(0, GIST_PER_RUN);
+    const gistById = new Map<number, string>();
+    const gistResults = await mapLimit(toGist, GIST_CONCURRENCY, (r) =>
+      gistEmail(r.email_subject, r.email_full)
+    );
+    toGist.forEach((r, i) => {
+      const { gist } = gistResults[i];
+      gistById.set(r.id, gist || excerptFallback(r.email_full ?? ""));
+    });
+
     // 3. Commit — batched upsert. Rollup columns are always written for every
-    // row; last_email_subject/email_contact_summary/last_qalara_contact/
-    // hubspot_email_locked are only included (and only then locked) for rows
-    // where a HubSpot email was actually found, so a miss never blanks out
-    // the sheet's existing value.
+    // row. The email fields (last_email_subject / email_contact_summary /
+    // email_contact_full / last_qalara_contact / hubspot_email_locked) are
+    // touched only for rows whose email actually CHANGED and got a fresh gist
+    // this run — unchanged emails and rows past the per-run gist cap keep
+    // their existing values (which PRESERVE_COLUMNS carries through a Sheets
+    // sync), so a miss never blanks anything.
     const stamp = new Date().toISOString();
     let updated = 0;
     let failed = 0;
@@ -121,9 +151,11 @@ export async function POST(req: NextRequest) {
           hubspot_match_status: r.hubspot_match_status,
           hubspot_synced_at: stamp,
         };
-        if (r.email_subject || r.email_summary) {
+        const gist = gistById.get(r.id);
+        if (gist !== undefined && (r.email_subject || r.email_full)) {
           row.last_email_subject = r.email_subject;
-          row.email_contact_summary = r.email_summary;
+          row.email_contact_summary = gist;
+          row.email_contact_full = r.email_full;
           // Keep the "last contact from Qalara" date in step with the email
           // we just pulled — otherwise it keeps showing the sheet's old date
           // next to a much newer summary.
@@ -141,18 +173,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const remainingToGist = Math.max(0, changed.length - toGist.length);
     return NextResponse.json({
       dryRun: false,
       message:
         `Synced ${updated} leads from HubSpot ` +
         `(${matched.length} matched, ${notFound.length} not found, ${skipped.length} skipped, ` +
-        `${withEmail.length} email(s) pulled)` +
+        `${withEmail.length} email(s) pulled, ${toGist.length} re-gisted` +
+        (remainingToGist ? `, ${remainingToGist} left for the next run` : "") +
+        `)` +
         (failed ? `, ${failed} failed to save` : "") +
         ".",
       matched: matched.length,
       notFound: notFound.length,
       skipped: skipped.length,
       withEmail: withEmail.length,
+      gisted: toGist.length,
+      gistRemaining: remainingToGist,
       updated,
       failed,
       total: rows.length,

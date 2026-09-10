@@ -312,12 +312,12 @@ export interface HubspotSyncResult {
   hubspot_last_activity_date: string | null;
   hubspot_notes_count: number | null;
   hubspot_match_status: HubspotMatchStatus;
-  /** Maps onto the EXISTING last_email_subject / email_contact_summary
-   * columns (overwriting the sheet's version) — null when no HubSpot email
-   * was found, in which case the caller should leave those fields untouched
-   * rather than blanking them. */
+  /** Subject of the latest HubSpot email (-> last_email_subject). Null when no
+   * email was found; the caller then leaves the email fields untouched. */
   email_subject: string | null;
-  email_summary: string | null;
+  /** Full raw body of that email, "YYYY-MM-DD — <text>" (-> email_contact_full).
+   * The caller derives the short gist (-> email_contact_summary) from this. */
+  email_full: string | null;
   /** Date (YYYY-MM-DD) of that latest HubSpot email — the caller writes this
    * into last_qalara_contact so it can't drift from the summary/subject. */
   email_date: string | null;
@@ -410,7 +410,7 @@ export async function pullHubspotDataForLeads(leads: HubspotSyncInput[]): Promis
       hubspot_last_activity_date: lastActivity,
       hubspot_notes_count: notesCountRaw != null ? Number(notesCountRaw) : null,
       email_subject: latestEmail?.subject ?? null,
-      email_summary: emailSummary,
+      email_full: emailSummary,
       email_date: emailDateLabel,
       hubspot_match_status: classifyMatchStatus({
         hasEmail: !!email,

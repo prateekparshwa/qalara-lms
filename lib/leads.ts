@@ -62,7 +62,11 @@ export interface Lead {
   am_locked: boolean | null;
   last_qalara_contact: string | null;
   last_email_subject: string | null;
+  /** Short LLM gist of the last HubSpot email (3-4 lines + action point). */
   email_contact_summary: string | null;
+  /** Raw body of that email ("YYYY-MM-DD — <text>") — the "Show full email"
+   * source, shown with a link into HubSpot. */
+  email_contact_full: string | null;
   sourcing_emails_low: string | null;
   sourcing_emails_mid: string | null;
   sourcing_emails_high: string | null;
@@ -477,6 +481,8 @@ const PRESERVE_COLUMNS = [
   "hubspot_notes_count",
   "hubspot_match_status",
   "hubspot_synced_at",
+  // Raw last-email body — HubSpot-sourced, never in the sheet.
+  "email_contact_full",
 ] as const;
 
 /** Stable identity for matching an old DB row to a new sheet row: normalized
@@ -612,6 +618,7 @@ export async function replaceSegmentLeads(
     if (prior && prior.hubspot_email_locked === true) {
       base.last_email_subject = prior.last_email_subject;
       base.email_contact_summary = prior.email_contact_summary;
+      base.email_contact_full = prior.email_contact_full;
       // The HubSpot sync sets this alongside the subject/summary; keep it too
       // so the sheet's stale "Last Contact Date from Qalara" can't override it.
       if (hasVal(prior.last_qalara_contact)) {

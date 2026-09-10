@@ -1,6 +1,7 @@
 import { ExternalLink, Info } from "lucide-react";
 import type { Lead } from "@/lib/leads";
 import { relativeDate, outreachStatus } from "@/lib/format";
+import { hubspotContactUrl } from "@/lib/hubspotLink";
 import { customerStatusLabel } from "@/lib/glossary";
 import Badge from "./Badge";
 import ClampText from "./ClampText";
@@ -422,6 +423,7 @@ export function dossierSections(
       lead.last_qalara_contact,
       lead.last_email_subject,
       lead.email_contact_summary,
+      lead.email_contact_full,
       lead.email_snapshot
     )
   ) {
@@ -669,6 +671,29 @@ export default function LeadDossier({
             />
             <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
             <Field showAll={showAll} label="Last Email Summary / Sales POC Notes" value={lead.email_contact_summary} clamp />
+            {clean(lead.email_contact_full) && (
+              <div className="py-2 border-b border-zinc-200 last:border-0 break-inside-avoid">
+                <div className="flex items-center justify-between gap-3 mb-0.5">
+                  <div className="text-[10px] font-code font-semibold uppercase tracking-wide text-editorial-muted">
+                    Full Email
+                  </div>
+                  {hubspotContactUrl(lead.hubspot_contact_id) && (
+                    <a
+                      href={hubspotContactUrl(lead.hubspot_contact_id)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] font-sans font-semibold text-editorial-accent hover:underline"
+                    >
+                      Open in HubSpot
+                      <ExternalLink size={10} />
+                    </a>
+                  )}
+                </div>
+                <div className="text-sm font-sans text-editorial-text leading-relaxed break-words">
+                  <ClampText text={clean(lead.email_contact_full)!} lines={4} />
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
