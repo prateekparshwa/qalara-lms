@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { updateLeadsAmInSheetBulk } from "@/lib/google-sheets";
 import { getSegment, segmentSpreadsheetId, sheetOptionsFor } from "@/lib/segments";
+import { logAssignments } from "@/lib/brief";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,13 +23,15 @@ const UNASSIGNED = "No Active AM";
  * ONE sheet read + batchUpdate per segment (not per lead).
  */
 export async function POST(req: NextRequest) {
-  let body: { ids?: unknown; am?: unknown; unassign?: unknown };
+  let body: { ids?: unknown; am?: unknown; unassign?: unknown; assignedBy?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
+  const assignedBy =
+    (typeof body.assignedBy === "string" ? body.assignedBy : "").trim().toLowerCase() || null;
   const unassign = body.unassign === true;
   const am = unassign
     ? UNASSIGNED
@@ -62,10 +65,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Pull the rows we're about to touch — needed for the sheet write-back match.
+  // Pull the rows we're about to touch — needed for the sheet write-back match
+  // and (current_am) for the brief audit log's "from" side.
   const { data: leads, error: fetchErr } = await supabaseAdmin
     .from("leads")
-    .select("id, organization, email, segment")
+    .select("id, organization, email, segment, current_am")
     .in("id", ids);
   if (fetchErr) {
     return NextResponse.json(
@@ -88,6 +92,23 @@ export async function POST(req: NextRequest) {
       { error: `Database update failed: ${updateErr.message}` },
       { status: 500 }
     );
+  }
+
+  // Audit log for the AM daily brief — best-effort, never fail the assignment.
+  try {
+    await logAssignments(
+      leads.map((l) => ({
+        lead_id: l.id,
+        lead_org: l.organization,
+        lead_email: l.email,
+        segment: l.segment,
+        from_am: l.current_am ?? null,
+        to_am: am,
+        assigned_by: assignedBy,
+      }))
+    );
+  } catch (err) {
+    console.error("assign-am-bulk: brief audit log failed:", err);
   }
 
   // Sheet write-back — best-effort, grouped by segment so each sheet is read

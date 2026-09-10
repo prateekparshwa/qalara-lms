@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { updateLeadAmInSheet } from "@/lib/google-sheets";
 import { getSegment, segmentSpreadsheetId, sheetOptionsFor } from "@/lib/segments";
+import { logAssignments } from "@/lib/brief";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -16,7 +17,7 @@ export const maxDuration = 30;
  * the segment's Google Sheet so the value matches there too.
  */
 export async function POST(req: NextRequest) {
-  let body: { id?: number; am?: string; release?: boolean };
+  let body: { id?: number; am?: string; release?: boolean; assignedBy?: string };
   try {
     body = await req.json();
   } catch {
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
   const id = Number(body.id);
   const release = body.release === true;
   const am = (body.am ?? "").trim();
+  const assignedBy = (body.assignedBy ?? "").trim().toLowerCase() || null;
   if (!Number.isFinite(id) || id <= 0) {
     return NextResponse.json({ error: "Missing lead id." }, { status: 400 });
   }
@@ -70,6 +72,23 @@ export async function POST(req: NextRequest) {
       { error: `Database update failed: ${updateErr.message}` },
       { status: 500 }
     );
+  }
+
+  // Audit log for the AM daily brief — best-effort, never fail the assignment.
+  try {
+    await logAssignments([
+      {
+        lead_id: lead.id,
+        lead_org: lead.organization,
+        lead_email: lead.email,
+        segment: lead.segment,
+        from_am: lead.current_am ?? null,
+        to_am: am,
+        assigned_by: assignedBy,
+      },
+    ]);
+  } catch (err) {
+    console.error("assign-am: brief audit log failed:", err);
   }
 
   // Sheet write-back — best-effort: the db is already updated, so report

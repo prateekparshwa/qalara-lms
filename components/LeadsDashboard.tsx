@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import MagazineHeader from "@/components/MagazineHeader";
+import BriefBell from "@/components/BriefBell";
 import StatsBar from "@/components/StatsBar";
 import FilterPanel, { Filters } from "@/components/FilterPanel";
 import LeadsTable from "@/components/LeadsTable";
@@ -334,7 +335,7 @@ export default function LeadsDashboard({
       const res = await fetch("/api/leads/assign-am", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: lead.id, am }),
+        body: JSON.stringify({ id: lead.id, am, assignedBy: getStoredEmail() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
@@ -490,7 +491,11 @@ export default function LeadsDashboard({
       const res = await fetch("/api/leads/assign-am-bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(unassign ? { ids, unassign: true } : { ids, am: bulkAm }),
+        body: JSON.stringify(
+          unassign
+            ? { ids, unassign: true, assignedBy: getStoredEmail() }
+            : { ids, am: bulkAm, assignedBy: getStoredEmail() }
+        ),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
@@ -595,27 +600,34 @@ export default function LeadsDashboard({
   }, []);
 
   // AM identity control — sits in the header next to Sync, bolded a touch.
-  const amControl = canAssign ? (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-sans font-semibold text-editorial-secondary">
-      <UserCheck size={12} className="text-green-600" />
-      AM editing as{" "}
-      <span className="font-bold text-editorial-black">{userEmail}</span>
-      <button
-        onClick={handleIdentify}
-        className="ml-1 font-semibold text-editorial-accent hover:underline cursor-pointer"
-      >
-        change
-      </button>
+  // The daily-brief bell sits beside it (self-hides unless the current email
+  // maps to an AM in am_directory).
+  const amControl = (
+    <span className="inline-flex items-center gap-2">
+      <BriefBell />
+      {canAssign ? (
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-sans font-semibold text-editorial-secondary">
+          <UserCheck size={12} className="text-green-600" />
+          AM editing as{" "}
+          <span className="font-bold text-editorial-black">{userEmail}</span>
+          <button
+            onClick={handleIdentify}
+            className="ml-1 font-semibold text-editorial-accent hover:underline cursor-pointer"
+          >
+            change
+          </button>
+        </span>
+      ) : (
+        <button
+          onClick={handleIdentify}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-sans font-bold border border-indigo-200 rounded text-editorial-accent hover:bg-indigo-50 hover:border-editorial-accent transition-colors cursor-pointer"
+          title="Account Manager editing is limited to authorized users"
+        >
+          <Lock size={11} />
+          {userEmail ? "View only · switch account" : "Sign in to edit AMs"}
+        </button>
+      )}
     </span>
-  ) : (
-    <button
-      onClick={handleIdentify}
-      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-sans font-bold border border-indigo-200 rounded text-editorial-accent hover:bg-indigo-50 hover:border-editorial-accent transition-colors cursor-pointer"
-      title="Account Manager editing is limited to authorized users"
-    >
-      <Lock size={11} />
-      {userEmail ? "View only · switch account" : "Sign in to edit AMs"}
-    </button>
   );
 
   return (

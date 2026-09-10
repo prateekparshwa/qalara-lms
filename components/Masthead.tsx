@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import BriefBell from "./BriefBell";
 
 /**
  * Shared editorial masthead for the lobby and the directory chooser.
@@ -54,7 +55,10 @@ export default function Masthead({
             </p>
           )}
         </div>
-        {right && <div className="flex-shrink-0 pb-0.5">{right}</div>}
+        <div className="flex-shrink-0 pb-0.5 flex items-center gap-3">
+          <BriefBell />
+          {right}
+        </div>
       </div>
       <div className="max-w-6xl mx-auto px-6 lg:px-10">
         <div className="border-t border-editorial-black" />
