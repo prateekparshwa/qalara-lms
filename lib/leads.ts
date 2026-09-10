@@ -545,6 +545,7 @@ export async function replaceSegmentLeads(
         "am_locked",
         "last_email_subject",
         "email_contact_summary",
+        "last_qalara_contact",
         "hubspot_email_locked",
         ...absentPreserve,
       ])
