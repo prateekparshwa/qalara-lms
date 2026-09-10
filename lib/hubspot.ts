@@ -19,9 +19,13 @@ const CONTACT_PROPERTIES = ["email", "hs_last_sales_activity_timestamp", "notes_
 const COMPANY_PROPERTIES = ["domain", "name", "hs_last_sales_activity_timestamp", "notes_last_updated", "num_notes"];
 const DEAL_PROPERTIES = ["dealstage", "dealname", "closedate"];
 const EMAIL_PROPERTIES = ["hs_email_subject", "hs_email_text", "hs_timestamp", "hs_email_direction"];
-// Association order isn't guaranteed newest-first, so this is a bounded
-// best-effort sample per contact, not a guaranteed "true latest" email.
-const MAX_EMAILS_PER_CONTACT = 5;
+// The contacts->emails association batch endpoint returns email ids in
+// ASCENDING order (oldest first — verified against live data). Take a window
+// from the END of the list so a contact with a long history still yields its
+// newest emails; among that window we then pick the true max hs_timestamp.
+// A generous window guards against minor ordering irregularities without
+// pulling every email a heavy contact has ever had.
+const MAX_EMAILS_PER_CONTACT = 15;
 
 export function hubspotConfigured(): boolean {
   return !!process.env.HUBSPOT_PRIVATE_APP_TOKEN;
@@ -254,7 +258,7 @@ export async function batchReadLatestEmailPerContact(
       const fromId = r.from?.id;
       if (!fromId) continue;
       const ids = (r.to ?? [])
-        .slice(0, MAX_EMAILS_PER_CONTACT)
+        .slice(-MAX_EMAILS_PER_CONTACT)
         .map((t: { toObjectId: string | number }) => String(t.toObjectId));
       if (ids.length > 0) contactToEmailIds.set(String(fromId), ids);
     }
