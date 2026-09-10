@@ -3,6 +3,7 @@ import type { Lead } from "@/lib/leads";
 import { relativeDate, outreachStatus } from "@/lib/format";
 import { customerStatusLabel } from "@/lib/glossary";
 import Badge from "./Badge";
+import ClampText from "./ClampText";
 
 /**
  * The shared "dossier" body — standfirst + all grouped field sections.
@@ -27,6 +28,7 @@ function Field({
   mono = false,
   showAll = false,
   relative = false,
+  clamp = false,
 }: {
   label: string;
   value: string | null | undefined;
@@ -34,6 +36,9 @@ function Field({
   showAll?: boolean;
   /** Append a "· 3 mo ago" hint when the value parses as a date. */
   relative?: boolean;
+  /** Collapse a long value to ~4 lines with a "Show more" toggle. For fields
+   * that sometimes hold a whole email body instead of a one-line summary. */
+  clamp?: boolean;
 }) {
   const v = clean(value);
   if (!v && !showAll) return null;
@@ -49,7 +54,7 @@ function Field({
             mono ? "font-code text-xs" : "font-sans text-justify"
           }`}
         >
-          {v}
+          {clamp ? <ClampText text={v} lines={4} /> : v}
           {rel && (
             <span className="font-sans text-xs text-editorial-muted">
               {" "}
@@ -653,7 +658,7 @@ export default function LeadDossier({
           <div className={cols}>
             <Field showAll={showAll} label="First Contact Date (By Buyer) · YYYY-MM-DD" value={lead.first_contact_date} mono relative />
             <Field showAll={showAll} label="Last Contact Date (By Buyer) · YYYY-MM-DD" value={lead.last_contact_date} mono relative />
-            <Field showAll={showAll} label="Last Email Received from Buyer (Snapshot)" value={lead.email_snapshot} />
+            <Field showAll={showAll} label="Last Email Received from Buyer (Snapshot)" value={lead.email_snapshot} clamp />
             <Field showAll={showAll} label="Current AM (Account Manager)" value={lead.current_am} />
             <Field
               showAll={showAll}
@@ -663,7 +668,7 @@ export default function LeadDossier({
               relative
             />
             <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
-            <Field showAll={showAll} label="Last Email Summary / Sales POC Notes" value={lead.email_contact_summary} />
+            <Field showAll={showAll} label="Last Email Summary / Sales POC Notes" value={lead.email_contact_summary} clamp />
           </div>
         </>
       )}
