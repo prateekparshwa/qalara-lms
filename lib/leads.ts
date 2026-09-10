@@ -465,6 +465,18 @@ const PRESERVE_COLUMNS = [
   "notes",
   "notes_updated_at",
   "notes_updated_by",
+  // HubSpot rollup columns — written only by the HubSpot sync, never in the
+  // sheet. Without these a full Sheets sync (delete + reinsert) blanks every
+  // one, so the dossier's HubSpot section and "last synced" go empty even
+  // though a HubSpot sync ran. (last_email_subject / email_contact_summary /
+  // last_qalara_contact / hubspot_email_locked are carried in the lock block.)
+  "hubspot_contact_id",
+  "hubspot_company_id",
+  "hubspot_deal_stage",
+  "hubspot_last_activity_date",
+  "hubspot_notes_count",
+  "hubspot_match_status",
+  "hubspot_synced_at",
 ] as const;
 
 /** Stable identity for matching an old DB row to a new sheet row: normalized
