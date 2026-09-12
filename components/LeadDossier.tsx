@@ -670,7 +670,7 @@ export default function LeadDossier({
               relative
             />
             <Field showAll={showAll} label="Last Email Subject to Buyer" value={lead.last_email_subject} />
-            <Field showAll={showAll} label="Last Email Summary / Sales POC Notes" value={lead.email_contact_summary} clamp />
+            <Field showAll={showAll} label="Last Email sent to the buyer (Summary)" value={lead.email_contact_summary} clamp />
             {clean(lead.email_contact_full) && (
               <div className="py-2 border-b border-zinc-200 last:border-0 break-inside-avoid">
                 <div className="flex items-center justify-between gap-3 mb-0.5">
