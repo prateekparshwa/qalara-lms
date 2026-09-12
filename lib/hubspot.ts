@@ -20,12 +20,21 @@ const COMPANY_PROPERTIES = ["domain", "name", "hs_last_sales_activity_timestamp"
 const DEAL_PROPERTIES = ["dealstage", "dealname", "closedate"];
 const EMAIL_PROPERTIES = ["hs_email_subject", "hs_email_text", "hs_timestamp", "hs_email_direction"];
 // The contacts->emails association batch endpoint returns email ids in
-// ASCENDING order (oldest first — verified against live data). Take a window
-// from the END of the list so a contact with a long history still yields its
-// newest emails; among that window we then pick the true max hs_timestamp.
-// A generous window guards against minor ordering irregularities without
-// pulling every email a heavy contact has ever had.
-const MAX_EMAILS_PER_CONTACT = 15;
+// ASCENDING order (oldest first — verified against live data). We need both
+// ends of a contact's history — the earliest email (for "first contact date
+// by buyer") and the most recent ones in each direction — so take a window
+// from the START and a window from the END rather than just the tail. Each
+// window is generous enough to guard against minor ordering irregularities
+// without pulling every email a heavy contact has ever had.
+const EMAILS_WINDOW_PER_CONTACT = 15;
+
+/** HubSpot's hs_email_direction enum marks buyer-authored messages as
+ * INCOMING_EMAIL; everything else (EMAIL, FORWARDED_EMAIL, ...) is something
+ * Qalara sent. Never infer direction from sender domain — HubSpot already
+ * tells us, and domain heuristics break for free-mail AM addresses. */
+function isInboundFromBuyer(direction: string | null | undefined): boolean {
+  return /INCOMING/i.test(direction ?? "");
+}
 
 export function hubspotConfigured(): boolean {
   return !!process.env.HUBSPOT_PRIVATE_APP_TOKEN;
@@ -235,17 +244,30 @@ export interface HubspotLatestEmail {
   direction: string | null;
 }
 
+/** Per-contact email-thread summary, split by direction. `firstInboundDate`
+ * covers the buyer's whole fetched window (oldest email seen), not
+ * necessarily their all-time first email if the contact has more history
+ * than the window below — see EMAILS_WINDOW_PER_CONTACT. */
+export interface HubspotContactEmailSummary {
+  lastOutbound: HubspotLatestEmail | null;
+  lastInbound: HubspotLatestEmail | null;
+  firstInboundDate: string | null;
+}
+
 /**
- * Full body of the most recent logged Email engagement per contact (subject +
- * text + timestamp). Unlike the rollup fields, this is NOT batchable the same
- * way — each contact needs its own association lookup, so it's meaningfully
- * slower and heavier than the rest of the pull. Only call this for contacts
- * that were actually matched; treat failures as best-effort (see caller).
+ * Per-contact email-thread summary (subject + text + timestamp), split into
+ * what Qalara sent the buyer vs. what the buyer sent Qalara — HubSpot's own
+ * hs_email_direction tells us which is which; direction is never guessed
+ * from sender domain. Unlike the rollup fields, this is NOT batchable the
+ * same way — each contact needs its own association lookup, so it's
+ * meaningfully slower and heavier than the rest of the pull. Only call this
+ * for contacts that were actually matched; treat failures as best-effort
+ * (see caller).
  */
 export async function batchReadLatestEmailPerContact(
   contactIds: string[]
-): Promise<Map<string, HubspotLatestEmail>> {
-  const out = new Map<string, HubspotLatestEmail>();
+): Promise<Map<string, HubspotContactEmailSummary>> {
+  const out = new Map<string, HubspotContactEmailSummary>();
   const unique = Array.from(new Set(contactIds.filter(Boolean)));
   if (unique.length === 0) return out;
 
@@ -257,9 +279,13 @@ export async function batchReadLatestEmailPerContact(
     for (const r of data.results ?? []) {
       const fromId = r.from?.id;
       if (!fromId) continue;
-      const ids = (r.to ?? [])
-        .slice(-MAX_EMAILS_PER_CONTACT)
-        .map((t: { toObjectId: string | number }) => String(t.toObjectId));
+      // Ascending order (oldest first): take both a head window (for "first
+      // contact by buyer") and a tail window (for the latest in/outbound),
+      // de-duplicated for contacts short enough that the windows overlap.
+      const all = (r.to ?? []).map((t: { toObjectId: string | number }) => String(t.toObjectId));
+      const head = all.slice(0, EMAILS_WINDOW_PER_CONTACT);
+      const tail = all.slice(-EMAILS_WINDOW_PER_CONTACT);
+      const ids = Array.from(new Set([...head, ...tail]));
       if (ids.length > 0) contactToEmailIds.set(String(fromId), ids);
     }
   }
@@ -274,26 +300,43 @@ export async function batchReadLatestEmailPerContact(
     for (const r of data.results ?? []) emailById.set(String(r.id), r);
   }
 
+  const toLatestEmail = (rec: HubspotRecord): HubspotLatestEmail => ({
+    subject: rec.properties?.hs_email_subject ?? null,
+    text: rec.properties?.hs_email_text ?? null,
+    timestamp: rec.properties?.hs_timestamp ?? null,
+    direction: rec.properties?.hs_email_direction ?? null,
+  });
+
   for (const [contactId, emailIds] of Array.from(contactToEmailIds.entries())) {
-    let latest: HubspotRecord | null = null;
-    let latestTs = -Infinity;
+    let lastOutbound: HubspotRecord | null = null;
+    let lastOutboundTs = -Infinity;
+    let lastInbound: HubspotRecord | null = null;
+    let lastInboundTs = -Infinity;
+    let firstInboundTs = Infinity;
+
     for (const eid of emailIds) {
       const rec = emailById.get(eid);
       if (!rec) continue;
       const ts = Date.parse(String(rec.properties?.hs_timestamp ?? "")) || 0;
-      if (ts > latestTs) {
-        latestTs = ts;
-        latest = rec;
+      if (isInboundFromBuyer(rec.properties?.hs_email_direction)) {
+        if (ts > lastInboundTs) {
+          lastInboundTs = ts;
+          lastInbound = rec;
+        }
+        if (ts > 0 && ts < firstInboundTs) firstInboundTs = ts;
+      } else {
+        if (ts > lastOutboundTs) {
+          lastOutboundTs = ts;
+          lastOutbound = rec;
+        }
       }
     }
-    if (latest) {
-      out.set(contactId, {
-        subject: latest.properties?.hs_email_subject ?? null,
-        text: latest.properties?.hs_email_text ?? null,
-        timestamp: latest.properties?.hs_timestamp ?? null,
-        direction: latest.properties?.hs_email_direction ?? null,
-      });
-    }
+
+    out.set(contactId, {
+      lastOutbound: lastOutbound ? toLatestEmail(lastOutbound) : null,
+      lastInbound: lastInbound ? toLatestEmail(lastInbound) : null,
+      firstInboundDate: Number.isFinite(firstInboundTs) ? new Date(firstInboundTs).toISOString() : null,
+    });
   }
   return out;
 }
@@ -312,15 +355,29 @@ export interface HubspotSyncResult {
   hubspot_last_activity_date: string | null;
   hubspot_notes_count: number | null;
   hubspot_match_status: HubspotMatchStatus;
-  /** Subject of the latest HubSpot email (-> last_email_subject). Null when no
-   * email was found; the caller then leaves the email fields untouched. */
+  /** Subject of the latest email Qalara sent the buyer (-> last_email_subject,
+   * hs_email_direction != INCOMING_EMAIL). Null when none was found; the
+   * caller then leaves the outbound email fields untouched. */
   email_subject: string | null;
-  /** Full raw body of that email, "YYYY-MM-DD — <text>" (-> email_contact_full).
-   * The caller derives the short gist (-> email_contact_summary) from this. */
+  /** Full raw body of that outbound email, "YYYY-MM-DD — <text>"
+   * (-> email_contact_full). The caller derives the short gist
+   * (-> email_contact_summary) from this. */
   email_full: string | null;
-  /** Date (YYYY-MM-DD) of that latest HubSpot email — the caller writes this
+  /** Date (YYYY-MM-DD) of that latest outbound email — the caller writes this
    * into last_qalara_contact so it can't drift from the summary/subject. */
   email_date: string | null;
+  /** Subject of the latest email the buyer sent Qalara
+   * (hs_email_direction == INCOMING_EMAIL). Null when none was found. */
+  inbound_subject: string | null;
+  /** Full raw body of that inbound email, "YYYY-MM-DD — <text>"
+   * (-> email_snapshot, once gisted by the caller). */
+  inbound_full: string | null;
+  /** Date (YYYY-MM-DD) of that latest inbound email (-> last_contact_date). */
+  inbound_date: string | null;
+  /** Date (YYYY-MM-DD) of the earliest inbound email seen in the fetched
+   * window (-> first_contact_date). Not necessarily the buyer's all-time
+   * first email for very long threads — see EMAILS_WINDOW_PER_CONTACT. */
+  first_inbound_date: string | null;
 }
 
 /** Orchestrates the whole read-only pull for a batch of leads: match Contacts
@@ -386,21 +443,23 @@ export async function pullHubspotDataForLeads(leads: HubspotSyncInput[]): Promis
     const company =
       (contact && companyByContact.get(contact.id)) ?? (domain ? companiesByDomain.get(domain) : undefined);
     const deal = contact ? dealStageByContact.get(contact.id) : undefined;
-    const latestEmail = contact ? emailByContact.get(contact.id) : undefined;
+    const emailSummary = contact ? emailByContact.get(contact.id) : undefined;
+    const lastOutbound = emailSummary?.lastOutbound;
+    const lastInbound = emailSummary?.lastInbound;
 
     const lastActivity =
       contact?.properties?.hs_last_sales_activity_timestamp ??
       company?.properties?.hs_last_sales_activity_timestamp ??
       null;
     const notesCountRaw = contact?.properties?.num_notes ?? company?.properties?.num_notes ?? null;
-    const emailDateLabel = latestEmail?.timestamp
-      ? new Date(latestEmail.timestamp).toISOString().slice(0, 10)
-      : null;
-    const emailSummary = latestEmail?.text
-      ? emailDateLabel
-        ? `${emailDateLabel} — ${latestEmail.text}`
-        : latestEmail.text
-      : null;
+
+    const toDateLabel = (ts: string | null | undefined) => (ts ? new Date(ts).toISOString().slice(0, 10) : null);
+    const toBodyLabel = (text: string | null | undefined, dateLabel: string | null) =>
+      text ? (dateLabel ? `${dateLabel} — ${text}` : text) : null;
+
+    const outboundDateLabel = toDateLabel(lastOutbound?.timestamp);
+    const inboundDateLabel = toDateLabel(lastInbound?.timestamp);
+    const firstInboundDateLabel = toDateLabel(emailSummary?.firstInboundDate);
 
     return {
       id: lead.id,
@@ -409,9 +468,13 @@ export async function pullHubspotDataForLeads(leads: HubspotSyncInput[]): Promis
       hubspot_deal_stage: deal?.stage ?? null,
       hubspot_last_activity_date: lastActivity,
       hubspot_notes_count: notesCountRaw != null ? Number(notesCountRaw) : null,
-      email_subject: latestEmail?.subject ?? null,
-      email_full: emailSummary,
-      email_date: emailDateLabel,
+      email_subject: lastOutbound?.subject ?? null,
+      email_full: toBodyLabel(lastOutbound?.text, outboundDateLabel),
+      email_date: outboundDateLabel,
+      inbound_subject: lastInbound?.subject ?? null,
+      inbound_full: toBodyLabel(lastInbound?.text, inboundDateLabel),
+      inbound_date: inboundDateLabel,
+      first_inbound_date: firstInboundDateLabel,
       hubspot_match_status: classifyMatchStatus({
         hasEmail: !!email,
         hasDomain: !!domain,

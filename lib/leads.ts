@@ -565,6 +565,9 @@ export async function replaceSegmentLeads(
         "email_contact_summary",
         "last_qalara_contact",
         "hubspot_email_locked",
+        "email_snapshot",
+        "first_contact_date",
+        "last_contact_date",
         ...absentPreserve,
       ])
     ).join(",");
@@ -619,10 +622,20 @@ export async function replaceSegmentLeads(
       base.last_email_subject = prior.last_email_subject;
       base.email_contact_summary = prior.email_contact_summary;
       base.email_contact_full = prior.email_contact_full;
+      // The buyer-side (inbound) gist, and the plain contact-date facts the
+      // HubSpot sync derives alongside it — none of these are ever in the
+      // sheet, so they'd otherwise vanish on the next full resync.
+      base.email_snapshot = prior.email_snapshot;
       // The HubSpot sync sets this alongside the subject/summary; keep it too
       // so the sheet's stale "Last Contact Date from Qalara" can't override it.
       if (hasVal(prior.last_qalara_contact)) {
         base.last_qalara_contact = prior.last_qalara_contact;
+      }
+      if (hasVal(prior.first_contact_date)) {
+        base.first_contact_date = prior.first_contact_date;
+      }
+      if (hasVal(prior.last_contact_date)) {
+        base.last_contact_date = prior.last_contact_date;
       }
       base.hubspot_email_locked = true;
     } else {
