@@ -642,6 +642,22 @@ export async function replaceSegmentLeads(
       base.hubspot_email_locked = false;
     }
 
+    // --- Contact-date carry (independent of the HubSpot lock above) ---
+    // first_contact_date / last_contact_date are real historical facts (a
+    // Signup Research signup date, or a HubSpot inbound date) the sheet
+    // usually has no column value for on a given row — a blank sheet cell
+    // should never regress a real date back to null. The HubSpot-locked
+    // branch above already carries these when it applies; this covers every
+    // other row (e.g. a lead with no HubSpot email history yet).
+    if (prior) {
+      if (!hasVal(base.first_contact_date) && hasVal(prior.first_contact_date)) {
+        base.first_contact_date = prior.first_contact_date;
+      }
+      if (!hasVal(base.last_contact_date) && hasVal(prior.last_contact_date)) {
+        base.last_contact_date = prior.last_contact_date;
+      }
+    }
+
     // --- PRESERVE_COLUMNS blank-fill (only when the column is absent) ---
     if (absentPreserve.length > 0 && prior) {
       for (const col of absentPreserve) {
