@@ -21,6 +21,13 @@ export interface CompleteOptions {
   /** Override the primary model (full OpenRouter id); the standard fallback
    * chain still applies after it. */
   model?: string;
+  /** Cap the completion length. Worth setting whenever the expected output is
+   * short: OpenRouter reserves credits for the model's ENTIRE context window
+   * when this is absent, so an uncapped request for a 3-line summary demands
+   * credit for ~131k tokens and 402s on a small balance ("You requested up to
+   * 131072 tokens, but can only afford 11560") even though the call itself
+   * costs a fraction of a cent. */
+  maxTokens?: number;
 }
 
 async function once(
@@ -40,6 +47,7 @@ async function once(
     },
     body: JSON.stringify({
       models, // OpenRouter falls through this list on provider errors
+      ...(opts?.maxTokens ? { max_tokens: opts.maxTokens } : {}),
       ...(opts?.webSearch
         ? { plugins: [{ id: "web", max_results: 5 }] }
         : {}),

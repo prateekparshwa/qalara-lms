@@ -41,10 +41,19 @@ export async function gistEmail(
       `Subject: ${subject ?? "(none)"}\n\n` +
       // Cap the input so one runaway thread can't balloon a call.
       text.slice(0, 6000);
-    const out = (await openrouterComplete(SYSTEM, user)).trim();
+    // 3-4 short lines plus an "Action:" line needs ~150 tokens; the cap also
+    // keeps OpenRouter from reserving credit for the whole context window.
+    const out = (await openrouterComplete(SYSTEM, user, { maxTokens: 400 })).trim();
     if (!out) return { gist: excerptFallback(text), usedFallback: true };
     return { gist: out, usedFallback: false };
-  } catch {
+  } catch (err) {
+    // Never swallow this silently: the fallback is a raw excerpt, not a
+    // summary, so a run that quietly falls back for every email looks like it
+    // worked while writing copy-paste text into the dossier.
+    console.error(
+      "gistEmail: model call failed, using excerpt fallback:",
+      err instanceof Error ? err.message : err
+    );
     return { gist: excerptFallback(text), usedFallback: true };
   }
 }

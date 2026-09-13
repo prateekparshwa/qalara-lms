@@ -205,13 +205,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Gist the changed emails (bounded, each direction separately). id -> gist text.
+    // Count the ones that fell back to a raw excerpt instead of a real
+    // summary (model unreachable, out of credits, empty response). Reported
+    // below so a degraded run is visible rather than looking like a success.
+    let fellBack = 0;
+
     const toGistOutbound = changedOutbound.slice(0, GIST_PER_RUN);
     const gistOutboundById = new Map<number, string>();
     const outboundGistResults = await mapLimit(toGistOutbound, GIST_CONCURRENCY, (r) =>
       gistEmail(r.email_subject, r.email_full)
     );
     toGistOutbound.forEach((r, i) => {
-      const { gist } = outboundGistResults[i];
+      const { gist, usedFallback } = outboundGistResults[i];
+      if (usedFallback) fellBack++;
       gistOutboundById.set(r.id, gist || excerptFallback(r.email_full ?? ""));
     });
 
@@ -221,7 +227,8 @@ export async function POST(req: NextRequest) {
       gistEmail(r.inbound_subject, r.inbound_full)
     );
     toGistInbound.forEach((r, i) => {
-      const { gist } = inboundGistResults[i];
+      const { gist, usedFallback } = inboundGistResults[i];
+      if (usedFallback) fellBack++;
       gistInboundById.set(r.id, gist || excerptFallback(r.inbound_full ?? ""));
     });
 
@@ -293,6 +300,9 @@ export async function POST(req: NextRequest) {
           ? `, ${remainingToGistOutbound + remainingToGistInbound} left for the next run`
           : "") +
         `)` +
+        (fellBack
+          ? `. WARNING: ${fellBack} of them fell back to a raw excerpt instead of a real summary — check the model/credits`
+          : "") +
         (failed ? `, ${failed} failed to save` : "") +
         ".",
       matched: matched.length,
@@ -301,6 +311,7 @@ export async function POST(req: NextRequest) {
       withEmail: withEmail.length,
       gisted: toGistOutbound.length,
       gistedInbound: toGistInbound.length,
+      gistFellBack: fellBack,
       gistRemaining: remainingToGistOutbound + remainingToGistInbound,
       updated,
       failed,
