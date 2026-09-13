@@ -416,6 +416,7 @@ export function dossierSections(
     });
   }
   if (
+    showAll ||
     any(
       lead.first_contact_date,
       lead.last_contact_date,

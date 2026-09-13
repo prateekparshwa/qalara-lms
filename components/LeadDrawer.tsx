@@ -331,12 +331,12 @@ export default function LeadDrawer({
           </div>
 
           {/* Quick-nav: jump to a dossier section without scrolling blind */}
-          {dossierSections(lead).length > 1 && (
+          {dossierSections(lead, true).length > 1 && (
             <nav
               aria-label="Profile sections"
               className="flex items-center gap-1.5 mt-3 flex-wrap"
             >
-              {dossierSections(lead).map((s) => (
+              {dossierSections(lead, true).map((s) => (
                 <button
                   key={s.id}
                   onClick={() =>
@@ -399,7 +399,7 @@ export default function LeadDrawer({
         </div>
 
         <div className="px-6">
-          <LeadDossier lead={lead} scrollMtClass="scroll-mt-48" />
+          <LeadDossier lead={lead} scrollMtClass="scroll-mt-48" showAll />
           <NotesPanel
             lead={lead}
             open={notesOpen}
