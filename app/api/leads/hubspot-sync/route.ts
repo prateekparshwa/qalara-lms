@@ -17,7 +17,7 @@ const WRITE_CHUNK = 500;
 // Emails whose body changed since last sync get a fresh LLM gist. Bounded per
 // run so one sync can't stall on thousands of model calls — the rest carry
 // over unchanged and are picked up on the next run.
-const GIST_PER_RUN = 300;
+const GIST_PER_RUN = 900;
 const GIST_CONCURRENCY = 15;
 
 interface LeadRow {
