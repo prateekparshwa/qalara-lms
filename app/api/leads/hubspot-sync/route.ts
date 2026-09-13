@@ -66,21 +66,24 @@ export async function POST(req: NextRequest) {
     const rows: LeadRow[] = [];
     const fullByLead = new Map<number, string | null>();
     const lastInboundDateByLead = new Map<number, string | null>();
+    const snapshotByLead = new Map<number, string | null>();
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await supabaseAdmin
         .from("leads")
-        .select("id,email,website,email_contact_full,last_contact_date")
+        .select("id,email,website,email_contact_full,last_contact_date,email_snapshot")
         .eq("segment", segment)
         .range(from, from + PAGE - 1);
       if (error) throw new Error(error.message);
       const page = (data ?? []) as unknown as (LeadRow & {
         email_contact_full: string | null;
         last_contact_date: string | null;
+        email_snapshot: string | null;
       })[];
       for (const r of page) {
         rows.push({ id: r.id, email: r.email, website: r.website });
         fullByLead.set(r.id, r.email_contact_full ?? null);
         lastInboundDateByLead.set(r.id, r.last_contact_date ?? null);
+        snapshotByLead.set(r.id, r.email_snapshot ?? null);
       }
       if (page.length < PAGE) break;
     }
@@ -103,12 +106,20 @@ export async function POST(req: NextRequest) {
     const withEmail = results.filter((r) => r.email_subject || r.email_full);
 
     // Rows whose outbound email body differs from what's stored need a fresh
-    // outbound gist; rows whose inbound date moved on need a fresh inbound one.
+    // outbound gist; rows whose inbound date moved on, OR that have inbound
+    // content but no snapshot yet, need a fresh inbound one. The "no snapshot
+    // yet" half matters because last_contact_date is written unconditionally
+    // below (a cheap plain fact, not gated on the per-run gist budget) — so a
+    // row that loses the gist-budget race on the run its date first syncs
+    // would otherwise look "unchanged" on every later run forever, despite
+    // never having gotten a snapshot.
     const changedOutbound = results.filter(
       (r) => r.email_full && r.email_full !== (fullByLead.get(r.id) ?? null)
     );
     const changedInbound = results.filter(
-      (r) => r.inbound_full && r.inbound_date !== (lastInboundDateByLead.get(r.id) ?? null)
+      (r) =>
+        r.inbound_full &&
+        (!snapshotByLead.get(r.id) || r.inbound_date !== (lastInboundDateByLead.get(r.id) ?? null))
     );
 
     if (!commit) {
