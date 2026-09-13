@@ -329,7 +329,7 @@ export default function DiscoverPage() {
                     </nav>
                   )}
 
-                  <LeadDossier lead={leadObj} showAll scrollMtClass="scroll-mt-6" />
+                  <LeadDossier lead={leadObj} showAll twoColumn scrollMtClass="scroll-mt-6" />
 
                   {/* Brand Moodboard — same launcher as a known buyer. Needs
                       the saved lead id (for caching) + a website. */}

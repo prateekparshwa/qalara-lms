@@ -470,11 +470,16 @@ export function dossierSections(
 export default function LeadDossier({
   lead,
   showAll = false,
+  /** Discovery renders the dossier full-width and wants two columns to halve
+   * the scroll; the narrower drawer doesn't have the width for that and
+   * should stay single-column even when showAll is on. */
+  twoColumn = false,
   /** Anchor offset so jumped-to sections clear the host's sticky chrome. */
   scrollMtClass = "scroll-mt-44",
 }: {
   lead: Partial<Lead>;
   showAll?: boolean;
+  twoColumn?: boolean;
   scrollMtClass?: string;
 }) {
   const standfirst = clean(lead.brand_description);
@@ -486,9 +491,8 @@ export default function LeadDossier({
     : null;
   const sections = dossierSections(lead, showAll);
   const has = (id: string) => sections.some((s) => s.id === id);
-  // Discovery renders the dossier full-width: two columns halve the scroll.
   // CSS columns (not grid) so each column packs tight — no row-height gaps.
-  const cols = showAll ? "sm:columns-2 sm:gap-x-10" : "";
+  const cols = twoColumn ? "sm:columns-2 sm:gap-x-10" : "";
 
   return (
     <div>
