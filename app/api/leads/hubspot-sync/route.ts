@@ -27,6 +27,39 @@ interface LeadRow {
 }
 
 /**
+ * Upsert one write chunk, splitting it in half and retrying on failure. A
+ * chunk carrying many freshly-gisted full email bodies can be large enough
+ * to hit a Supabase request timeout ("Gateway Timeout") even though each
+ * individual row is fine — seen live on WRITE_CHUNK-sized batches heavy with
+ * new gists. Halving isolates the slow/oversized part instead of failing the
+ * whole chunk; a single row that still fails after the split is a real
+ * per-row problem, not a size issue, so it's counted as failed and reported.
+ */
+async function upsertChunkWithRetry(
+  chunk: Record<string, unknown>[]
+): Promise<{ done: number; fail: number }> {
+  if (chunk.length === 0) return { done: 0, fail: 0 };
+  const { error } = await supabaseAdmin.from("leads").upsert(chunk, { onConflict: "id" });
+  if (!error) return { done: chunk.length, fail: 0 };
+
+  if (chunk.length === 1) {
+    console.error(`HubSpot sync: batch update failed for lead ${chunk[0].id}:`, error.message);
+    return { done: 0, fail: 1 };
+  }
+
+  console.error(
+    `HubSpot sync: batch update failed for ${chunk.length} rows, splitting and retrying:`,
+    error.message
+  );
+  const mid = Math.ceil(chunk.length / 2);
+  const [a, b] = await Promise.all([
+    upsertChunkWithRetry(chunk.slice(0, mid)),
+    upsertChunkWithRetry(chunk.slice(mid)),
+  ]);
+  return { done: a.done + b.done, fail: a.fail + b.fail };
+}
+
+/**
  * POST /api/leads/hubspot-sync?segment=<any segment key>[&commit=true]
  *
  * Read-only pull from HubSpot (Contacts by email, Companies by domain, plus a
@@ -209,13 +242,9 @@ export async function POST(req: NextRequest) {
         }
         return row;
       });
-      const { error } = await supabaseAdmin.from("leads").upsert(chunk, { onConflict: "id" });
-      if (error) {
-        failed += chunk.length;
-        console.error("HubSpot sync: batch update failed:", error.message);
-      } else {
-        updated += chunk.length;
-      }
+      const { done, fail } = await upsertChunkWithRetry(chunk);
+      updated += done;
+      failed += fail;
     }
 
     const remainingToGistOutbound = Math.max(0, changedOutbound.length - toGistOutbound.length);
