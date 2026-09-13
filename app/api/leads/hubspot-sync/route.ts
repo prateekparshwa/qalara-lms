@@ -34,6 +34,9 @@ interface LeadRow {
  * new gists. Halving isolates the slow/oversized part instead of failing the
  * whole chunk; a single row that still fails after the split is a real
  * per-row problem, not a size issue, so it's counted as failed and reported.
+ * The two halves are retried sequentially, not concurrently — a timeout is
+ * often a sign of contention on the DB connection, and firing two parallel
+ * retries would double the pressure that likely caused it in the first place.
  */
 async function upsertChunkWithRetry(
   chunk: Record<string, unknown>[]
@@ -52,10 +55,8 @@ async function upsertChunkWithRetry(
     error.message
   );
   const mid = Math.ceil(chunk.length / 2);
-  const [a, b] = await Promise.all([
-    upsertChunkWithRetry(chunk.slice(0, mid)),
-    upsertChunkWithRetry(chunk.slice(mid)),
-  ]);
+  const a = await upsertChunkWithRetry(chunk.slice(0, mid));
+  const b = await upsertChunkWithRetry(chunk.slice(mid));
   return { done: a.done + b.done, fail: a.fail + b.fail };
 }
 
