@@ -1,79 +1,55 @@
 /**
- * Condense a pulled email into a short gist for the dossier's
- * "Last Email Summary" field. Runs on the cheap/fast model (Haiku via
- * OpenRouter); on any failure it falls back to a trimmed excerpt so the field
- * is never worse than a plain truncation.
+ * Condense a pulled email for the dossier's summary fields. No model call —
+ * this runs on every sync, for free.
+ *
+ * It keeps only the newest message (drops the quoted reply chain, the
+ * signature and the HubSpot footer) and trims that to a few sentences, so the
+ * field shows what this email actually says rather than the first 300
+ * characters of a whole thread. It is an excerpt, not a written summary:
+ * leads whose summary was hand-written are left alone by the sync until a
+ * newer email arrives.
  */
-import { openrouterComplete } from "./openrouter";
 
-const SYSTEM =
-  "You summarise a single sales email for a CRM's activity log. Output 3-4 " +
-  "short lines, plain text, no preamble. Say who reached out to whom and the " +
-  "core point (offer, categories, ask). If the email implies a clear next " +
-  "step, end with a final line starting 'Action: '. No greetings, no " +
-  "sign-off, no markdown.";
+const REPLY_CHAIN_MARKERS = [
+  /\n\s*On [^\n]{0,200}\n?[^\n]{0,120}wrote:\s*\n/i,
+  /\n\s*-{2,}\s*Original Message\s*-{2,}/i,
+  /\n\s*From:\s[^\n]+\n\s*(Sent|Date):/i,
+  /\n\s*>/,
+];
 
-/** Naive fallback: first ~3 sentences / 320 chars, greeting line dropped. */
-export function excerptFallback(body: string): string {
-  const clean = body
-    .replace(/^\s*\d{4}-\d{2}-\d{2}\s*[—-]\s*/, "")
-    .replace(/^(hi|hello|dear)\b[^\n]*\n+/i, "")
+const SIGN_OFF =
+  /\n\s*(warm regards|best regards|kind regards|regards|best|thanks|thank you|many thanks|cheers|sincerely)\s*,?\s*\n/i;
+
+/** The newest message only, as plain text. */
+export function newestMessage(raw: string): string {
+  let text = (raw ?? "")
+    .replace(/\r/g, "")
+    .replace(/^\s*\d{4}-\d{2}-\d{2}\s*[—-]\s*/, "");
+
+  for (const marker of REPLY_CHAIN_MARKERS) {
+    const m = text.match(marker);
+    // A marker in the first few characters is the message itself, not a quote.
+    if (m && m.index !== undefined && m.index > 20) text = text.slice(0, m.index);
+  }
+
+  text = text
+    .replace(/Powered by HubSpot[\s\S]*$/i, "")
+    .replace(/<https?:\/\/[^>]+>/g, "");
+
+  const signOff = text.search(SIGN_OFF);
+  if (signOff > 40) text = text.slice(0, signOff);
+
+  return text.replace(/[\t ]+/g, " ").replace(/\n\s*\n+/g, "\n").trim();
+}
+
+/** A few sentences (~320 chars) of the newest message, greeting dropped. */
+export function emailExcerpt(raw: string): string {
+  const clean = newestMessage(raw)
+    .replace(/^(hi|hello|dear|hey)\b[^\n]*\n+/i, "")
     .replace(/\s+/g, " ")
     .trim();
   if (clean.length <= 320) return clean;
   const cut = clean.slice(0, 320);
   const lastStop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
   return (lastStop > 120 ? cut.slice(0, lastStop + 1) : cut) + "…";
-}
-
-export async function gistEmail(
-  subject: string | null,
-  body: string | null
-): Promise<{ gist: string; usedFallback: boolean }> {
-  const text = (body ?? "").trim();
-  if (!text) return { gist: "", usedFallback: true };
-  // Already short — nothing to gain from a model call.
-  if (text.replace(/^\s*\d{4}-\d{2}-\d{2}\s*[—-]\s*/, "").length <= 300) {
-    return { gist: excerptFallback(text), usedFallback: true };
-  }
-  try {
-    const user =
-      `Subject: ${subject ?? "(none)"}\n\n` +
-      // Cap the input so one runaway thread can't balloon a call.
-      text.slice(0, 6000);
-    // 3-4 short lines plus an "Action:" line needs ~150 tokens; the cap also
-    // keeps OpenRouter from reserving credit for the whole context window.
-    const out = (await openrouterComplete(SYSTEM, user, { maxTokens: 400 })).trim();
-    if (!out) return { gist: excerptFallback(text), usedFallback: true };
-    return { gist: out, usedFallback: false };
-  } catch (err) {
-    // Never swallow this silently: the fallback is a raw excerpt, not a
-    // summary, so a run that quietly falls back for every email looks like it
-    // worked while writing copy-paste text into the dossier.
-    console.error(
-      "gistEmail: model call failed, using excerpt fallback:",
-      err instanceof Error ? err.message : err
-    );
-    return { gist: excerptFallback(text), usedFallback: true };
-  }
-}
-
-/** Run `fn` over `items` with at most `concurrency` in flight. */
-export async function mapLimit<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let cursor = 0;
-  async function worker() {
-    while (cursor < items.length) {
-      const i = cursor++;
-      results[i] = await fn(items[i], i);
-    }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
-  );
-  return results;
 }

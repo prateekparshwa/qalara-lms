@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { hubspotConfigured, pullHubspotDataForLeads } from "@/lib/hubspot";
-import { gistEmail, excerptFallback, mapLimit } from "@/lib/emailGist";
+import { emailExcerpt } from "@/lib/emailGist";
 
 // Batched HubSpot calls need the Node.js runtime (not edge). The rollup
 // lookups (deal stage/email/company) run concurrently via Promise.allSettled
@@ -14,11 +14,6 @@ export const maxDuration = 290;
 
 const PAGE = 1000;
 const WRITE_CHUNK = 500;
-// Emails whose body changed since last sync get a fresh LLM gist. Bounded per
-// run so one sync can't stall on thousands of model calls — the rest carry
-// over unchanged and are picked up on the next run.
-const GIST_PER_RUN = 900;
-const GIST_CONCURRENCY = 15;
 
 interface LeadRow {
   id: number;
@@ -168,14 +163,11 @@ export async function POST(req: NextRequest) {
     const skipped = results.filter((r) => r.hubspot_match_status === "skipped");
     const withEmail = results.filter((r) => r.email_subject || r.email_full);
 
-    // Rows whose outbound email body differs from what's stored need a fresh
-    // outbound gist; rows whose inbound date moved on, OR that have inbound
-    // content but no snapshot yet, need a fresh inbound one. The "no snapshot
-    // yet" half matters because last_contact_date is written unconditionally
-    // below (a cheap plain fact, not gated on the per-run gist budget) — so a
-    // row that loses the gist-budget race on the run its date first syncs
-    // would otherwise look "unchanged" on every later run forever, despite
-    // never having gotten a snapshot.
+    // Only emails that actually changed get their summary field rewritten, so
+    // a hand-written summary survives every sync until a newer email arrives.
+    // Inbound also counts "content but no snapshot yet" as changed:
+    // last_contact_date is written for every row below, so comparing dates
+    // alone would miss a row whose date is current but whose snapshot is empty.
     const changedOutbound = results.filter(
       (r) => r.email_full && r.email_full !== (fullByLead.get(r.id) ?? null)
     );
@@ -192,8 +184,8 @@ export async function POST(req: NextRequest) {
           `Dry run: would match ${matched.length} of ${rows.length} leads in HubSpot ` +
           `(${notFound.length} not found, ${skipped.length} skipped — no email or website on file), ` +
           `${withEmail.length} with a HubSpot email; ${changedOutbound.length} outbound and ` +
-          `${changedInbound.length} inbound email(s) changed and would be re-gisted ` +
-          `(up to ${GIST_PER_RUN} of each per run). Nothing was written yet.`,
+          `${changedInbound.length} inbound email(s) changed and would be refreshed. ` +
+          `Nothing was written yet.`,
         matched: matched.length,
         notFound: notFound.length,
         skipped: skipped.length,
@@ -204,44 +196,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Gist the changed emails (bounded, each direction separately). id -> gist text.
-    // Count the ones that fell back to a raw excerpt instead of a real
-    // summary (model unreachable, out of credits, empty response). Reported
-    // below so a degraded run is visible rather than looking like a success.
-    let fellBack = 0;
-
-    const toGistOutbound = changedOutbound.slice(0, GIST_PER_RUN);
-    const gistOutboundById = new Map<number, string>();
-    const outboundGistResults = await mapLimit(toGistOutbound, GIST_CONCURRENCY, (r) =>
-      gistEmail(r.email_subject, r.email_full)
+    // id -> excerpt of the newest message, for each changed email.
+    const outboundSummaryById = new Map<number, string>(
+      changedOutbound.map((r) => [r.id, emailExcerpt(r.email_full ?? "")])
     );
-    toGistOutbound.forEach((r, i) => {
-      const { gist, usedFallback } = outboundGistResults[i];
-      if (usedFallback) fellBack++;
-      gistOutboundById.set(r.id, gist || excerptFallback(r.email_full ?? ""));
-    });
-
-    const toGistInbound = changedInbound.slice(0, GIST_PER_RUN);
-    const gistInboundById = new Map<number, string>();
-    const inboundGistResults = await mapLimit(toGistInbound, GIST_CONCURRENCY, (r) =>
-      gistEmail(r.inbound_subject, r.inbound_full)
+    const inboundSummaryById = new Map<number, string>(
+      changedInbound.map((r) => [r.id, emailExcerpt(r.inbound_full ?? "")])
     );
-    toGistInbound.forEach((r, i) => {
-      const { gist, usedFallback } = inboundGistResults[i];
-      if (usedFallback) fellBack++;
-      gistInboundById.set(r.id, gist || excerptFallback(r.inbound_full ?? ""));
-    });
 
-    // 3. Commit — batched upsert. Rollup columns are always written for every
-    // row, as are the plain contact-date fields (first_contact_date /
-    // last_contact_date — cheap, no LLM call, so no reason to gate them on
-    // the gist budget). The gisted fields (last_email_subject /
+    // 3. Commit — batched upsert. Rollup columns and the plain contact-date
+    // fields are written for every row. The email fields (last_email_subject /
     // email_contact_summary / email_contact_full / last_qalara_contact /
     // email_snapshot / hubspot_email_locked) are touched only for rows whose
-    // email actually CHANGED and got a fresh gist this run — unchanged emails
-    // and rows past the per-run gist cap keep their existing values (which
-    // PRESERVE_COLUMNS carries through a Sheets sync), so a miss never blanks
-    // anything.
+    // email actually CHANGED — unchanged rows keep their existing values.
     const stamp = new Date().toISOString();
     let updated = 0;
     let failed = 0;
@@ -261,10 +228,10 @@ export async function POST(req: NextRequest) {
         if (r.first_inbound_date) row.first_contact_date = r.first_inbound_date;
         if (r.inbound_date) row.last_contact_date = r.inbound_date;
 
-        const outboundGist = gistOutboundById.get(r.id);
-        if (outboundGist !== undefined && (r.email_subject || r.email_full)) {
+        const outboundSummary = outboundSummaryById.get(r.id);
+        if (outboundSummary !== undefined && (r.email_subject || r.email_full)) {
           row.last_email_subject = r.email_subject;
-          row.email_contact_summary = outboundGist;
+          row.email_contact_summary = outboundSummary;
           row.email_contact_full = r.email_full;
           // Keep the "last contact from Qalara" date in step with the email
           // we just pulled — otherwise it keeps showing the sheet's old date
@@ -273,9 +240,9 @@ export async function POST(req: NextRequest) {
           row.hubspot_email_locked = true;
         }
 
-        const inboundGist = gistInboundById.get(r.id);
-        if (inboundGist !== undefined && (r.inbound_subject || r.inbound_full)) {
-          row.email_snapshot = inboundGist;
+        const inboundSummary = inboundSummaryById.get(r.id);
+        if (inboundSummary !== undefined && (r.inbound_subject || r.inbound_full)) {
+          row.email_snapshot = inboundSummary;
         }
         return row;
       });
@@ -288,31 +255,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const remainingToGistOutbound = Math.max(0, changedOutbound.length - toGistOutbound.length);
-    const remainingToGistInbound = Math.max(0, changedInbound.length - toGistInbound.length);
     return NextResponse.json({
       dryRun: false,
       message:
         `Synced ${updated} leads from HubSpot ` +
         `(${matched.length} matched, ${notFound.length} not found, ${skipped.length} skipped, ` +
-        `${withEmail.length} email(s) pulled, ${toGistOutbound.length} outbound + ${toGistInbound.length} inbound re-gisted` +
-        (remainingToGistOutbound || remainingToGistInbound
-          ? `, ${remainingToGistOutbound + remainingToGistInbound} left for the next run`
-          : "") +
-        `)` +
-        (fellBack
-          ? `. WARNING: ${fellBack} of them fell back to a raw excerpt instead of a real summary — check the model/credits`
-          : "") +
+        `${withEmail.length} email(s) pulled, ${changedOutbound.length} outbound + ` +
+        `${changedInbound.length} inbound email(s) refreshed)` +
         (failed ? `, ${failed} failed to save` : "") +
         ".",
       matched: matched.length,
       notFound: notFound.length,
       skipped: skipped.length,
       withEmail: withEmail.length,
-      gisted: toGistOutbound.length,
-      gistedInbound: toGistInbound.length,
-      gistFellBack: fellBack,
-      gistRemaining: remainingToGistOutbound + remainingToGistInbound,
+      refreshedOutbound: changedOutbound.length,
+      refreshedInbound: changedInbound.length,
       updated,
       failed,
       total: rows.length,
