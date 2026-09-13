@@ -27,6 +27,35 @@ interface LeadRow {
 }
 
 /**
+ * Split rows into groups that share an identical column set.
+ *
+ * supabase-js normalises a bulk upsert by unioning the keys across every row
+ * in the payload and filling the ones a given row doesn't have with NULL — and
+ * the upsert's DO UPDATE then writes those NULLs over the stored values. The
+ * rows built below deliberately carry different key sets (only leads that got
+ * a fresh gist this run include the email columns), so a single mixed request
+ * silently blanks those columns for every OTHER lead in the same chunk. That
+ * put the sync on a treadmill: each run wiped the rows it had populated on the
+ * previous one, so they re-entered the "changed" queue and the backlog never
+ * converged.
+ *
+ * Grouping by exact key signature keeps every request uniform, so a request
+ * only ever touches the columns its own rows actually set.
+ */
+function groupByColumnSignature(
+  rows: Record<string, unknown>[]
+): Record<string, unknown>[][] {
+  const groups = new Map<string, Record<string, unknown>[]>();
+  for (const row of rows) {
+    const signature = Object.keys(row).sort().join("|");
+    const existing = groups.get(signature);
+    if (existing) existing.push(row);
+    else groups.set(signature, [row]);
+  }
+  return Array.from(groups.values());
+}
+
+/**
  * Upsert one write chunk, splitting it in half and retrying on failure. A
  * chunk carrying many freshly-gisted full email bodies can be large enough
  * to hit a Supabase request timeout ("Gateway Timeout") even though each
@@ -243,9 +272,13 @@ export async function POST(req: NextRequest) {
         }
         return row;
       });
-      const { done, fail } = await upsertChunkWithRetry(chunk);
-      updated += done;
-      failed += fail;
+      // One request per column signature — a mixed one nulls out columns it
+      // never meant to touch (see groupByColumnSignature).
+      for (const group of groupByColumnSignature(chunk)) {
+        const { done, fail } = await upsertChunkWithRetry(group);
+        updated += done;
+        failed += fail;
+      }
     }
 
     const remainingToGistOutbound = Math.max(0, changedOutbound.length - toGistOutbound.length);
